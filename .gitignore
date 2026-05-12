@@ -5,4 +5,7 @@ docs/ideas/initial-requirements-sample.md
 .steering/*
 !.steering/.gitkeep
 
+# modues
+node_modules/*
+
 .claude/settings.local.json
