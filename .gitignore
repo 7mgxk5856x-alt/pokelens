@@ -1,0 +1,8 @@
+# Sample files
+docs/ideas/initial-requirements-sample.md
+
+# Steering files (task management - temporary)
+.steering/*
+!.steering/.gitkeep
+
+.claude/settings.local.json
