@@ -11,7 +11,7 @@ public static class IncrementalRunner
         ["showdown-pokedex", "showdown-moves", "showdown-items", "showdown-abilities"];
 
     private static readonly string[] Step4OnlyKeys =
-        ["moves-power-patch", "items-modifiers", "abilities-modifiers"];
+        ["moves-power-patch", "items-modifiers", "abilities-modifiers", "pokemon-name-patch", "item-name-patch"];
 
     public static Dictionary<string, string> LoadChecksums(string path)
     {

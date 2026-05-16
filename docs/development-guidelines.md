@@ -165,6 +165,13 @@ element.innerHTML = pokemonName;
 - 追加・変更時は既存エントリのフォーマットを維持する
 - 変更理由はコミットメッセージに記載する（例: `chore(tools): champions-patch.json にXXXを追加`）
 
+**name-patch ファイル（`pokemon-name-patch.json` / `item-name-patch.json`）の管理ルール**:
+- 各ファイルは `{ "showdownキー": "日本語名" }` のフラット形式。`_comment` 等 `_` 始まりのキーはコメント用途として使える（Showdown キーと衝突しないため副作用なし）
+- 値は Showdown キーがある場合、`pokeapi-translations.json` 由来の日本語名を**上書き**する。値がない場合は翻訳不在を補完する
+- 追加時は対応する Showdown キーが `cache/showdown-pokedex.json` / `cache/showdown-items.json` に存在することを確認する（フィルタで除外されたキーへの上書きは無効）
+- `pokemon-name-patch.json` は同名重複を解消する目的のため、追加値が他エントリと一意であることを確認する
+- 変更理由はコミットメッセージに記載する（例: `chore(tools): pokemon-name-patch.json に〇〇を追加`）
+
 ---
 
 ## テスト戦略

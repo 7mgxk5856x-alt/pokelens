@@ -214,7 +214,7 @@
 
 **定義**: C# データ準備ツールが変化のあったファイルに応じて必要な最小ステップのみを再実行する仕組み。
 
-**説明**: `cache/checksums.json` に `showdown-*.json` / `pokeapi-translations.json` / `champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` のハッシュ値を保存し、次回起動時と比較する。変化したファイルの種類に応じて実行を開始するステップが決まり、変化なしの場合は全ステップをスキップする。スキップ条件の詳細は[機能設計書](./functional-design.md)の「増分実行の仕組み（ハッシュ比較）」および[アーキテクチャ設計書](./architecture.md)を参照。
+**説明**: `cache/checksums.json` に `showdown-*.json` / `pokeapi-translations.json` / `champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` / `pokemon-name-patch.json` / `item-name-patch.json` のハッシュ値を保存し、次回起動時と比較する。変化したファイルの種類に応じて実行を開始するステップが決まり、変化なしの場合は全ステップをスキップする。スキップ条件の詳細は[機能設計書](./functional-design.md)の「増分実行の仕組み（ハッシュ比較）」および[アーキテクチャ設計書](./architecture.md)を参照。
 
 **関連ドキュメント**: [機能設計書](./functional-design.md)
 
@@ -239,6 +239,39 @@
 **配置**: `tools/PokelensTools/moves-power-patch.json`
 
 **説明**: `champions-patch.json`（Showdown 語彙・Step3 適用）とは異なり、最終出力語彙（`moves.json` の `power` フィールド）でStep4 に適用される。複数回攻撃技は C# ツールが `basePower × multihit[1]` で自動計算するため本ファイルの対象外。パッチ未定義の威力不定技は UI 上「−」表示となる。
+
+**関連ドキュメント**: [機能設計書](./functional-design.md)
+
+---
+
+### pokemon-name-patch.json
+
+**定義**: PokéAPI のフォルム認識ロジックでは一意化できないポケモンの日本語名を手動で上書き定義する JSON ファイル。
+
+**配置**: `tools/PokelensTools/pokemon-name-patch.json`
+
+**説明**: Showdown キーをキー、上書き後の日本語名を値とする単純な `{ "key": "name" }` 形式。Step4 で MergeConverter が `pokeapi-translations.json` 由来の日本語名を解決した直後に、本ファイルのエントリで上書きする。補正対象は以下の 4 カテゴリ:
+- PokéAPI の翻訳データバグ（パルデアケンタロス3種が同名で返る等）
+- PokéAPI の `form_names` が空（バトルボンドゲッコウガ等）
+- PokéAPI に該当エンドポイントがない（オーガポン Tera フォルム、Showdown 専用偽メガ進化等）
+- スラグ不一致による fallback の衝突（メテノ Core/Meteor、ピチュー ギザみみ等）
+
+最終出力 `pokedex.json` 内で同名重複が残らないよう、すべての値が一意であることが望ましい。`_comment` 等 `_` 始まりのキーは Showdown キーと衝突しないためコメント用途に使える。
+
+**関連ドキュメント**: [機能設計書](./functional-design.md)
+
+---
+
+### item-name-patch.json
+
+**定義**: PokéAPI が翻訳を欠落／誤訳しているアイテムの日本語名を手動で上書き定義する JSON ファイル。
+
+**配置**: `tools/PokelensTools/item-name-patch.json`
+
+**説明**: Showdown キーをキー、上書き後の日本語名を値とする単純な `{ "key": "name" }` 形式。MergeConverter は `items-modifiers.json` の各キーに対し、まず本ファイルを参照して上書き値があれば優先採用、なければ `pokeapi-translations.json` をフォールバックとして使用する。補正対象は以下の 3 カテゴリ:
+- PokéAPI 翻訳の誤り（ケッサクのちゃわんが PokéAPI ja で "ボンサクのちゃわん" を返す等のデータバグ）
+- PokéAPI に該当 slug の翻訳が未登録（メタルアロイ→ふくごうきんぞく等）
+- PokéAPI に該当 slug の項目自体が無い（きれいなハネ等）
 
 **関連ドキュメント**: [機能設計書](./functional-design.md)
 
@@ -443,6 +476,8 @@
 - [C# データ準備ツール](#c-データ準備ツール)
 - [champions-patch.json](#champions-patchjson)
 - [moves-power-patch.json](#moves-power-patchjson)
+- [pokemon-name-patch.json](#pokemon-name-patchjson)
+- [item-name-patch.json](#item-name-patchjson)
 - [items-modifiers.json / abilities-modifiers.json](#items-modifiersjson--abilities-modifiersjson)
 - [PokéAPI](#pokéapi)
 - [Pokémon Showdown データ](#pokémon-showdown-データ)

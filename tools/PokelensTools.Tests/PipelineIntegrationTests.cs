@@ -64,6 +64,8 @@ public class PipelineIntegrationTests : IDisposable
         var abilitiesModifiersPath = Write("abilities-modifiers.json", """
             {"ironfist":{"modifier":{"condition":"isPunch","atk":1.2}}}
             """);
+        var pokemonNamePatchPath = Write("pokemon-name-patch.json", "{}");
+        var itemNamePatchPath = Write("item-name-patch.json", "{}");
 
         var dataDir = Path.Combine(_tmpDir, "data");
 
@@ -71,6 +73,7 @@ public class PipelineIntegrationTests : IDisposable
             pokedexPath, movesPath, itemsPath, abilitiesPath,
             translationsPath, movesPowerPatchPath,
             itemsModifiersPath, abilitiesModifiersPath,
+            pokemonNamePatchPath, itemNamePatchPath,
             dataDir);
 
         var pokedex = JsonNode.Parse(File.ReadAllText(Path.Combine(dataDir, "pokedex.json")))!.AsObject();

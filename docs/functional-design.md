@@ -12,6 +12,8 @@ graph TB
         MovesPowerPatch[(moves-power-patch.json<br/>威力不定技最大威力パッチ)]
         ItemsModifiers[(items-modifiers.json<br/>持ち物補正値定義)]
         AbilitiesModifiers[(abilities-modifiers.json<br/>特性補正値定義)]
+        PokemonNamePatch[(pokemon-name-patch.json<br/>ポケモン日本語名上書き)]
+        ItemNamePatch[(item-name-patch.json<br/>持ち物日本語名上書き)]
     end
 
     subgraph キャッシュ["キャッシュ (cache/ · gitignore)"]
@@ -51,6 +53,8 @@ graph TB
     MovesPowerPatch --> Converter
     ItemsModifiers --> Converter
     AbilitiesModifiers --> Converter
+    PokemonNamePatch --> Converter
+    ItemNamePatch --> Converter
     Converter --> Pokedex & Moves & Items & Abilities
     Pokedex --> DataLoader
     Moves --> DataLoader
@@ -119,12 +123,17 @@ graph TB
 
 | データ | URL | 取得内容 |
 |--------|-----|----------|
-| ポケモン日本語名 | `https://pokeapi.co/api/v2/pokemon-species/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
+| ポケモン日本語名（変異フォルム） | `https://pokeapi.co/api/v2/pokemon-form/{slug}/` | `form_names` 配列から `language.name === "ja"` の `name` を取得（フォルム別の在ゲーム名） |
+| ポケモン日本語名（基本形・フォルム fallback） | `https://pokeapi.co/api/v2/pokemon-species/{id}/` | `names` 配列の `language.name === "ja"` から種族名を取得 |
 | 技日本語名 | `https://pokeapi.co/api/v2/move/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
 | 特性日本語名 | `https://pokeapi.co/api/v2/ability/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
-| 持ち物日本語名 | `https://pokeapi.co/api/v2/item/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
+| 持ち物日本語名 | `https://pokeapi.co/api/v2/item/{slug}/` | `names` 配列から `language.name === "ja"` の `name` を取得（Showdown と PokéAPI で ID 体系が異なるため slug で照合） |
 
-> PokéAPIのIDとShowdownのキーはポケモン図鑑番号で紐付ける（Showdownの `num` フィールドをIDとして使用）。特性はShowdownの `abilities.js` に含まれる `num` フィールドをIDとして使用する。
+**ID/slug の対応規則**:
+- ポケモン基本形・技・特性は Showdownの `num` フィールドを PokéAPI ID として利用する
+- **ポケモン変異フォルム**は Showdown の `name` フィールド（例: `"Rotom-Wash"`）を slugify（lowercase / 空白→`-` / `' '` `’` `.` `:` `,` `%` を除去 / `é`→`e`）して `pokemon-form/{slug}/` を問い合わせ、`form_names` の日本語表記（例: `"ウォッシュロトム"`）を取得する。slug が PokéAPI に存在しない場合は `pokemon-species/{num}/` の `varieties` から最長一致するスラグへフォールバックする
+- **PokéAPI が form qualifier のみを返すケース**（例: `zacian-crowned` → `"けんのおう"`）では、種族名を含まないため `"<種族名> (<フォルム名>)"` の形式に MergeConverter が組み立てる
+- **持ち物**は Showdown と PokéAPI で ID が乖離しているため、Showdownの `name`（例: `"Wellspring Mask"`）を slugify した値で `item/{slug}/` を直接問い合わせる
 
 **ポケモンWiki（Champions差分・手動調査）**
 
@@ -185,6 +194,65 @@ Showdown データと Pokémon Champions の差分（技威力・種族値変更
 - C# ツールがStep4の最終出力生成時に `moves.json` の `power` フィールドへ上書き適用する
 - `champions-patch.json` の `moves` セクションとは役割が異なる（`champions-patch.json` の `basePower` はShowdown語彙でStep3に適用、`moves-power-patch.json` の `power` は最終出力語彙でStep4に適用）
 - このファイルは手書きで管理する（C# ツールでは生成しない）
+- 完全可変技（カウンター、ミラーコート、メタルバースト、いのちがけ、がむしゃら、ふくろだたき 等）、HP比例技（いかりのまえば、カタストロフィ 等）、OHKO技（じわれ、つのドリル、ぜったいれいど、ハサミギロチン）は patch しないポリシー（`power: null` のまま）。UI 側で「—」表示する
+
+**`pokemon-name-patch.json` の構造**:
+
+```json
+{
+  "_comment": "Override JP names for Showdown formes that PokéAPI cannot uniquely identify.",
+  "taurospaldeacombat":   "ケンタロス (パルデアのすがた・コンバット種)",
+  "darmanitangalarzen":   "ヒヒダルマ (ガラルのすがた・ダルマモード)",
+  "greninjabond":         "ゲッコウガ (バトルボンド)",
+  "ogerpontealtera":      "オーガポン (みどりのめん・テラスタル)",
+  "miniormeteor":         "メテノ (りゅうせいのすがた)"
+}
+```
+
+> キーは Showdown のポケモン識別キー（英小文字）、値は日本語名。`cache/showdown-pokedex.json` のキーと一致させること。
+
+**制約**:
+- MergeConverter は Showdown の各エントリに対し、まず `pokeapi-translations.json` の `pokemon` セクションから日本語名を解決し、本ファイルに同キーのエントリがあれば**最終出力に出る前に上書き**する
+- 同名重複を解消する目的のため、すべての値は出力 `pokedex.json` 内で他エントリと一意であることが望ましい
+- 補正対象は以下の 4 カテゴリ:
+  - **PokéAPI の翻訳データバグ** (例: パルデアケンタロス3種が同名)
+  - **PokéAPI の `form_names` が空** (例: バトルボンドゲッコウガ)
+  - **PokéAPI に該当エンドポイントが無い** (例: オーガポン Tera フォルム、Showdown 専用の偽メガ進化)
+  - **スラグ不一致による fallback の衝突** (例: メテノの Core/Meteor、ピチュー ギザみみ)
+- 先頭 `_` で始まるキー (`_comment` 等) は Showdown キーと衝突しないため副作用なし。コメント用途に利用できる
+- このファイルは手書きで管理する（C# ツールでは生成しない）
+
+**`item-name-patch.json` の構造**:
+
+```json
+{
+  "_comment": "Override JP names for items that PokéAPI lacks or returns incorrect data for.",
+  "masterpieceteacup": "ケッサクのちゃわん",
+  "metalalloy":        "ふくごうきんぞく",
+  "prettyfeather":     "きれいなハネ"
+}
+```
+
+> キーは Showdown の持ち物識別キー（英小文字）、値は日本語名。`cache/showdown-items.json` のキーと一致させること。
+
+**制約**:
+- MergeConverter は `data/items.json` 生成時、`items-modifiers.json` の各キーに対し、本ファイルに同キーのエントリがあれば**翻訳より優先**して日本語名として採用する。エントリがなければ `pokeapi-translations.json` の `items` セクションをフォールバックとして使う
+- 補正対象は以下の 3 カテゴリ:
+  - **PokéAPI のデータバグで翻訳が誤っている** (例: ケッサクのちゃわん が PokéAPI ja で "ボンサクのちゃわん" を返す)
+  - **PokéAPI に該当 slug の翻訳が登録されていない** (例: メタルアロイ → ふくごうきんぞく)
+  - **PokéAPI に該当 slug の項目自体が無い** (例: きれいなハネ)
+- 先頭 `_` で始まるキー (`_comment` 等) は Showdown キーと衝突しないため副作用なし
+- このファイルは手書きで管理する（C# ツールでは生成しない）
+
+**Showdown データの除外フィルタ** (ShowdownFetcher 取得時):
+
+| 対象 | フィルタ条件 | 理由 |
+|---|---|---|
+| 技 (`isZ` または `isMax` あり) | `entry.isZ != null \|\| entry.isMax != null` | Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で使用不可。`isZ` には Z-クリスタル名 (例: `"electriumz"`) が、`isMax` には許容ポケモン名が入る |
+| 特性 (`isNonstandard` あり) | `entry.isNonstandard != null` | `"Future"` (4件: piercingdrill, dragonize, megasol, spicyspray) は次世代用の仮置き |
+| アイテム (`isNonstandard` あり) | `entry.isNonstandard != null` | `"Past"` (メガストーン、Zクリスタル)、`"Future"` (Z 進化アイテム)、`"Unobtainable"` (チェリッシュボール等)、`"CAP"` を除外 |
+
+> `noability`（特性、`num=0`）と CAP ポケモン（`num<0`）は既存の `num <= 0` チェックで除外済み。
 
 ### C# ツールのパイプライン
 
@@ -221,6 +289,8 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
   - moves-power-patch.json のみ変化       → Step 4 を実行
   - items-modifiers.json のみ変化        → Step 4 を実行
   - abilities-modifiers.json のみ変化    → Step 4 を実行
+  - pokemon-name-patch.json のみ変化     → Step 4 を実行
+  - item-name-patch.json のみ変化        → Step 4 を実行
   - 上記の複数が同時に変化               → 必要な最も早いStep以降を実行
   - 変化なし                             → 処理終了（data/ は最新のまま）
 
@@ -229,11 +299,15 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
 [Step 3] champions-patch.json 適用 → Showdown 中間データを上書き  （条件付き）
 
 [Step 4] 最終出力生成 → data/*.json  （条件付き）
+  ※ pokedex.json 生成時に以下を適用する:
+    - pokemon-name-patch.json: 翻訳された日本語名を Showdown キー単位で上書き
   ※ moves.json 生成時に以下を適用する:
     - 複数回攻撃技: basePower × multihit[1] を power として出力
     - moves-power-patch.json: power が null の技に最大威力を上書き適用
+  ※ items.json 生成時に以下を適用する:
+    - item-name-patch.json: 翻訳された日本語名を Showdown キー単位で上書き（翻訳が無い場合の補完も兼ねる）
 
-[ハッシュ更新] cache/checksums.json を更新（moves-power-patch / items-modifiers / abilities-modifiers を含む）
+[ハッシュ更新] cache/checksums.json を更新（全 patch / modifier ファイルを含む）
 ```
 
 `cache/checksums.json` の構造:
@@ -248,7 +322,9 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
   "champions-patch":         "m3n4o5...",
   "moves-power-patch":       "p6q7r8...",
   "items-modifiers":         "v1w2x3...",
-  "abilities-modifiers":     "y4z5a6..."
+  "abilities-modifiers":     "y4z5a6...",
+  "pokemon-name-patch":      "b7c8d9...",
+  "item-name-patch":         "e0f1g2..."
 }
 ```
 
@@ -264,11 +340,19 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
     "types": ["Electric"],
     "baseStats": { "hp": 35, "atk": 55, "def": 40, "spa": 50, "spd": 50, "spe": 90 },
     "abilities": { "0": "Static", "1": "Lightning Rod" }
+  },
+  "rotomwash": {
+    "num": 479,
+    "name": "Rotom-Wash",
+    "types": ["Electric", "Water"],
+    "baseStats": { "hp": 50, "atk": 65, "def": 107, "spa": 105, "spd": 107, "spe": 86 },
+    "abilities": { "0": "Levitate" },
+    "forme": "Wash"
   }
 }
 ```
 
-> `abilities` のキーはShowdownの特性スロット規則: `"0"` = 第1特性、`"1"` = 第2特性、`"H"` = 隠れ特性。定義されていないスロットは省略される。
+> `abilities` のキーはShowdownの特性スロット規則: `"0"` = 第1特性、`"1"` = 第2特性、`"H"` = 隠れ特性。定義されていないスロットは省略される。`forme` は非基本フォルムのみに付与され、PokeAPIFetcher が `pokemon-form` lookup の有無を判定するのに使う。
 
 **`cache/showdown-moves.json`**:
 
@@ -305,19 +389,20 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
 ```
 
 > `basePower: 0` は変動技・変化技を表す。Step4 で `null` に変換する。`accuracy: true` は必中を表す。`flags` は `isPunch` 等の補正条件判定に使用する。
+> Zワザ・ダイマックスワザ・キョダイマックスワザは ShowdownFetcher 段階で除外されるため、このファイルには含まれない（除外フラグは Showdown の `isZ` / `isMax`）。
 
 **`cache/showdown-items.json`**:
 
 ```json
 {
-  "choiceband":  { "num": 220 },
-  "choicespecs": { "num": 305 },
-  "choicescarf": { "num": 287 },
-  "lifeorb":     { "num": 270 }
+  "choiceband":  { "num": 220, "name": "Choice Band" },
+  "choicespecs": { "num": 305, "name": "Choice Specs" },
+  "choicescarf": { "num": 287, "name": "Choice Scarf" },
+  "lifeorb":     { "num": 270, "name": "Life Orb" }
 }
 ```
 
-> Showdown の `items.js` は補正値をJavaScript関数で記述しているためパース不可。`num` のみ保持し、補正値はC#ツール内の静的テーブルから生成する。日本語名は `pokeapi-translations.json` から取得するため英語名は不要。
+> Showdown の `items.js` は補正値をJavaScript関数で記述しているためパース不可。`num` と `name` のみ保持し、補正値はC#ツール内の静的テーブルから生成する。`name` は PokéAPI の item slug 派生（lowercase + 空白→`-`）に使用する。`isNonstandard` (Past / Future / Unobtainable / CAP) のアイテム約 334 件はこの段階で除外されている。
 
 **`cache/showdown-abilities.json`**:
 
@@ -330,14 +415,17 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
 }
 ```
 
-> Showdown の `abilities.js` も補正値をJavaScript関数で記述しているためパース不可。`num` のみ保持し、補正値はC#ツール内の静的テーブルから生成する。日本語名は `pokeapi-translations.json` から取得するため英語名は不要。
+> Showdown の `abilities.js` も補正値をJavaScript関数で記述しているためパース不可。`num` のみ保持し、補正値はC#ツール内の静的テーブルから生成する。日本語名は `pokeapi-translations.json` から取得するため英語名は不要。`isNonstandard` (Past / Future / CAP) の特性 4 件はこの段階で除外されている。
 
 **`cache/pokeapi-translations.json`（PokéAPIから取得した日本語マッピング）**:
 
 ```json
 {
   "pokemon": {
-    "pikachu": "ピカチュウ"
+    "pikachu":   "ピカチュウ",
+    "rotom":     "ロトム",
+    "rotomwash": "ウォッシュロトム",
+    "zaciancrowned": "ザシアン (けんのおう)"
   },
   "moves": {
     "thunderbolt": "10まんボルト"
@@ -353,7 +441,7 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
 }
 ```
 
-> キーはShowdownの識別キー（英小文字）で統一し、Showdown中間データとPokeAPI翻訳データを紐付ける基準とする。
+> キーはShowdownの識別キー（英小文字）で統一し、Showdown中間データとPokeAPI翻訳データを紐付ける基準とする。`pokemon` セクションの値は **フォルム別の日本語名**（基本形は種族名、変異フォルムは `pokemon-form` API から取得した在ゲーム表記、PokéAPIが form qualifier のみ返すケースは `<種族名> (<form>)` 形式に組み立て済み）。最終的な一意化は `pokemon-name-patch.json` が補完する。
 
 ---
 

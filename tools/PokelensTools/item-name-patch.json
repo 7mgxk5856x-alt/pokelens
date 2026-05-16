@@ -1,0 +1,7 @@
+{
+  "_comment": "Override JP names for items that PokéAPI either lacks translations for or returns incorrect data. Keys are Showdown item IDs. Applied in MergeConverter.ConvertItems after PokéAPI translation lookup.",
+
+  "masterpieceteacup": "ケッサクのちゃわん",
+  "metalalloy": "ふくごうきんぞく",
+  "prettyfeather": "きれいなハネ"
+}

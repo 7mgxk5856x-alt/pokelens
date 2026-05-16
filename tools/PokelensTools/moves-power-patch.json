@@ -1,2 +1,27 @@
 {
+  "_comment": "Override power for moves whose Showdown basePower=0 (computed dynamically). Keys are Showdown move IDs. Applied in MergeConverter.ConvertMoves when computed power is null. Truly-variable moves (Counter, Bide, Endeavor, etc.) and OHKO moves are intentionally omitted to keep power=null.",
+
+  "dragonrage": { "power": 40 },
+  "sonicboom": { "power": 20 },
+  "seismictoss": { "power": 50 },
+  "nightshade": { "power": 50 },
+
+  "return": { "power": 102 },
+  "frustration": { "power": 102 },
+  "pikapapow": { "power": 102 },
+  "veeveevolley": { "power": 102 },
+
+  "lowkick": { "power": 120 },
+  "grassknot": { "power": 120 },
+  "heavyslam": { "power": 120 },
+  "heatcrash": { "power": 120 },
+
+  "gyroball": { "power": 150 },
+  "electroball": { "power": 150 },
+
+  "reversal": { "power": 200 },
+  "flail": { "power": 200 },
+  "punishment": { "power": 200 },
+
+  "spitup": { "power": 300 }
 }
