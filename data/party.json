@@ -1,0 +1,100 @@
+{
+  "party": [
+    {
+      "species": "ガブリアス",
+      "ability": "さめはだ",
+      "item": "こだわりスカーフ",
+      "nature": "いじっぱり",
+      "abilityPoints": {
+        "hp": 32, "atk": 32, "def": 0,
+        "spa": 0, "spd": 0, "spe": 0
+      },
+      "moves": [
+        { "name": "じしん" },
+        { "name": "げきりん" },
+        { "name": "ストーンエッジ" },
+        { "name": "つるぎのまい" }
+      ]
+    },
+    {
+      "species": "ミミッキュ",
+      "ability": "ばけのかわ",
+      "item": "いのちのたま",
+      "nature": "ようき",
+      "abilityPoints": {
+        "hp": 0, "atk": 32, "def": 0,
+        "spa": 0, "spd": 0, "spe": 32
+      },
+      "moves": [
+        { "name": "シャドークロー" },
+        { "name": "じゃれつく" },
+        { "name": "つるぎのまい" },
+        { "name": "かげうち" }
+      ]
+    },
+    {
+      "species": "サーフゴー",
+      "ability": "おうごんのからだ",
+      "item": "たつじんのおび",
+      "nature": "ひかえめ",
+      "abilityPoints": {
+        "hp": 0, "atk": 0, "def": 0,
+        "spa": 32, "spd": 0, "spe": 32
+      },
+      "moves": [
+        { "name": "ゴールドラッシュ" },
+        { "name": "シャドーボール" },
+        { "name": "トリック" },
+        { "name": "じこさいせい" }
+      ]
+    },
+    {
+      "species": "ハバタクカミ",
+      "ability": "こだいかっせい",
+      "item": "ブーストエナジー",
+      "nature": "おくびょう",
+      "abilityPoints": {
+        "hp": 0, "atk": 0, "def": 0,
+        "spa": 32, "spd": 0, "spe": 32
+      },
+      "moves": [
+        { "name": "ムーンフォース" },
+        { "name": "シャドーボール" },
+        { "name": "サイコショック" },
+        { "name": "みがわり" }
+      ]
+    },
+    {
+      "species": "カイリュー",
+      "ability": "マルチスケイル",
+      "item": "こだわりハチマキ",
+      "nature": "いじっぱり",
+      "abilityPoints": {
+        "hp": 32, "atk": 32, "def": 0,
+        "spa": 0, "spd": 0, "spe": 0
+      },
+      "moves": [
+        { "name": "しんそく" },
+        { "name": "げきりん" },
+        { "name": "ほのおのパンチ" },
+        { "name": "アイアンヘッド" }
+      ]
+    },
+    {
+      "species": "ラウドボーン",
+      "ability": "てんねん",
+      "item": "たべのこし",
+      "nature": "ずぶとい",
+      "abilityPoints": {
+        "hp": 32, "atk": 0, "def": 32,
+        "spa": 0, "spd": 0, "spe": 0
+      },
+      "moves": [
+        { "name": "フレアソング" },
+        { "name": "シャドーボール" },
+        { "name": "アンコール" },
+        { "name": "じこさいせい" }
+      ]
+    }
+  ]
+}
