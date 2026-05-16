@@ -276,6 +276,28 @@ describe('DataLoader.getAbilityModifier()', () => {
   });
 });
 
+describe('DataLoader.searchByName()', () => {
+  it('クエリで前方一致した PokedexEntry を返す', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    const result = loader.searchByName('ガブ');
+    expect(result.map((e) => e.name)).toEqual(['ガブリアス']);
+  });
+
+  it('load() 前は空配列を返す', () => {
+    const loader = new DataLoader();
+    expect(loader.searchByName('ガブ')).toEqual([]);
+  });
+
+  it('空文字クエリで空配列を返す', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.searchByName('')).toEqual([]);
+  });
+});
+
 describe('DataLoader.getPokemonByName()', () => {
   it('存在するポケモン名で PokedexEntry を返す', async () => {
     setupFetch();

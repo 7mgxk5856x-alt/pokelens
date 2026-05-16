@@ -1,3 +1,5 @@
+import { searchByName as searchByNameImpl } from '../logic/name-search.js';
+
 const REQUIRED_PARTY_FIELDS = ['species', 'nature', 'abilityPoints', 'moves'];
 
 async function fetchJson(url, errorMessage) {
@@ -75,9 +77,9 @@ export class DataLoader {
     return Object.values(this.#pokedex).find((e) => e.name === name) ?? null;
   }
 
-  searchByName(_query) {
-    // NameSearch への委譲は Feature 3 で実装
-    return [];
+  searchByName(query) {
+    if (!this.#pokedex) return [];
+    return searchByNameImpl(query, Object.values(this.#pokedex));
   }
 
   getMove(name) {
