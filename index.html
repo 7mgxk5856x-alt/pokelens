@@ -133,6 +133,63 @@
         text-align: right;
         font-weight: bold;
       }
+      #opponent-party {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      .search-input {
+        position: relative;
+      }
+      .search-input .opp-input {
+        width: 100%;
+        padding: 8px 10px;
+        background: #16213e;
+        color: #eee;
+        border: 1px solid #0f3460;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+      .search-input .opp-input:focus {
+        outline: none;
+        border-color: #e94560;
+      }
+      .suggest-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        list-style: none;
+        margin: 2px 0 0;
+        padding: 0;
+        background: #1f2f5a;
+        border: 1px solid #0f3460;
+        border-radius: 6px;
+        z-index: 10;
+        max-height: 280px;
+        overflow-y: auto;
+      }
+      .suggest-list[hidden] {
+        display: none;
+      }
+      .suggest-item {
+        padding: 6px 10px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .suggest-item:hover,
+      .suggest-item.is-hover {
+        background: #0f3460;
+      }
+      .suggest-item.is-not-found {
+        color: #888;
+        cursor: default;
+      }
+      .suggest-item.is-not-found:hover {
+        background: transparent;
+      }
     </style>
   </head>
   <body>
