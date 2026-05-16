@@ -2,26 +2,45 @@
 
 ## プロジェクト構造
 
+> このツリーは目標構造を示す。`†` のついたファイル・ディレクトリは未作成（セットアップ時に追加）。
+
 ```
 pokelens/
-├── src/                        # JavaScript フロントエンド ソースコード
-│   ├── data/                   # データ読み込みレイヤー
-│   ├── logic/                  # ロジックレイヤー（純粋関数）
-│   └── ui/                     # UIレイヤー（DOM操作）
-├── tests/                      # テストコード
-│   ├── unit/                   # ユニットテスト
-│   └── integration/            # 統合テスト
-├── tools/                      # C# データ準備ツール
-│   └── ShowdownFetcher/
-├── data/                       # データファイル（JSONのみ）
-├── docs/                       # プロジェクトドキュメント
-├── .claude/                    # Claude Code 設定
-├── .steering/                  # 作業タスク管理（gitignore済み）
-├── index.html                  # アプリエントリーポイント
-├── vite.config.js              # Vite 設定
-├── vitest.config.js            # Vitest 設定
-├── eslint.config.js            # ESLint 設定
-├── .prettierrc                 # Prettier 設定
+├── README.md                       # プロジェクト概要・セットアップ手順
+├── src/ †                          # JavaScript フロントエンド ソースコード
+│   ├── main.js †                   # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
+│   ├── data/ †                     # データ読み込みレイヤー
+│   ├── logic/ †                    # ロジックレイヤー（純粋関数）
+│   └── ui/ †                       # UIレイヤー（DOM操作）
+├── tests/ †                        # テストコード
+│   ├── unit/ †                     # ユニットテスト
+│   └── integration/ †              # 統合テスト
+├── tools/ †                        # C# データ準備ツール
+│   ├── PokelensTools/ †
+│   │   ├── PokelensTools.csproj †
+│   │   ├── Program.cs †
+│   │   ├── ShowdownFetcher.cs †
+│   │   ├── PokeAPIFetcher.cs †
+│   │   ├── MergeConverter.cs †
+│   │   ├── champions-patch.json †
+│   │   ├── moves-power-patch.json †
+│   │   ├── items-modifiers.json †
+│   │   └── abilities-modifiers.json †
+│   └── PokelensTools.Tests/ †      # xUnit テストプロジェクト
+│       └── PokelensTools.Tests.csproj †
+├── cache/ †                        # C# ツールの中間データ（gitignore対象）
+├── data/ †                         # データファイル（JSONのみ）
+├── docs/                           # プロジェクトドキュメント
+│   └── ideas/                      # 初期アイデア・要件メモ（参照専用）
+├── .claude/                        # Claude Code 設定
+├── .devcontainer/                  # 開発コンテナ設定
+├── .husky/                         # コミット前フック（husky）
+├── .steering/                      # 作業タスク管理（gitignore済み）
+├── index.html †                    # アプリエントリーポイント
+├── vite.config.js †                # Vite 設定
+├── vitest.config.js †              # Vitest 設定
+├── eslint.config.js †              # ESLint 設定
+├── .prettierrc †                   # Prettier 設定
 └── package.json
 ```
 
@@ -29,14 +48,24 @@ pokelens/
 
 ## ディレクトリ詳細
 
+### src/main.js (エントリーポイント)
+
+**役割**: アプリ起動時に DataLoader を初期化し、各 UI コンポーネントをマウントする
+
+**依存関係**:
+- 依存可能: `src/ui/`、`src/data/`
+- 直接 import 禁止: `src/logic/`（`src/logic/` の関数は `src/ui/` が import して使用する。`main.js` が直接 import しないことで、ロジック呼び出しの起点を UI レイヤーに統一する）
+
+---
+
 ### src/data/ (データ読み込みレイヤー)
 
 **役割**: JSON ファイルの fetch・キャッシュ・アクセス手段を提供する
 
 **配置ファイル**:
-- `loader.js`: `pokemon-data.json` と `party.json` を fetch し、メモリにキャッシュする
+- `loader.js`: `pokedex.json` / `moves.json` / `items.json` / `abilities.json` / `types.json` / `move-categories.json` / `natures.json` / `party.json` を fetch し、メモリにキャッシュする
 
-**命名規則**: camelCase（関数ファイル）
+**命名規則**: kebab-case（他レイヤーと統一）
 
 **依存関係**:
 - 依存可能: なし（外部ファイルのみ参照）
@@ -55,22 +84,25 @@ src/data/
 **役割**: 計算・検索・データ変換の純粋関数を実装する。DOM・副作用を持たない
 
 **配置ファイル**:
-- `power-index.js`: 火力指数計算
-- `speed-calc.js`: 素早さ4パターン計算
+- `power-index-calc.js`: 火力指数計算
+- `speed-calc.js`: 素早さ6パターン計算
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
+- `calc-actual-stats.js`: 実数値計算
 
 **命名規則**: kebab-case（複数単語はハイフン区切り）
 
 **依存関係**:
 - 依存可能: なし（外部依存を持たない純粋関数）
 - 依存禁止: `src/ui/`、`src/data/`
+- ※ データは UI レイヤーが `DataLoader` から取得し、引数として渡す設計。`src/logic/` は `src/data/` を直接 import しない
 
 **例**:
 ```
 src/logic/
-├── power-index.js
+├── power-index-calc.js
 ├── speed-calc.js
-└── name-search.js
+├── name-search.js
+└── calc-actual-stats.js
 ```
 
 ---
@@ -80,25 +112,25 @@ src/logic/
 **役割**: DOM 操作・イベント処理・画面表示を担う。ロジックレイヤーを呼び出す
 
 **配置ファイル**:
-- `party-panel.js`: 自分パーティ6匹のカード一覧表示
-- `own-detail.js`: 自分ポケモン詳細パネル（実数値・技・火力指数）
-- `opponent-panel.js`: 相手パーティ6スロットの管理
-- `opponent-detail.js`: 相手ポケモン詳細パネル（種族値・素早さ4パターン）
-- `search-input.js`: ポケモン名サジェスト入力
+- `own-party-panel.js` (`OwnPartyPanel`): 自分パーティ6匹のカード一覧表示
+- `own-pokemon-detail.js` (`OwnPokemonDetail`): 自分ポケモン詳細パネル（実数値・技・火力指数）
+- `opponent-party-panel.js` (`OpponentPartyPanel`): 相手パーティ6スロットの管理
+- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ6パターン）
+- `search-input.js` (`SearchInput`): ポケモン名サジェスト入力
 
 **命名規則**: kebab-case（コンポーネント名はUIの役割を表す）
 
 **依存関係**:
 - 依存可能: `src/logic/`、`src/data/`
-- 依存禁止: 他の `src/ui/` ファイルへの直接依存（イベント経由で連携）
+- 直接 import 禁止: 他の `src/ui/` ファイル（コンポーネント間の連携はコンストラクタへのコールバック注入で行う。`main.js` がコールバックを生成して各コンポーネントに渡す）
 
 **例**:
 ```
 src/ui/
-├── party-panel.js
-├── own-detail.js
-├── opponent-panel.js
-├── opponent-detail.js
+├── own-party-panel.js
+├── own-pokemon-detail.js
+├── opponent-party-panel.js
+├── opponent-pokemon-detail.js
 └── search-input.js
 ```
 
@@ -108,14 +140,16 @@ src/ui/
 
 #### tests/unit/
 
-**役割**: `src/logic/` の純粋関数をユニットテストする
+**役割**: `src/logic/` の純粋関数および `src/data/loader.js` をユニットテストする
 
 **構造**:
 ```
 tests/unit/
-├── power-index.test.js
+├── power-index-calc.test.js
 ├── speed-calc.test.js
-└── name-search.test.js
+├── name-search.test.js
+├── calc-actual-stats.test.js
+└── loader.test.js          # DataLoader の正常系・ファイル不存在時のエラー
 ```
 
 **命名規則**: `[対象ファイル名].test.js`
@@ -132,18 +166,40 @@ tests/integration/
 
 ---
 
-### tools/ShowdownFetcher/ (C# データ準備ツール)
+### vitest.config.js（ルートファイル）
 
-**役割**: Pokémon Showdown からマスターデータを取得し、`data/pokemon-data.json` に変換・出力する
+vitest のデフォルト検索パターン（`src/**/*.test.js`）を上書きし、`tests/` ディレクトリを対象にする設定が必要:
+
+```js
+// vitest.config.js
+export default {
+  test: {
+    include: ['tests/**/*.test.js'],
+  },
+};
+```
+
+---
+
+### tools/PokelensTools/ (C# データ準備ツール)
+
+**役割**: Pokémon Showdown / PokéAPI からマスターデータを取得し、`data/` 配下の JSON に変換・出力する
 
 **構造**:
 ```
 tools/
-└── ShowdownFetcher/
-    ├── ShowdownFetcher.csproj
-    ├── Program.cs              # エントリーポイント
-    ├── Fetcher.cs              # HTTP取得
-    └── Converter.cs            # JSON変換・正規化
+├── PokelensTools/
+│   ├── PokelensTools.csproj
+│   ├── Program.cs                  # エントリーポイント・増分実行制御
+│   ├── ShowdownFetcher.cs          # Showdown HTTP取得
+│   ├── PokeAPIFetcher.cs           # PokéAPI HTTP取得
+│   ├── MergeConverter.cs           # JSON変換・マージ・正規化
+│   ├── champions-patch.json        # 手動管理: Champions差分パッチ（git管理対象）
+│   ├── moves-power-patch.json      # 手動管理: 威力不定技の最大威力定義（git管理対象）
+│   ├── items-modifiers.json        # 手動管理: 持ち物補正値定義（git管理対象）
+│   └── abilities-modifiers.json    # 手動管理: 特性補正値定義（git管理対象）
+└── PokelensTools.Tests/            # xUnit テストプロジェクト
+    └── PokelensTools.Tests.csproj
 ```
 
 **命名規則**: PascalCase（C# 標準）
@@ -152,18 +208,54 @@ tools/
 
 ---
 
+### cache/ (C# ツール中間データ・gitignore対象)
+
+**役割**: C# ツールがデータ取得・変換の各ステップで生成する中間ファイルを格納する。git 管理対象外のため `cache/` ディレクトリごと `.gitignore` に追加する。
+
+**配置ファイル**:
+- `showdown-pokedex.json`: Showdown から取得した英語ポケモンデータ（変換なし）
+- `showdown-moves.json`: Showdown から取得した英語技データ（変換なし）
+- `showdown-items.json`: Showdown から取得した英語持ち物データ（変換なし）
+- `showdown-abilities.json`: Showdown から取得した英語特性データ（変換なし）
+- `pokeapi-translations.json`: PokéAPI から取得した日本語翻訳データ
+- `checksums.json`: 増分実行用ハッシュ値（`showdown-*.json` / `pokeapi-translations.json` / `champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` の前回実行時ハッシュを保持）
+
+```
+cache/
+├── showdown-pokedex.json
+├── showdown-moves.json
+├── showdown-items.json
+├── showdown-abilities.json
+├── pokeapi-translations.json
+└── checksums.json
+```
+
+---
+
 ### data/ (データファイル)
 
 **役割**: アプリが参照する JSON ファイルを格納する
 
 **配置ファイル**:
-- `pokemon-data.json`: C# ツールが生成するマスターデータ（git 管理対象外も可）
+- `pokedex.json`: C# ツールが生成（git 管理対象外）
+- `moves.json`: C# ツールが生成（git 管理対象外）
+- `items.json`: C# ツールが生成（git 管理対象外）
+- `abilities.json`: C# ツールが生成（git 管理対象外）
+- `types.json`: 手書き管理・タイプ名日本語変換マップ（git 管理対象）
+- `move-categories.json`: 手書き管理・技分類日本語変換マップ（git 管理対象）
+- `natures.json`: 手書き管理・性格補正倍率マップ（git 管理対象）
 - `party.json`: ユーザーが手編集する自分パーティ（git 管理対象）
 
 ```
 data/
-├── pokemon-data.json
-└── party.json
+├── pokedex.json           # C# ツールが生成
+├── moves.json             # C# ツールが生成
+├── items.json             # C# ツールが生成
+├── abilities.json         # C# ツールが生成
+├── types.json             # 手書き管理
+├── move-categories.json   # 手書き管理
+├── natures.json           # 手書き管理
+└── party.json             # ユーザーが手編集
 ```
 
 ---
@@ -178,6 +270,11 @@ data/
 - `development-guidelines.md`: 開発ガイドライン
 - `glossary.md`: 用語集
 
+**サブディレクトリ**:
+- `ideas/`: プロジェクト初期アイデア・要件メモ（参照専用）
+  - `initial-requirements.md`: `/setup-project` コマンドの入力として使用した初期アイデア・要件メモ。作成後は読み取り専用で参照のみ（git 管理対象）
+  - `initial-requirements-sample.md`: 記述フォーマットのサンプル（gitignore 対象）
+
 ---
 
 ## ファイル配置規則
@@ -186,17 +283,19 @@ data/
 
 | ファイル種別 | 配置先 | 命名規則 | 例 |
 |------------|--------|---------|-----|
-| データ読み込み | `src/data/` | camelCase | `loader.js` |
-| 計算・検索関数 | `src/logic/` | kebab-case | `power-index.js` |
-| UIコンポーネント | `src/ui/` | kebab-case | `own-detail.js` |
-| C# クラス | `tools/ShowdownFetcher/` | PascalCase | `Converter.cs` |
-| データファイル | `data/` | kebab-case | `pokemon-data.json` |
+| エントリーポイント | `src/` | kebab-case | `main.js` |
+| データ読み込み | `src/data/` | kebab-case | `loader.js` |
+| 計算・検索関数 | `src/logic/` | kebab-case | `power-index-calc.js` |
+| UIコンポーネント | `src/ui/` | kebab-case | `own-pokemon-detail.js` |
+| C# クラス | `tools/PokelensTools/` | PascalCase | `MergeConverter.cs` |
+| 手書き管理 JSON（C# ツール用） | `tools/PokelensTools/` | kebab-case | `champions-patch.json` |
+| データファイル | `data/` | kebab-case | `pokedex.json` |
 
 ### テストファイル
 
 | テスト種別 | 配置先 | 命名規則 | 例 |
 |-----------|--------|---------|-----|
-| ユニットテスト | `tests/unit/` | `[対象].test.js` | `power-index.test.js` |
+| ユニットテスト | `tests/unit/` | `[対象].test.js` | `power-index-calc.test.js` |
 | 統合テスト | `tests/integration/` | `[フロー].test.js` | `data-flow.test.js` |
 
 ---
@@ -204,17 +303,17 @@ data/
 ## 命名規則
 
 ### JavaScript ファイル
-- **複数単語**: `kebab-case`（例: `power-index.js`, `name-search.js`）
+- **複数単語**: `kebab-case`（例: `power-index-calc.js`, `name-search.js`）
 - **テストファイル**: `[対象].test.js`
 
 ### C# ファイル
-- **クラスファイル**: `PascalCase`（例: `Fetcher.cs`, `Converter.cs`）
+- **クラスファイル**: `PascalCase`（例: `ShowdownFetcher.cs`, `MergeConverter.cs`）
 
 ### JSON ファイル
-- `kebab-case`（例: `pokemon-data.json`, `party.json`）
+- `kebab-case`（例: `pokedex.json`, `move-categories.json`, `party.json`）
 
 ### ディレクトリ
-- `kebab-case`（例: `src/`, `tools/`, `ShowdownFetcher/` は C# プロジェクト名として例外）
+- `kebab-case`（例: `src/`, `tools/`, `PokelensTools/` は C# プロジェクト名として例外）
 
 ---
 
@@ -239,6 +338,7 @@ C# ツール (tools/)
 ```
 
 **禁止される依存**:
+- `src/main.js` → `src/logic/`（ロジック呼び出しの起点は `src/ui/` に統一する。`main.js` からの直接 import は禁止）
 - `src/logic/` → `src/ui/`（ロジックがDOMに依存してはならない）
 - `src/logic/` → `src/data/`（ロジックはデータ読み込みに依存しない）
 - `src/data/` → `src/logic/` または `src/ui/`
@@ -247,19 +347,24 @@ C# ツール (tools/)
 
 ## 除外設定
 
-### .gitignore に追加すべきもの
+### .gitignore 設定
 
 ```
-node_modules/
+docs/ideas/initial-requirements-sample.md  # サンプルファイル（再生成可能）
+node_modules/*
 dist/
 .steering/*
 !.steering/.gitkeep
 .claude/settings.local.json
-data/pokemon-data.json      # C# ツールで再生成可能なため
+cache/                      # C# ツールの中間データ（再生成可能）
+data/pokedex.json           # C# ツールで再生成可能
+data/moves.json             # C# ツールで再生成可能
+data/items.json             # C# ツールで再生成可能
+data/abilities.json         # C# ツールで再生成可能
 coverage/
 ```
 
-`data/party.json` は git 管理対象とする（パーティ定義はユーザー資産）。
+`data/types.json` / `data/move-categories.json` / `data/natures.json` / `data/party.json` は git 管理対象とする（手書き管理またはユーザー資産）。
 
 ---
 

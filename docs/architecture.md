@@ -20,11 +20,13 @@ pokelens は2つの独立したサブシステムで構成される:
 | 技術 | バージョン | 用途 | 選定理由 |
 |------|-----------|------|----------|
 | JavaScript (ESM) | ES2022以上 | フロントエンド実装 | TypeScript不要のシンプルな個人ツール。ブラウザネイティブで動作し依存を最小化 |
-| Vite | 最新安定版 | ローカル開発サーバー・ビルド | 設定ゼロで ESM 対応の開発サーバーが立ち上がり、JSONの fetch が CORS 問題なく動作する |
+| Vite | ^6.0.0 | ローカル開発サーバー・ビルド | 設定ゼロで ESM 対応の開発サーバーが立ち上がり、JSONの fetch が CORS 問題なく動作する |
 | Vitest | ^2.0.0 | テスト | Vite と統合されており設定不要。JavaScript 対応 |
+| @vitest/coverage-v8 | ^2.0.0 | カバレッジ計測 | Vitest 公式のカバレッジプロバイダー。V8 ネイティブで追加設定不要 |
 | ESLint | ^9.0.0 | 静的解析 | コード品質維持 |
 | Prettier | ^3.2.0 | フォーマット | スタイル統一 |
-| Husky + lint-staged | 最新 | コミット前自動チェック | 品質ゲート |
+| Husky | ^9.0.0 | コミットフック | 品質ゲート（lint-staged と組み合わせ使用） |
+| lint-staged | ^15.2.0 | コミット前処理 | 品質ゲート |
 
 ### C# データ準備ツール
 
@@ -47,36 +49,73 @@ pokelens は2つの独立したサブシステムで構成される:
 
 ## アーキテクチャパターン
 
-### フロントエンド: 2層構成
+### フロントエンド: 3層構成
 
 ```
-┌──────────────────────────────────┐
-│  UI レイヤー                      │  DOM操作・イベント処理・表示
-│  PartyPanel / OwnDetail /        │
-│  OpponentDetail / SearchInput    │
-├──────────────────────────────────┤
-│  ロジックレイヤー                  │  計算・検索・データ変換
-│  PowerIndexCalc / SpeedCalc /    │
-│  DataLoader / NameNormalizer     │
-└──────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  UI レイヤー                              │  DOM操作・イベント処理・表示
+│  OwnPartyPanel / OwnPokemonDetail /      │
+│  OpponentPartyPanel / OpponentPokemonDetail /   │
+│  SearchInput                             │
+├──────────────────────────────────────────┤
+│  ロジックレイヤー                          │  計算・検索（純粋関数）
+│  PowerIndexCalc / SpeedCalc / NameSearch / CalcActualStats │
+├──────────────────────────────────────────┤
+│  データアクセスレイヤー                    │  JSON読み込み・キャッシュ
+│  DataLoader（src/data/loader.js）        │
+└──────────────────────────────────────────┘
             ↓ fetch (起動時のみ)
-┌──────────────────────────────────┐
-│  データ (JSONファイル)             │
-│  data/pokemon-data.json          │
-│  data/party.json                 │
-└──────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  データ (JSONファイル)                     │
+│  data/pokedex.json                       │
+│  data/moves.json                         │
+│  data/items.json                         │
+│  data/abilities.json                     │
+│  data/natures.json                       │
+│  data/types.json                         │
+│  data/move-categories.json               │
+│  data/party.json                         │
+└──────────────────────────────────────────┘
 ```
 
 **レイヤールール**:
-- UI レイヤーはロジックレイヤーを呼び出すのみ。JSON を直接 fetch しない
-- ロジックレイヤーは DOM に触れない
-- 計算関数は純粋関数として実装し、副作用を持たない
+- UI レイヤーはロジックレイヤーとデータアクセスレイヤーを呼び出す。JSON を直接 fetch しない
+- ロジックレイヤーは DOM に触れない。`src/data/` を直接 import しない。計算に必要なデータは UIレイヤーが DataLoader から取得して引数として渡す
+- ロジックレイヤーの計算関数は純粋関数として実装し、副作用を持たない（PowerIndexCalc / SpeedCalc / CalcActualStats / NameSearch）
+- データアクセスレイヤー（DataLoader）は DOM に触れない
 
 ### C# ツール: パイプライン構成
 
 ```
-ShowdownFetcher → JsonConverter → pokemon-data.json
+[Step 1] ShowdownFetcher  →  cache/showdown-*.json        （英語のまま保持。翻訳なし）
+[Step 2] PokeAPIFetcher   →  cache/pokeapi-translations.json  （日本語翻訳のみ。独立保持）
+[Step 3] champions-patch.json 適用  →  Showdown中間データを上書き
+[Step 4] MergeConverter   →  data/pokedex.json            （最終出力: 両データをマージ）
+                          →  data/moves.json
+                          →  data/items.json
+                          →  data/abilities.json
+         ※入力: showdown-*.json + pokeapi-translations.json + items-modifiers.json + abilities-modifiers.json + moves-power-patch.json
 ```
+
+**増分実行**:
+ツール起動のたびに Step1（Showdown取得）を実行し、`cache/checksums.json` に保存した前回のハッシュ値と比較する。**Step1 は毎回必ず実行される**。以下の表が Step1 完了後のスキップ条件を定義する。変化があったステップ以降のみ実行し、変化がなければ後続をスキップする。
+
+| 変化したファイル | 実行するステップ |
+|----------------|----------------|
+| `showdown-*.json` | Step2〜4 を実行 |
+| `pokeapi-translations.json` のみ | Step4 のみ実行 |
+| `champions-patch.json` のみ | Step3 以降を実行 |
+| `moves-power-patch.json` のみ | Step4 のみ実行 |
+| `items-modifiers.json` または `abilities-modifiers.json` のみ | Step4 のみ実行 |
+| 変化なし | 全ステップスキップ |
+
+詳細（複数ファイルが同時に変化した場合の判定ロジック等）は機能設計書「増分実行の仕組み（ハッシュ比較）」を参照。
+
+**データソース分離の原則**:
+- Showdown から取得したデータは英語のまま `cache/showdown-*.json` に保持し、翻訳しない
+- PokéAPI から取得したデータは `cache/pokeapi-translations.json` に独立して保持する
+- 英語→日本語変換は MergeConverter（最終出力生成ステップ）でのみ行う
+- Showdown データの更新と PokéAPI 翻訳データの更新は独立して実行できる
 
 ---
 
@@ -96,16 +135,32 @@ ShowdownFetcher → JsonConverter → pokemon-data.json
 
 ```mermaid
 sequenceDiagram
+    participant SD as Pokémon Showdown
+    participant PA as PokéAPI
     participant CS as C# ツール
-    participant FS as ファイルシステム
+    participant CA as cache/（中間ファイル）
+    participant FS as data/（最終出力）
     participant DL as DataLoader
     participant UI as UIコンポーネント
 
-    Note over CS,FS: 事前準備（対戦前に1回実行）
-    CS->>FS: pokemon-data.json を生成
+    Note over SD,CA: Step1: Showdown取得（英語のまま保存）
+    CS->>SD: pokedex.js / moves.js / items.js / abilities.js を取得
+    CS->>CA: showdown-*.json に英語のまま保存（翻訳なし）
+
+    Note over PA,CA: Step2: PokéAPI取得（翻訳データを独立保存）
+    CS->>PA: pokemon-species / move / ability / item を取得
+    CS->>CA: pokeapi-translations.json に保存（Showdownデータとは分離）
+
+    Note over CA,CA: Step3: champions-patch.json適用（Showdown中間データを上書き）
+    CS->>CA: showdown-*.json に champions-patch.json を上書きマージ
+
+    Note over CA,FS: Step4: 最終出力生成（英語→日本語変換はここでのみ）
+    CS->>CA: showdown-*.json + pokeapi-translations.json + items-modifiers.json + abilities-modifiers.json + moves-power-patch.json を読み込み
+    CS->>FS: pokedex.json / moves.json / items.json / abilities.json を生成
 
     Note over FS,UI: 対戦時（ブラウザ起動）
-    DL->>FS: pokemon-data.json を fetch
+    DL->>FS: pokedex.json / moves.json / items.json / abilities.json を fetch
+    DL->>FS: types.json / move-categories.json / natures.json を fetch
     DL->>FS: party.json を fetch
     DL-->>UI: データを供給
     UI-->>UI: ユーザー操作に応じて表示・計算
@@ -117,26 +172,48 @@ sequenceDiagram
 
 ```
 src/
+├── main.js                # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
 ├── data/
 │   └── loader.js          # JSON読み込み・キャッシュ
 ├── logic/
-│   ├── power-index.js     # 火力指数計算（純粋関数）
-│   ├── speed-calc.js      # 素早さ4パターン計算（純粋関数）
-│   └── name-search.js     # ひらがな/カタカナ正規化・前方一致検索
+│   ├── power-index-calc.js   # 火力指数計算（純粋関数）
+│   ├── speed-calc.js         # 素早さ6パターン計算（純粋関数）
+│   ├── name-search.js        # ひらがな/カタカナ正規化・前方一致検索
+│   └── calc-actual-stats.js  # 実数値計算（純粋関数）
 └── ui/
-    ├── party-panel.js     # 自分パーティ一覧
-    ├── own-detail.js      # 自分ポケモン詳細
-    ├── opponent-panel.js  # 相手パーティ入力
-    ├── opponent-detail.js # 相手ポケモン詳細
-    └── search-input.js    # サジェスト検索
+    ├── own-party-panel.js     # 自分パーティ一覧 (OwnPartyPanel)
+    ├── own-pokemon-detail.js      # 自分ポケモン詳細 (OwnPokemonDetail)
+    ├── opponent-party-panel.js  # 相手パーティ入力 (OpponentPartyPanel)
+    ├── opponent-pokemon-detail.js # 相手ポケモン詳細 (OpponentPokemonDetail)
+    └── search-input.js    # サジェスト検索 (SearchInput)
 
 tools/                     # C# データ準備ツール
-└── ShowdownFetcher/
-    ├── ShowdownFetcher.csproj
-    └── Program.cs
+├── PokelensTools/
+│   ├── PokelensTools.csproj
+│   ├── Program.cs
+│   ├── champions-patch.json      # 手動管理: Champions差分パッチ
+│   ├── moves-power-patch.json    # 手動管理: 威力不定技（power: null）の最大威力定義
+│   ├── items-modifiers.json      # 手動管理: 持ち物補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
+│   └── abilities-modifiers.json  # 手動管理: 特性補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
+└── PokelensTools.Tests/          # xUnit テストプロジェクト
+    └── PokelensTools.Tests.csproj
+
+cache/                     # C# ツールの中間データ（gitignore対象）
+├── showdown-pokedex.json    # Showdownから取得した英語データ
+├── showdown-moves.json
+├── showdown-items.json
+├── showdown-abilities.json
+├── pokeapi-translations.json  # PokéAPIから取得した日本語翻訳データ
+└── checksums.json             # 増分実行用ハッシュ値
 
 data/
-├── pokemon-data.json      # C# ツールが生成
+├── pokedex.json           # C# ツールが生成: ポケモン図鑑データ
+├── moves.json             # C# ツールが生成: 技データ
+├── items.json             # C# ツールが生成: 持ち物補正データ
+├── abilities.json         # C# ツールが生成: 特性補正データ
+├── types.json             # 手書き管理: タイプ名日本語変換マップ
+├── move-categories.json   # 手書き管理: 技分類日本語変換マップ
+├── natures.json           # 手書き管理: 性格補正倍率マップ
 └── party.json             # ユーザー手編集
 
 index.html                 # エントリーポイント
@@ -160,6 +237,7 @@ index.html                 # エントリーポイント
 
 - **入力検証**: サジェスト検索はマスターデータに存在するポケモン名のみを候補として使用する。任意の文字列をそのまま DOM に挿入しない（innerHTML ではなく textContent を使用）
 - **外部通信**: ランタイムに外部 API を呼び出さない。C# ツール実行時のみ通信が発生する
+- **アクセス範囲**: Vite 開発サーバーは `localhost` のみでリッスンする。LAN 上の他端末からはアクセスできない
 
 ---
 
@@ -167,11 +245,15 @@ index.html                 # エントリーポイント
 
 | 種別 | ツール | 対象 |
 |------|--------|------|
-| ユニットテスト | Vitest | `logic/` 配下の純粋関数（火力指数・素早さ計算・検索正規化） |
-| 統合テスト | Vitest | DataLoader → UI へのデータ供給フロー |
+| ユニットテスト（JS） | Vitest | `logic/` 配下の純粋関数（火力指数・素早さ計算・検索正規化） |
+| 統合テスト（JS） | Vitest | DataLoader → ロジックレイヤーのデータ供給フロー |
+| ユニットテスト（C#） | xUnit | MergeConverter・パッチ適用・増分実行判定・日本語キー変換 |
+| 統合テスト（C#） | xUnit | パイプライン全体のスナップショットテスト |
 | 手動テスト | ブラウザ | UI・サジェスト動作・表示確認 |
 
-カバレッジ目標: ロジックレイヤー 80% 以上
+カバレッジ目標: ロジックレイヤー 80% 以上（計測: `npm run test:coverage`）
+
+テストファイルの配置: JS テストは `tests/unit/`（ユニット）および `tests/integration/`（統合）、C# テストは `tools/PokelensTools.Tests/`（詳細は `docs/repository-structure.md` を参照）
 
 ---
 
@@ -181,10 +263,10 @@ index.html                 # エントリーポイント
 - **ブラウザ**: Chrome 最新版（ES2022 ESM対応）
 - **開発環境**: Node.js LTS（Vite・Vitest 実行用）
 - **.NET**: 8.0 以上（C# ツール実行用）
-- **ディスク**: 10MB 以下（pokemon-data.json はポケモン全種で数MB程度）
+- **ディスク**: 10MB 以下（4つのJSONファイル合計でポケモン全種データは数MB程度）
 
 ### 制約事項
-- `file://` プロトコルでは fetch が CORS 制限を受けるため、**必ず Vite 経由でローカルサーバーを起動して使用する**
+- `file://` プロトコルでは fetch が CORS 制限を受けるため、**必ず Vite 経由でローカルサーバーを起動して使用する**（起動コマンド: `npm run dev`。詳細は `docs/development-guidelines.md` を参照）
 - Pokémon Showdown データは定期的に更新されるため、バージョン対応は C# ツールを再実行して対応する
 
 ---

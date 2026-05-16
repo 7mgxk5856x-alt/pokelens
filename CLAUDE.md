@@ -4,19 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-**pokelens** はポケモン対戦支援ツール。選出画面・対戦中に、自分パーティの火力指数・相手ポケモンの種族値・素早さ4パターンなどを即参照できるローカルWebツール。データソース: Pokémon Showdown。対象: 個人利用、PCブラウザ、ローカル環境。
+**pokelens** はポケモン対戦支援ツール。選出画面・対戦中に、自分パーティの火力指数・相手ポケモンの種族値・素早さ6パターンなどを即参照できるローカルWebツール。データソース: Pokémon Showdown。対象: 個人利用、PCブラウザ、ローカル環境。
 
 ## コマンド
 
 ```bash
-npm run lint         # ESLint
-npm run format       # Prettier
-npm test             # テスト実行（vitest）
-npm run test:watch   # vitestウォッチモード
+# フロントエンド
+npm run dev           # Vite開発サーバー起動（必ずこれ経由で開く。file://不可）
+npm run lint          # ESLint
+npm run format        # Prettier
+npm test              # テスト実行（vitest）
+npm run test:watch    # vitestウォッチモード
 npm run test:coverage
+
+# C# データ準備ツール
+dotnet run --project tools/PokelensTools      # マスターデータ生成
+dotnet test tools/PokelensTools.Tests         # C# テスト実行
 ```
 
-単一ファイルのテスト実行: `npx vitest run src/path/to/file.test.js`
+単一ファイルのテスト実行: `npx vitest run tests/unit/speed-calc.test.js`
 
 コミット前にhusky + lint-stagedが`.js`ファイルへESLintとPrettierを自動適用する。
 
@@ -50,5 +56,5 @@ npm run test:coverage
 - **フロントエンド:** JavaScript（ESモジュール、`"type": "module"`）
 - **バックグラウンド処理:** C#（ポケモンデータの取得・変換などCLI/データ処理）
 - **テスト:** Vitest（フロントエンド）
-- **フロントエンドフレームワーク:** 未決定（`/setup-project` 完了後に `docs/architecture.md` で確定）
+- **フロントエンドフレームワーク:** Vanilla JS（フレームワークなし）
 - 初期要件・アイデアは `docs/ideas/` に格納。サンプルファイル（`docs/ideas/initial-requirements-sample.md`）はgitignore済み。

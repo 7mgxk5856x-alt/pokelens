@@ -6,35 +6,69 @@
 graph TB
     subgraph C#ツール["C# データ準備ツール (オフライン実行)"]
         Fetcher[ShowdownFetcher]
-        Converter[JsonConverter]
+        PokeAPIFetcher[PokeAPIFetcher]
+        Converter[MergeConverter]
+        Patch[(champions-patch.json<br/>Champions差分パッチ)]
+        MovesPowerPatch[(moves-power-patch.json<br/>威力不定技最大威力パッチ)]
+        ItemsModifiers[(items-modifiers.json<br/>持ち物補正値定義)]
+        AbilitiesModifiers[(abilities-modifiers.json<br/>特性補正値定義)]
+    end
+
+    subgraph キャッシュ["キャッシュ (cache/ · gitignore)"]
+        ShowdownCache[(showdown-*.json<br/>Showdown英語データ)]
+        PokeApiCache[(pokeapi-translations.json<br/>日本語翻訳データ)]
     end
 
     subgraph データ["データ (JSON)"]
-        PokemonData[(pokemon-data.json\nマスターデータ)]
-        PartyData[(party.json\n自分パーティ)]
+        Pokedex[(pokedex.json<br/>ポケモン図鑑)]
+        Moves[(moves.json<br/>技データ)]
+        Items[(items.json<br/>持ち物補正)]
+        Abilities[(abilities.json<br/>特性補正)]
+        PartyData[(party.json<br/>自分パーティ)]
+        TypeNames[(types.json<br/>タイプ名変換)]
+        MoveCategories[(move-categories.json<br/>技分類変換)]
+        Natures[(natures.json<br/>性格補正)]
     end
 
     subgraph JS["JavaScript フロントエンド (ブラウザ)"]
         DataLoader[DataLoader]
-        PartyPanel[PartyPanel\n自パーティ一覧]
-        OwnDetail[OwnPokemonDetail\n自分ポケモン詳細]
-        OpponentPanel[OpponentPanel\n相手パーティ入力]
-        OpponentDetail[OpponentDetail\n相手ポケモン詳細]
-        SearchInput[SearchInput\nサジェスト検索]
-        PowerCalc[PowerIndexCalc\n火力指数計算]
-        SpeedCalc[SpeedCalc\n素早さ計算]
+        NameSearch[NameSearch<br/>名前検索]
+        CalcActualStats[CalcActualStats<br/>実数値計算]
+        OpponentPartyPanel[OpponentPartyPanel<br/>相手パーティ入力]
+        OpponentPokemonDetail[OpponentPokemonDetail<br/>相手ポケモン詳細]
+        SearchInput[SearchInput<br/>サジェスト検索]
+        SpeedCalc[SpeedCalc<br/>素早さ計算]
+        OwnPartyPanel[OwnPartyPanel<br/>自パーティ一覧]
+        OwnPokemonDetail[OwnPokemonDetail<br/>自分ポケモン詳細]
+        PowerCalc[PowerIndexCalc<br/>火力指数計算]
     end
 
-    Fetcher --> Converter --> PokemonData
-    PokemonData --> DataLoader
+    Fetcher --> ShowdownCache
+    PokeAPIFetcher --> PokeApiCache
+    ShowdownCache --> Converter
+    PokeApiCache --> Converter
+    Patch --> Converter
+    MovesPowerPatch --> Converter
+    ItemsModifiers --> Converter
+    AbilitiesModifiers --> Converter
+    Converter --> Pokedex & Moves & Items & Abilities
+    Pokedex --> DataLoader
+    Moves --> DataLoader
+    Items --> DataLoader
+    Abilities --> DataLoader
+    TypeNames --> DataLoader
+    MoveCategories --> DataLoader
+    Natures --> DataLoader
     PartyData --> DataLoader
-    DataLoader --> PartyPanel
-    DataLoader --> OpponentPanel
-    PartyPanel --> OwnDetail
-    OwnDetail --> PowerCalc
-    OpponentPanel --> SearchInput
-    SearchInput --> OpponentDetail
-    OpponentDetail --> SpeedCalc
+    DataLoader --> NameSearch
+    DataLoader --> OpponentPartyPanel
+    DataLoader --> OwnPartyPanel
+    OpponentPartyPanel --> SearchInput
+    SearchInput --> OpponentPokemonDetail
+    OpponentPokemonDetail --> SpeedCalc
+    OwnPartyPanel --> OwnPokemonDetail
+    OwnPokemonDetail --> PowerCalc
+    OwnPokemonDetail --> CalcActualStats
 ```
 
 ---
@@ -44,69 +78,584 @@ graph TB
 | 分類 | 技術 | 選定理由 |
 |------|------|----------|
 | フロントエンド言語 | JavaScript (ESモジュール) | TypeScript不要のシンプルな個人ツール |
-| フロントエンドフレームワーク | 未決定（Vanilla JS or 軽量FW） | architecture.md で確定 |
+| フロントエンドフレームワーク | Vanilla JS（フレームワークなし） | 画面数が少なく依存を最小化。詳細は architecture.md を参照 |
 | スタイリング | CSS | 追加依存なし |
 | データ取得・変換 | C# (.NET) | JSON操作と外部データ取得が得意 |
 | マスターデータ | Pokémon Showdown データ | 対戦用途に必要な情報を網羅 |
+| 日本語名変換 | PokéAPI | ポケモン・技・特性の日本語名を取得（C# ツールのオフライン実行時のみ使用） |
 | テスト | Vitest | JavaScript対応、高速 |
 
 ---
 
-## データモデル定義
+## C# データ準備ツール: データ取得と変換
 
-### エンティティ: PokemonMaster（マスターデータ）
+### 対応バージョン
 
-C# ツールが生成する `pokemon-data.json` の構造:
+**Pokémon Champions** のデータを対象とする。
+
+**データ戦略**:
+- Pokémon Showdown は現時点で Pokémon Champions に未対応のため、Showdown データをベースとして使用し、ポケモンWiki（https://wiki.pokemonwiki.com/wiki/Pok%C3%A9mon_Champions）で調査した Champions との差分を静的パッチとして適用する
+- Pokémon Champions は既存要素の変更のみ（新規ポケモン・技・アイテムなし）のため、PokéAPI は英語→日本語名の変換にのみ使用する
+- 本ツールは開発者自身のみの利用を想定しており、多言語対応は行わない。UI・データともに日本語に固定する
+
+### データソース分離の原則
+
+- **Showdown データ**は取得した英語のまま中間ファイルとして保持し、変換・翻訳を行わない
+- **PokéAPI データ**は独立した中間ファイルとして保持し、Showdown データとは分離する
+- 英語→日本語変換が必要な最終出力生成時のみ、両データを結合する
+
+### 取得元URL
+
+**Pokémon Showdown（コンパイル済みJS）**
+
+| データ | URL | 取得内容 |
+|--------|-----|----------|
+| ポケモン | `https://play.pokemonshowdown.com/data/pokedex.js` | タイプ・種族値・特性リスト |
+| 技 | `https://play.pokemonshowdown.com/data/moves.js` | 技名・タイプ・分類・威力・フラグ |
+| 持ち物 | `https://play.pokemonshowdown.com/data/items.js` | 持ち物名・各種フラグ |
+| 特性 | `https://play.pokemonshowdown.com/data/abilities.js` | 特性名・num（PokéAPI連携用） |
+
+**PokéAPI（日本語名変換のみ）**
+
+| データ | URL | 取得内容 |
+|--------|-----|----------|
+| ポケモン日本語名 | `https://pokeapi.co/api/v2/pokemon-species/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
+| 技日本語名 | `https://pokeapi.co/api/v2/move/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
+| 特性日本語名 | `https://pokeapi.co/api/v2/ability/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
+| 持ち物日本語名 | `https://pokeapi.co/api/v2/item/{id}/` | `names` 配列から `language.name === "ja"` の `name` を取得 |
+
+> PokéAPIのIDとShowdownのキーはポケモン図鑑番号で紐付ける（Showdownの `num` フィールドをIDとして使用）。特性はShowdownの `abilities.js` に含まれる `num` フィールドをIDとして使用する。
+
+**ポケモンWiki（Champions差分・手動調査）**
+
+Showdown データと Pokémon Champions の差分（技威力・種族値変更など）をポケモンWiki（https://wiki.pokemonwiki.com/wiki/Pok%C3%A9mon_Champions）で調査し、`tools/PokelensTools/champions-patch.json` に静的パッチとして管理する。C# ツールはShowdownデータ変換後にパッチを上書き適用する。
+
+**`champions-patch.json` の構造**:
 
 ```json
 {
-  "pokemon": {
-    "pikachu": {
-      "name": "ピカチュウ",
-      "nameKana": "ピカチュウ",
-      "nameHira": "ぴかちゅう",
-      "types": ["Electric"],
-      "baseStats": {
-        "hp": 35, "atk": 55, "def": 40,
-        "spa": 50, "spd": 50, "spe": 90
-      },
-      "abilities": ["Static", "Lightning Rod"],
-      "moves": [
-        {
-          "name": "10まんボルト",
-          "type": "Electric",
-          "category": "special",
-          "power": 90
-        }
-      ]
+  "pokedex": {
+    "dragonite": {
+      "baseStats": { "hp": 91, "atk": 140, "def": 95, "spa": 100, "spd": 100, "spe": 80 }
+    },
+    "rillaboom": {
+      "baseStats": { "hp": 100, "atk": 125, "def": 90, "spa": 60, "spd": 70, "spe": 85 },
+      "abilities": { "0": "Overgrow", "H": "Grassy Surge" }
+    }
+  },
+  "moves": {
+    "thunder": {
+      "basePower": 120,
+      "accuracy": 70
+    },
+    "rockslide": {
+      "basePower": 80
     }
   }
 }
 ```
 
+> キーはShowdownの識別キー（英小文字・スペースなし）。ポケモンは `cache/showdown-pokedex.json`、技は `cache/showdown-moves.json` のキーと一致させること。
+
 **制約**:
-- `category` は `"physical"` / `"special"` / `"status"` のいずれか
-- `power` は変動技（メトロノーム等）の場合 `null`（最大値で代替計算）
-- ひらがな/カタカナ両方を保持してサジェスト検索に対応
+- キーはShowdownの識別キー（英小文字）。`pokedex` キーはShowdownの `cache/showdown-pokedex.json`、`moves` キーは `cache/showdown-moves.json` のキーと対応する
+- パッチ適用は**上書きマージ**（指定したフィールドのみ差し替え。省略フィールドはShowdownデータをそのまま使用）
+- `pokedex` で変更可能なフィールド: `baseStats`（一部または全6値）、`types`（配列）、`abilities`（オブジェクト。キーはShowdownスロット規則: `"0"` = 第1特性、`"1"` = 第2特性、`"H"` = 隠れ特性）
+- `moves` で変更可能なフィールド: `basePower`（整数。必中・変化技は `0`）、`accuracy`（整数。必中は `true`）、`category`（`"Physical"` / `"Special"` / `"Status"`）
+- このファイルは手書きで管理する（C# ツールでは生成しない）
+
+> **ゲームアップデート時の注意**: Pokémon Champions のアップデートで新規ポケモン・新規技・新規持ち物・新規特性が追加された場合、Showdown データソースへの反映状況を確認した上で、必要に応じて C# パイプライン・`champions-patch.json`・各種手書き JSON（`items.json`・`abilities.json`・`natures.json` の静的テーブル）の更新対応が別途必要になる。
+
+**`moves-power-patch.json` の構造**:
+
+```json
+{
+  "metronome":   { "power": 120 },
+  "weatherball": { "power": 100 },
+  "magnitude":   { "power": 150 }
+}
+```
+
+> キーはShowdownの識別キー（英小文字）。`cache/showdown-moves.json` のキーと一致させること。Step4のMergeConverterはShowdown英語キーで `moves-power-patch.json` を照合してから `pokeapi-translations.json` で日本語キーへ変換するため、このファイルのキーは最終出力 `moves.json` の日本語キーではなくShowdown英語キーで記述する（例: `"わるあがき"` ではなく `"struggle"`）。
+
+**制約**:
+- エントリは `{ "power": <整数> }` のフラット形式で記述する（`items-modifiers.json` / `abilities-modifiers.json` の `{ "modifier": { ... } }` ラッパー形式とは異なる。このファイルは `moves.json` の単一フィールドを上書きするだけのため、ラッパーは不要）
+- `power` は整数。Showdownデータで威力が `null`（変動技）となる技に最大威力を設定する
+  - フィールド名 `power` は最終出力 `moves.json` の `power` フィールドに直接対応する語彙。`champions-patch.json` の `moves.basePower`（Showdown語彙）とは別物
+- C# ツールがStep4の最終出力生成時に `moves.json` の `power` フィールドへ上書き適用する
+- `champions-patch.json` の `moves` セクションとは役割が異なる（`champions-patch.json` の `basePower` はShowdown語彙でStep3に適用、`moves-power-patch.json` の `power` は最終出力語彙でStep4に適用）
+- このファイルは手書きで管理する（C# ツールでは生成しない）
+
+### C# ツールのパイプライン
+
+```
+[Step 1] Showdown取得 → 英語のまま中間保存
+  → cache/showdown-pokedex.json   （英語。Showdownの構造を維持）
+  → cache/showdown-moves.json
+  → cache/showdown-items.json
+  → cache/showdown-abilities.json
+
+[Step 2] PokéAPI取得 → 翻訳データを中間保存  ※増分実行で条件付き
+  → cache/pokeapi-translations.json  （英語キー→日本語名のマッピング）
+
+[Step 3] champions-patch.json 適用 → Showdown中間データを上書き  ※増分実行で条件付き
+
+[Step 4] 最終出力生成 (Step1 + Step2 をマージ)  ※増分実行で条件付き
+  → data/pokedex.json
+  → data/moves.json
+  → data/items.json
+  → data/abilities.json
+```
+
+**増分実行の仕組み（ハッシュ比較）**:
+
+C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksums.json` に保存した前回のハッシュ値と比較することで、後続ステップを自動決定する。
+
+```
+[Step 1] Showdown 取得 → cache/showdown-*.json を更新
+
+[ハッシュ比較] cache/checksums.json の前回値と比較（初回起動時はスキップ）
+  - showdown-*.json のみ変化              → Step 2〜4 を実行
+  - pokeapi-translations.json のみ変化   → Step 4 を実行（日本語名の再マッピングのみ必要）
+  - champions-patch.json のみ変化         → Step 3〜4 を実行
+  - moves-power-patch.json のみ変化       → Step 4 を実行
+  - items-modifiers.json のみ変化        → Step 4 を実行
+  - abilities-modifiers.json のみ変化    → Step 4 を実行
+  - 上記の複数が同時に変化               → 必要な最も早いStep以降を実行
+  - 変化なし                             → 処理終了（data/ は最新のまま）
+
+[Step 2] PokéAPI 取得 → cache/pokeapi-translations.json  （条件付き）
+
+[Step 3] champions-patch.json 適用 → Showdown 中間データを上書き  （条件付き）
+
+[Step 4] 最終出力生成 → data/*.json  （条件付き）
+  ※ moves.json 生成時に以下を適用する:
+    - 複数回攻撃技: basePower × multihit[1] を power として出力
+    - moves-power-patch.json: power が null の技に最大威力を上書き適用
+
+[ハッシュ更新] cache/checksums.json を更新（moves-power-patch / items-modifiers / abilities-modifiers を含む）
+```
+
+`cache/checksums.json` の構造:
+
+```json
+{
+  "showdown-pokedex":        "a1b2c3...",
+  "showdown-moves":          "d4e5f6...",
+  "showdown-items":          "g7h8i9...",
+  "showdown-abilities":      "j0k1l2...",
+  "pokeapi-translations":    "s1t2u3...",
+  "champions-patch":         "m3n4o5...",
+  "moves-power-patch":       "p6q7r8...",
+  "items-modifiers":         "v1w2x3...",
+  "abilities-modifiers":     "y4z5a6..."
+}
+```
+
+### 中間データ形式
+
+**`cache/showdown-pokedex.json`**:
+
+```json
+{
+  "pikachu": {
+    "num": 25,
+    "name": "Pikachu",
+    "types": ["Electric"],
+    "baseStats": { "hp": 35, "atk": 55, "def": 40, "spa": 50, "spd": 50, "spe": 90 },
+    "abilities": { "0": "Static", "1": "Lightning Rod" }
+  }
+}
+```
+
+> `abilities` のキーはShowdownの特性スロット規則: `"0"` = 第1特性、`"1"` = 第2特性、`"H"` = 隠れ特性。定義されていないスロットは省略される。
+
+**`cache/showdown-moves.json`**:
+
+```json
+{
+  "thunderbolt": {
+    "num": 85,
+    "name": "Thunderbolt",
+    "type": "Electric",
+    "category": "Special",
+    "basePower": 90,
+    "accuracy": 100,
+    "flags": { "protect": 1, "mirror": 1 }
+  },
+  "closecombat": {
+    "num": 370,
+    "name": "Close Combat",
+    "type": "Fighting",
+    "category": "Physical",
+    "basePower": 120,
+    "accuracy": 100,
+    "flags": { "contact": 1, "protect": 1, "mirror": 1 }
+  },
+  "protect": {
+    "num": 182,
+    "name": "Protect",
+    "type": "Normal",
+    "category": "Status",
+    "basePower": 0,
+    "accuracy": true,
+    "flags": {}
+  }
+}
+```
+
+> `basePower: 0` は変動技・変化技を表す。Step4 で `null` に変換する。`accuracy: true` は必中を表す。`flags` は `isPunch` 等の補正条件判定に使用する。
+
+**`cache/showdown-items.json`**:
+
+```json
+{
+  "choiceband":  { "num": 220 },
+  "choicespecs": { "num": 305 },
+  "choicescarf": { "num": 287 },
+  "lifeorb":     { "num": 270 }
+}
+```
+
+> Showdown の `items.js` は補正値をJavaScript関数で記述しているためパース不可。`num` のみ保持し、補正値はC#ツール内の静的テーブルから生成する。日本語名は `pokeapi-translations.json` から取得するため英語名は不要。
+
+**`cache/showdown-abilities.json`**:
+
+```json
+{
+  "static":       { "num": 9  },
+  "lightningrod": { "num": 31 },
+  "hugepower":    { "num": 37 },
+  "ironfist":     { "num": 89 }
+}
+```
+
+> Showdown の `abilities.js` も補正値をJavaScript関数で記述しているためパース不可。`num` のみ保持し、補正値はC#ツール内の静的テーブルから生成する。日本語名は `pokeapi-translations.json` から取得するため英語名は不要。
+
+**`cache/pokeapi-translations.json`（PokéAPIから取得した日本語マッピング）**:
+
+```json
+{
+  "pokemon": {
+    "pikachu": "ピカチュウ"
+  },
+  "moves": {
+    "thunderbolt": "10まんボルト"
+  },
+  "abilities": {
+    "static": "せいでんき",
+    "lightning-rod": "ひらいしん"
+  },
+  "items": {
+    "choicescarf": "こだわりスカーフ",
+    "lifeorb": "いのちのたま"
+  }
+}
+```
+
+> キーはShowdownの識別キー（英小文字）で統一し、Showdown中間データとPokeAPI翻訳データを紐付ける基準とする。
+
+---
+
+### 元データ形式と変換ロジック
+
+Showdown の `.js` ファイルは以下の形式：
+
+```js
+'use strict';
+exports.BattlePokedex = {
+  pikachu: { num: 25, name: "Pikachu", types: ["Electric"], baseStats: { hp: 35, ... }, ... }
+};
+```
+
+C# ツールは先頭の `'use strict';\nexports.BattleXxx = ` と末尾の `;` を除去してJSONオブジェクトとしてパースする。
+
+**変換内容**：
+- ポケモン識別キー（英小文字）はShowdownのキーをそのまま使用
+- `name`（日本語表記・カタカナ）はPokéAPIから取得した日本語名をそのまま使用する
+- 技の `basePower: 0` は `null` に変換する（変動技・変化技）
+- 技の `accuracy: true`（Showdown の必中表現）は `null` に変換する（`basePower: 0 → null` と同様の扱い）
+### アイテム・特性の補正データ
+
+Showdown の `items.js` / `abilities.js` は補正値をJavaScript関数で記述しているためC#から直接パースできない。補正値は `tools/PokelensTools/items-modifiers.json` / `tools/PokelensTools/abilities-modifiers.json` に手書きで管理し、Step4でMergeConverterが日本語名（`pokeapi-translations.json` 参照）と結合して `data/items.json` / `data/abilities.json` を生成する。新規アイテム・特性の追加やバランス変更時はこれらのJSONファイルを直接更新する。
+
+**`items-modifiers.json` の構造**（キーはShowdown英語識別キー）:
+
+```json
+{
+  "choicescarf":   { "modifier": { "spe": 1.5 } },
+  "lifeorb":       { "modifier": { "atk": 1.3, "spa": 1.3 } },
+  "silkscarf":     { "modifier": { "condition": "isType", "moveType": "Normal", "atk": 1.2, "spa": 1.2 } },
+  "punchingglove": { "modifier": { "condition": "isPunch", "atk": 1.1 } }
+}
+```
+
+> `condition` キーは省略可能。省略した場合は `null`（無条件全技適用）と同等に扱う。`lifeorb` のように物理・特殊の両方を補正する場合は `atk` と `spa` の両方を記述する。
+```
+
+**`abilities-modifiers.json` の構造**（キーはShowdown英語識別キー）:
+
+```json
+{
+  "ironfist":      { "modifier": { "condition": "isPunch",    "atk": 1.2 } },
+  "sharpness":     { "modifier": { "condition": "isSlice",    "atk": 1.5, "spa": 1.5 } },
+  "technician":    { "modifier": { "condition": "powerMax60", "atk": 1.5, "spa": 1.5 } },
+  "megalauncher":  { "modifier": { "condition": "isPulse",    "atk": 1.5, "spa": 1.5 } },
+  "strongjaw":     { "modifier": { "condition": "isBite",     "atk": 1.5 } },
+  "reckless":      { "modifier": { "condition": "isRecoil",   "atk": 1.2 } },
+  "adaptability":  { "modifier": { "condition": "isStab",     "stab": 2.0 } }
+}
+```
+
+条件付き補正（すいすい・ようりょくそなど天候依存）はP0スコープ外とし、マスターデータに含めない（補正値1.0として扱う）。
+
+---
+
+## データモデル定義
+
+### エンティティ: Pokedex（ポケモン図鑑）
+
+C# ツールが生成する `pokedex.json` の構造:
+
+```json
+{
+  "pikachu": {
+    "num": 25,
+    "name": "ピカチュウ",
+    "types": ["Electric"],
+    "baseStats": {
+      "hp": 35, "atk": 55, "def": 40,
+      "spa": 50, "spd": 50, "spe": 90
+    },
+    "abilities": ["せいでんき", "ひらいしん"]
+  }
+}
+```
+
+**制約**:
+- キーはShowdownの識別キー（英小文字）
+- `num` はShowdownの `num` フィールド（図鑑番号）をそのまま保持する。`NameSearch.searchByName()` の図鑑番号順ソートのキーとして使用する
+- `name` はPokéAPIから取得した日本語名（カタカナ）。サジェスト検索のキーとして使用する
+- `types` はShowdownの英語タイプ名のまま保持する。`moves.json` の `type` フィールドも英語で統一しているため、STAB判定（`pokemonTypes.includes(move.type)`）を変換なしで行える。表示時はフロントエンドが `DataLoader.getTypeName()` で日本語に変換する
+- `abilities` はShowdownの `abilities` オブジェクト（`"0"` / `"1"` / `"H"` キー）を `"0"` → `"1"` → `"H"` の順に並べ、定義されているスロットのみを `pokeapi-translations.json` で日本語名に変換した配列
+
+> **P0.5 拡張方針（メガシンカ）**: メガシンカ後の種族値・タイプ・特性はP0.5で対応する。P0.5実装時に各エントリへ `mega?: { types: string[], baseStats: {...}, ability: string }` フィールドを追加する予定。P0時点ではスキーマ拡張は行わない。
+
+---
+
+### エンティティ: Moves（技データ）
+
+C# ツールが生成する `moves.json` の構造:
+
+```json
+{
+  "10まんボルト": {
+    "type": "Electric",
+    "category": "Special",
+    "power": 90,
+    "accuracy": 100
+  },
+  "インファイト": {
+    "type": "Fighting",
+    "category": "Physical",
+    "power": 120,
+    "accuracy": 100,
+    "tags": ["isContact"]
+  },
+  "まもる": {
+    "type": "Normal",
+    "category": "Status",
+    "power": null,
+    "accuracy": null
+  }
+}
+```
+
+**制約**:
+- キーはPokéAPIから取得した日本語技名（`party.json` の `moves[x].name` との照合に使用）
+  - `pokedex.json` がShowdown英語キーを採用しているのに対し、`moves.json` が日本語キーを採用する理由: `party.json` の `moves[x].name` はユーザーが日本語で入力するため、フロントエンドがルックアップ時に変換処理を挟まずに済む設計としている
+  - `champions-patch.json`（英語キー）の適用はStep3で行い、Step4のMergeConverterが最終出力を生成する際に `pokeapi-translations.json` を参照して英語キーから日本語キーへ変換する
+  - Showdownに存在しないChampions固有技は `champions-patch.json` に日本語名で直接定義し、Step4でそのまま出力する
+- `category` は `"Physical"` / `"Special"` / `"Status"` のいずれか
+- `power` は変動技（メトロノーム等）・変化技の場合 `null`
+- `accuracy` は命中率（整数）。必中技・命中チェックなし技（変化技の一部など）は `null`
+- `tags` はShowdownの `flags` フィールドの全キーを `is` + camelCase に変換して格納するマーカー配列。対象タグを持たない技は省略する
+  - 変換ルール: Showdownの `flags` オブジェクトの全キーを `is` + 先頭大文字（camelCase）に変換する（例: `contact`→`isContact`、`punch`→`isPunch`、`pulse`→`isPulse`、`bite`→`isBite`、`slicing`→`isSlice`、`sound`→`isSound`、`bullet`→`isBullet`、`powder`→`isPowder`、`protect`→`isProtect` など）
+  - `recoil` はShowdownでは `flags` ではなく独立フィールドとして存在するが、同様に `isRecoil` タグとして格納する
+  - P0スコープの補正計算（火力指数）で参照するのは `isPunch` / `isPulse` / `isBite` / `isRecoil` / `isSlice` / `isStab` のみ。`isContact` を含むその他のタグはP0では補正計算に使用しないが、Showdownの全フラグを格納する方針のため含まれる
+
+---
+
+### エンティティ: Items（持ち物補正データ）
+
+C# ツールが生成する `items.json` の構造:
+
+```json
+{
+  "こだわりハチマキ": { "modifier": { "atk": 1.5 } },
+  "こだわりメガネ":   { "modifier": { "spa": 1.5 } },
+  "こだわりスカーフ": { "modifier": { "spe": 1.5 } },
+  "いのちのたま":     { "modifier": { "atk": 1.3, "spa": 1.3 } },
+  "シルクのスカーフ": { "modifier": { "condition": "isType", "moveType": "Normal", "atk": 1.2, "spa": 1.2 } },
+  "もくたん":         { "modifier": { "condition": "isType", "moveType": "Fire",   "atk": 1.2, "spa": 1.2 } },
+  "パンチグローブ":   { "modifier": { "condition": "isPunch", "atk": 1.1 } }
+}
+```
+
+**制約**:
+- キーは日本語持ち物名（`party.json` の `item` との照合に使用）
+- 対戦状況に依存する補正はP0スコープ外のため含めない（未登録の持ち物は補正値1.0として扱う）
+  - 天候依存（例: ひでりのいわ・ぼうじんゴーグル・天候ボールなど天候効果を延長・利用するアイテム）
+  - HP依存（例: きのみ系全般・ピントレンズ等）
+  - 状態異常依存（例: カゴのみ等）
+  - ターン数依存（例: メトロノームなど使用回数に応じて威力が変わるアイテム）
+
+---
+
+### エンティティ: Abilities（特性補正データ）
+
+C# ツールが生成する `abilities.json` の構造:
+
+```json
+{
+  "ちからもち":     { "modifier": { "atk": 2.0 } },
+  "てつのこぶし":   { "modifier": { "condition": "isPunch",    "atk": 1.2 } },
+  "きれあじ":       { "modifier": { "condition": "isSlice",    "atk": 1.5, "spa": 1.5 } },
+  "テクニシャン":   { "modifier": { "condition": "powerMax60", "atk": 1.5, "spa": 1.5 } },
+  "メガランチャー": { "modifier": { "condition": "isPulse",    "atk": 1.5, "spa": 1.5 } },
+  "つよいあご":     { "modifier": { "condition": "isBite",     "atk": 1.5 } },
+  "すてみ":         { "modifier": { "condition": "isRecoil",   "atk": 1.2 } },
+  "てきおうりょく": { "modifier": { "condition": "isStab",     "stab": 2.0 } }
+}
+```
+
+**制約**:
+- キーは日本語特性名（`party.json` の `ability` との照合に使用）
+- 対戦状況に依存する補正はP0スコープ外のため含めない（未登録の特性は補正値1.0として扱う）
+  - HP依存（例: もうか・しんりょく・もうりょく・むしのしらせ）
+  - 天候依存（例: すいすい・ようりょくそ・すなかき・ゆきかき）
+  - 状態異常依存（例: こんじょう・ねつぼうそう）
+  - ターン数依存（例: スロースタート）
+  - 性別依存（例: ライバル）
+
+**`modifier` オブジェクトのキー一覧**（`items.json` / `abilities.json` 共通）:
+
+| キー | 意味 | 省略時 |
+|------|------|--------|
+| `atk` | 物理技への火力補正 | 1.0 |
+| `spa` | 特殊技への火力補正 | 1.0 |
+| `spe` | 素早さ補正 | 1.0 |
+| `stab` | タイプ一致倍率の上書き | 1.5 |
+| `condition` | 補正を適用する条件名（省略時は全技に適用） | — |
+| `moveType` | `condition: "isType"` のときのみ使用。対象タイプ名（英語、例: `"Fire"`） | — |
+
+**`condition` 値の一覧**:
+
+| condition | 判定方法 | 対象例 |
+|-----------|----------|--------|
+| `isType` | `move.type === modifier.moveType` | シルクのスカーフ・もくたん・各タイププレート |
+| `isPunch` | `move.tags` に `"isPunch"` を含む | てつのこぶし・パンチグローブ |
+| `isPulse` | `move.tags` に `"isPulse"` を含む | メガランチャー |
+| `isBite` | `move.tags` に `"isBite"` を含む | つよいあご |
+| `isRecoil` | `move.tags` に `"isRecoil"` を含む | すてみ |
+| `isSlice` | `move.tags` に `"isSlice"` を含む | きれあじ |
+| `powerMax60` | `move.power !== null && move.power <= 60` | テクニシャン |
+| `isStab` | `move.type` がポケモンのタイプと一致 | てきおうりょく |
+
+> `isStab` は他の condition と異なり、`abilities.json` 単体では判定できない。ポケモン固有のタイプ情報（`pokemonTypes`）が必要なため、`calcPowerIndex` の呼び出し側が `pokemonTypes` を引数として渡す。`isStab` 条件が成立した場合、通常の STAB 倍率（1.5）の代わりに `modifier.stab`（2.0）を適用する。
+
+---
+
+### エンティティ: TypeNames（タイプ名変換）
+
+手書きで管理する `types.json` の構造:
+
+```json
+{
+  "Normal":   "ノーマル",
+  "Fire":     "ほのお",
+  "Water":    "みず",
+  "Electric": "でんき",
+  "Grass":    "くさ",
+  "Ice":      "こおり",
+  "Fighting": "かくとう",
+  "Poison":   "どく",
+  "Ground":   "じめん",
+  "Flying":   "ひこう",
+  "Psychic":  "エスパー",
+  "Bug":      "むし",
+  "Rock":     "いわ",
+  "Ghost":    "ゴースト",
+  "Dragon":   "ドラゴン",
+  "Dark":     "あく",
+  "Steel":    "はがね",
+  "Fairy":    "フェアリー"
+}
+```
+
+**制約**:
+- キーはShowdownの英語タイプ名（`pokedex.json` の `types` / `moves.json` の `type` と対応）
+- 値は日本語タイプ名（表示用）
+- このファイルは手書きで管理する（C# ツールでは生成しない）
+
+---
+
+### エンティティ: MoveCategories（技分類変換）
+
+手書きで管理する `move-categories.json` の構造:
+
+```json
+{
+  "Physical": "物理",
+  "Special":  "特殊",
+  "Status":   "変化"
+}
+```
+
+**制約**:
+- キーは `moves.json` の `category` 値（`"Physical"` / `"Special"` / `"Status"`）
+- 値は日本語分類名（表示用）
+- このファイルは手書きで管理する（C# ツールでは生成しない）
+
+---
+
+### エンティティ: Natures（性格補正データ）
+
+手書きで管理する `natures.json` の構造:
+
+```json
+{
+  "いじっぱり": { "modifiers": { "atk": 1.1, "spa": 0.9 } },
+  "ようき":     { "modifiers": { "spe": 1.1, "spa": 0.9 } },
+  "ひかえめ":   { "modifiers": { "spa": 1.1, "atk": 0.9 } },
+  "おくびょう": { "modifiers": { "spe": 1.1, "atk": 0.9 } },
+  "がんばりや": { "modifiers": {} }
+}
+```
+
+**制約**:
+- キーは日本語性格名（`party.json` の `nature` との照合に使用）
+- `modifiers` は上昇・下降補正を受けるステータス（`atk` / `def` / `spa` / `spd` / `spe`）とその倍率（1.1 / 0.9）のマップ
+- 補正のない性格（がんばりやなど）は `modifiers` を空オブジェクト `{}` とする。省略されたステータスの補正値は 1.0 として扱う
+- このファイルは手書きで管理する（C# ツールでは生成しない）
 
 ---
 
 ### エンティティ: UserParty（自分パーティ）
 
-ユーザーが編集する `party.json` の構造:
+ユーザーが編集する `data/party.json` の構造:
 
 ```json
 {
   "party": [
     {
-      "species": "pikachu",
-      "nickname": "ピカチュウ",
-      "ability": "Static",
+      "species": "ピカチュウ",
+      "ability": "せいでんき",
       "item": "でんきだま",
       "nature": "おくびょう",
-      "actualStats": {
-        "hp": 266, "atk": 121, "def": 90,
-        "spa": 261, "spd": 111, "spe": 262
+      "abilityPoints": {
+        "hp": 0, "atk": 0, "def": 0,
+        "spa": 32, "spd": 0, "spe": 32
       },
       "moves": [
         { "name": "10まんボルト" },
@@ -120,9 +669,12 @@ C# ツールが生成する `pokemon-data.json` の構造:
 ```
 
 **制約**:
-- `species` はマスターデータのキーと一致すること
-- `actualStats` はユーザーが実数値を直接入力する（計算は行わない）
-- `moves` の技名はマスターデータに存在すること（不明技は補正値1.0として処理）
+- `species` は `pokedex.json` の `name` フィールド（日本語名カタカナ）と完全一致すること。括弧を含むポケモン（例: `ウーラオス（一撃）`）は括弧込みの表記で記述する（読み込み時の正規化は行わない）
+- `ability` は `abilities.json` のキー（日本語特性名）と一致すること。未登録の場合は補正値1.0として処理
+- `item` は `items.json` のキー（日本語持ち物名）と一致すること。未登録の場合は補正値1.0として処理
+- `nature` は `natures.json` のキー（日本語性格名）と一致すること
+- `abilityPoints` の各値は 0〜32 の整数であること。フロントエンドが種族値・能力ポイント・性格補正から実数値を計算する
+- `moves[x].name` は `moves.json` のキー（日本語技名）と一致すること。未登録の場合は補正値1.0として処理
 
 ---
 
@@ -133,7 +685,7 @@ C# ツールが生成する `pokemon-data.json` の構造:
 ```json
 {
   "slots": [
-    { "species": "rillaboom", "selected": true },
+    { "species": null, "selected": false },
     { "species": null, "selected": false },
     { "species": null, "selected": false },
     { "species": null, "selected": false },
@@ -142,6 +694,13 @@ C# ツールが生成する `pokemon-data.json` の構造:
   ]
 }
 ```
+
+**制約**:
+- `species` は確定後 `pokedex.json` の `name` フィールド（日本語名カタカナ）を格納する。`null` は未入力を表す
+  - `DataLoader.getPokemonByName(name)` の引数として直接使用できる
+- `selected` は現在詳細表示中のスロットを示す。`true` になるスロットは最大1つ
+- スロット数は6固定（Pokémon Champions のパーティ上限に準拠）
+- ページリロードで状態は破棄される（永続化しない）
 
 ---
 
@@ -153,18 +712,46 @@ C# ツールが生成する `pokemon-data.json` の構造:
 
 ```
 DataLoader
-  load()                  → { pokemonMaster, userParty }
-  getPokemonBySpecies(id) → PokemonMaster | null
-  searchByName(query)     → PokemonMaster[]  ※ひらがな/カタカナ正規化後に前方一致
+  load()                  → Promise<{ pokedex, moves, items, abilities, typeNames, moveCategories, natures, userParty: { party: UserPartyEntry[] } }>
+                            ※ userParty は party.json のルートオブジェクトをそのまま保持する。party 配列へのアクセスは userParty.party[i] で行う
+                            ※ キー名を `party` ではなく `userParty` としているのは、戻り値オブジェクトの他キー（`pokedex` / `moves` 等）との命名衝突を避けるため
+                            ※ファイル不存在・JSON構文エラー時は `new Error(message)` を throw する。
+                              message の値はエラーハンドリング表の「ユーザーへの表示」欄の文字列をそのまま使用する。
+                              main.js は try-catch で捕捉し、`e.message` を画面に表示して起動を中断する。
+                            ※ party.json の必須フィールド欠落チェック（species・nature・abilityPoints・moves）は DataLoader.load() 内で行い、欠落時は構文エラーと同一のメッセージで throw する（main.js 側では行わない）。
+  getPokemonByName(name)  → PokedexEntry | null   ※日本語名で pokedex.json を検索
+  searchByName(query)     → PokedexEntry[]        ※DataLoader が保持する全 PokedexEntry を entries として NameSearch.searchByName(query, entries) に委譲する
+  getMove(name)           → Move | null
+  getItemModifier(name)   → Modifier | null
+  getAbilityModifier(name)→ Modifier | null
+  getTypeName(type)       → string            ※英語タイプ名（例: "Fire"）を日本語（例: "ほのお"）に変換
+  getMoveCategory(cat)    → string            ※カテゴリ値（例: "Physical"）を日本語（例: "物理"）に変換
+  getNatureModifiers(name)→ { [stat]: number }    ※日本語性格名から補正倍率マップを取得（補正なし性格は空オブジェクト）
 ```
+
+**型定義**:
+
+- `PokedexEntry`: `pokedex.json` の各エントリに対応。`{ num: number, name: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[] }`
+- `Move`: `moves.json` の各エントリに対応。`{ type: string, category: string, power: number | null, accuracy: number | null, tags?: string[] }`
+- `Modifier`: `getItemModifier()` / `getAbilityModifier()` の戻り値型。`{ condition: string | null, atk?: number, spa?: number, spe?: number, stab?: number, moveType?: string }` — `items.json` / `abilities.json` の各エントリは `{ modifier: { ... } }` のネスト構造だが、これらのメソッドは `.modifier` を取り出して返す（ラッパーオブジェクトは呼び出し側に渡さない）
 
 ---
 
-### PartyPanel（自分）
+### OwnPartyPanel（自分）
 
 **責務**: 自分パーティ6匹を一覧表示し、選択時に OwnPokemonDetail へ切り替える
 
-**表示項目（カード）**: ポケモン名、タイプ
+**表示項目（カード）**: ポケモン名、タイプ（`DataLoader.getTypeName()` で日本語変換して表示）
+
+**状態**:
+- **未選択**（起動直後のみ）: いずれのカードも選択されておらず、`OwnPokemonDetail` パネルは非表示
+- **選択中**（初回クリック後〜）: 常にいずれか1匹が選択中。全選択解除はできない（未選択状態には戻らない）
+
+**イベントフロー**:
+1. ポケモンカードをクリックすると、そのスロットを「選択中」状態にする（同時に選択できるのは最大1匹）
+2. 別のカードをクリックすると選択が切り替わる（選択解除の操作はなく、未選択状態には戻らない）
+3. 選択中カードをUIでハイライト表示する（UIレイアウト図の `*選択中*` 参照）
+4. `OwnPokemonDetail` に選択ポケモンの `species` を渡して詳細パネルを更新する
 
 ---
 
@@ -174,39 +761,110 @@ DataLoader
 
 **表示項目**:
 - ポケモン名 / タイプ / 特性 / 持ち物
+  - タイプ: `DataLoader.getTypeName()` で日本語変換して表示
 - 実数値（H-A-B-C-D-S）
-- 技一覧: `技名 : 火力指数`（変化技は「−」）
+- 技一覧: `技名 / タイプ / 威力 / 分類 / 命中率 / 火力指数`
+  - 技タイプ: `DataLoader.getTypeName()` で日本語変換して表示
+  - 技分類: `DataLoader.getMoveCategory()` で日本語変換して表示
+  - 変化技の火力指数: 「−」
+  - 威力不定技（`power: null`）の威力・火力指数: 「−」
+  - 必中技（`accuracy: null`）の命中率: 「−」
 
-**依存**: PowerIndexCalc
+**実数値計算の責務**: `pokedex.json` の `baseStats`・`party.json` の `abilityPoints`・`DataLoader.getNatureModifiers()` で取得した性格補正を用いて、`src/logic/calc-actual-stats.js` の `calcActualStats` を呼び出して H-A-B-C-D-S の実数値を算出する。算出した実数値を表示するとともに、`calcPowerIndex` への `actualStats` 引数として渡す。
+
+**依存**: PowerIndexCalc、calcActualStats
+
+**condition 解決の責務**: `DataLoader.getItemModifier()` / `DataLoader.getAbilityModifier()` が返す `Modifier` オブジェクトの `condition` 評価は `OwnPokemonDetail` が担う。各技に対して以下の判定を行い、最終倍率（`number`）に変換してから `calcPowerIndex` へ渡す。
+
+- `condition: null` → 無条件で倍率を適用
+- `condition: "isType"` → `move.type === modifier.moveType` が真なら倍率を適用、偽なら 1.0
+- `condition: "isStab"` → タイプ一致（`pokemonTypes.includes(move.type)`）が真なら `modifier.stab`（2.0）を `abilityModifier` として渡し、`calcPowerIndex` 内の `stab` 変数が二重適用されないよう呼び出し元で `stab` を 1.0 固定にする（下記例参照）
+- その他の condition（`"isPunch"` 等） → `move.tags.includes(condition)` が真なら倍率を適用、偽なら 1.0
+- `Modifier` が `null`（未登録の持ち物・特性）→ 1.0
+
+**`isStab` 特性の条件解決と `modifier.stab` 取り出し方**（てきおうりょく、ポケモンタイプ: `["Fighting", "Dark"]`、技タイプ: `"Fighting"`）:
+
+```js
+// abilities.json エントリ例:
+// "てきおうりょく": { "modifier": { "condition": "isStab", "stab": 2.0 } }
+
+const abilityEntry = abilities[pokemon.ability];       // abilities.json から取得
+const modifier = abilityEntry?.modifier ?? null;        // modifier オブジェクト、未登録なら null
+
+let abilityModifier = 1.0;
+let typesForCalc = pokemonTypes;                        // 通常は実際のタイプを渡す
+
+if (modifier?.condition === "isStab") {
+  if (pokemonTypes.includes(move.type)) {              // タイプ一致判定
+    abilityModifier = modifier.stab;                   // 2.0 を取り出す
+    typesForCalc = [];                                  // stab二重適用防止: 空配列で stab=1.0 に固定
+  }
+  // タイプ不一致の場合は abilityModifier=1.0, typesForCalc=pokemonTypes のまま
+}
+
+const powerIndex = calcPowerIndex(move, actualStats, typesForCalc, abilityModifier, itemModifier);
+// タイプ一致時: power × atk × 1.0(stab) × 2.0(ability) × itemModifier
+// タイプ不一致時: power × atk × 1.0(stab) × 1.0(ability) × itemModifier
+```
+
+この判定ロジックは `src/ui/own-pokemon-detail.js` 内のヘルパー関数として実装する。
+
+`itemModifier` の condition 解決も `abilityModifier` と同じ判定ロジックを適用する。`isStab` condition は `items.json` には存在しないため `typesForCalc` の上書きは不要。持ち物未登録（`getItemModifier()` が `null` を返す）の場合は `itemModifier = 1.0` とする。
 
 ---
 
-### OpponentPanel
+### OpponentPartyPanel
 
 **責務**: 相手パーティ6スロットを管理し、各スロットに SearchInput を配置する
+
+**スロット状態管理**:
+- `OpponentParty.slots[0..5]` に対応する6つのスロットをメモリ上で保持する
+- 各スロットは「未入力（空）」または「種族名確定済み」のいずれかの状態を持つ
+- スロットの状態は画面リロードまで保持し、ページ遷移では破棄する
+
+**イベントフロー**:
+1. SearchInput から `species` 確定イベントを受け取る
+2. `OpponentParty.slots[i].species` を確定した種族名（日本語名カタカナ）に更新する
+3. `OpponentParty.slots[i].selected` を `true` に更新し、他の全スロットの `selected` を `false` にする
+4. `OpponentPokemonDetail` に確定した `species` を渡して詳細パネルを更新する
 
 ---
 
 ### SearchInput
 
-**責務**: ポケモン名をひらがな/カタカナ対応でサジェスト検索し、選択後に OpponentDetail へ渡す
+**責務**: ポケモン名をひらがな/カタカナ対応でサジェスト検索し、選択後に OpponentPokemonDetail へ渡す
 
 **動作**:
-1. 入力文字を正規化（ひらがな→カタカナ統一）
-2. マスターデータの `nameKana` / `nameHira` に前方一致検索
-3. 候補一覧を表示（最大10件）
-4. 選択後 `species` を確定し OpponentDetail に渡す
+1. 入力文字を正規化してから検索する
+   - ひらがな → カタカナに変換（例: `うーらおす` → `ウーラオス`）
+   - 半角カタカナ → 全角カタカナに変換（例: `ｳｰﾗｵｽ` → `ウーラオス`）
+   - 長音符（`ー`）・括弧（`（）`）・記号は変換対象外とし、そのまま検索に使用する
+2. 正規化後の入力を `name`（カタカナ）に前方一致検索する
+3. 候補一覧の表示条件:
+   - 候補が1件以上: 候補リストを表示（`DataLoader.searchByName()` が返した結果をそのまま表示する。件数制限・並び順は `searchByName()` 側が担う）
+   - 候補が0件（かつ入力あり）: 候補リスト内に「見つかりません」を表示（リスト自体は表示する）
+   - 入力が空欄: 候補リストを非表示
+4. タブキーの挙動はサジェスト表示状態によって異なる:
+   - **サジェスト非表示中**: タブキーで次の入力欄へフォーカスを移動する
+   - **サジェスト表示中**: タブキーで次の候補へフォーカスを移動し、Shift+タブで前の候補へ移動する。入力欄間の移動は行わない
+5. エンターキーで選択中の候補を確定し、`species` を OpponentPokemonDetail に渡す
+6. エスケープキーの挙動:
+   - **サジェスト表示中**: サジェストリストを閉じる。入力欄の値とフォーカスはそのまま保持する
+   - **サジェスト非表示中**: 何もしない
+
+> 括弧を含む名称（例: `ウーラオス（一撃）` / `ウーラオス（連撃）`）は `name` に括弧込みで保持するため、`ウーラオス（` まで入力することで区別可能。
 
 ---
 
-### OpponentDetail
+### OpponentPokemonDetail
 
-**責務**: 選択した相手ポケモンの基本情報と素早さ4パターンを表示する
+**責務**: 選択した相手ポケモンの基本情報と素早さ6パターンを表示する
 
 **表示項目**:
 - ポケモン名 / タイプ / 特性候補一覧
+  - タイプ: `DataLoader.getTypeName()` で日本語変換して表示
 - 種族値（H-A-B-C-D-S）
-- 素早さ4パターン（SpeedCalc が計算）
+- 素早さ6パターン（SpeedCalc が計算）: 「パターン名: 実数値」の形式で縦に並べて表示する
 
 **依存**: SpeedCalc
 
@@ -217,18 +875,39 @@ DataLoader
 **責務**: 火力指数を計算する純粋関数モジュール
 
 ```
-calcPowerIndex(move, pokemon, pokemonMaster) → number | null
+calcPowerIndex(move, actualStats, pokemonTypes, abilityModifier, itemModifier) → number | null
 ```
+
+- `abilityModifier`: `number` — 呼び出し側が `abilities.json` の condition を解決済みの最終倍率（例: 1.3）。条件不成立または該当なしの場合は 1.0
+- `itemModifier`: `number` — 呼び出し側が `items.json` の condition を解決済みの最終倍率（例: 1.2）。条件不成立または該当なしの場合は 1.0
 
 ---
 
 ### SpeedCalc
 
-**責務**: 素早さ4パターンを計算する純粋関数モジュール
+**責務**: 素早さ6パターンを計算する純粋関数モジュール
 
 ```
-calcSpeedPatterns(baseSpe) → { fastest, fast, neutral, slowest }
+calcSpeedPatterns(baseSpe) → { fastestScarf, fastScarf, fastest, fast, neutral, slowest }
 ```
+
+- 引数が `baseSpe`（種族値）のみなのは、「相手ポケモンの取りうる全パターンを一覧表示する」という用途のため。`abilityPoints`（0 or 最大値）、`natureModifier`（0.9 / 1.0 / 1.1）、スカーフ補正（1.5）は関数内で固定値として網羅し、外部から渡す必要がない
+- 自分パーティの実際の実数値を算出する `calcActualStats(baseStats, abilityPoints, natureModifiers)` とは目的が異なる（実測値1点 vs 全パターン4点）
+
+---
+
+### NameSearch
+
+**責務**: ポケモン名のひらがな/カタカナ正規化と前方一致検索を行う純粋関数モジュール（`src/logic/name-search.js`）
+
+```
+normalizeQuery(query) → string          ※ひらがな→カタカナ、半角カタカナ→全角カタカナに変換
+searchByName(query, entries) → PokedexEntry[]  ※正規化後のクエリで name に前方一致、図鑑番号順で最大10件を返す（件数制限・並び順の責務はこの関数が持つ）
+```
+
+- `DataLoader.searchByName()` はこのモジュールに委譲する
+- `SearchInput` は `DataLoader.searchByName()` 経由でこのモジュールを利用する
+- 正規化ロジックをロジックレイヤーに分離することで、単体テストを DOM なしで実行できる
 
 ---
 
@@ -241,7 +920,7 @@ sequenceDiagram
     participant User as ユーザー
     participant SI as SearchInput
     participant DL as DataLoader
-    participant OD as OpponentDetail
+    participant OD as OpponentPokemonDetail
     participant SC as SpeedCalc
 
     User->>SI: ポケモン名を入力（例: "ウー"）
@@ -249,11 +928,11 @@ sequenceDiagram
     DL-->>SI: 候補一覧（ウーラオス等）
     User->>SI: 候補を選択
     SI->>OD: species を渡す
-    OD->>DL: getPokemonBySpecies(species)
-    DL-->>OD: PokemonMaster
+    OD->>DL: getPokemonByName(name)
+    DL-->>OD: PokedexEntry
     OD->>SC: calcSpeedPatterns(baseSpe)
-    SC-->>OD: 素早さ4パターン
-    OD-->>User: 基本情報 + 素早さ4パターン表示
+    SC-->>OD: 素早さ6パターン
+    OD-->>User: 基本情報 + 素早さ6パターン表示
 ```
 
 ---
@@ -263,17 +942,17 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant PP as PartyPanel
-    participant OD as OwnDetail
+    participant PP as OwnPartyPanel
+    participant OD as OwnPokemonDetail
     participant PC as PowerIndexCalc
     participant DL as DataLoader
 
     User->>PP: ポケモンカードをクリック
     PP->>OD: 選択ポケモンを渡す
-    OD->>DL: getPokemonBySpecies(species)
-    DL-->>OD: PokemonMaster（技・タイプ情報）
+    OD->>DL: getPokemonByName(name)
+    DL-->>OD: PokedexEntry（技・タイプ情報）
     loop 各技
-        OD->>PC: calcPowerIndex(move, actualStats, pokemonMaster)
+        OD->>PC: calcPowerIndex(move, actualStats, pokemonTypes, abilityModifier, itemModifier)
         PC-->>OD: 火力指数
     end
     OD-->>User: 実数値 + 技一覧（技名: 火力指数）
@@ -288,10 +967,14 @@ stateDiagram-v2
     [*] --> 起動
     起動 --> パーティ画面: JSON読み込み完了
     起動 --> エラー表示: JSONが存在しない / 読み込み失敗
+    エラー表示 --> 起動: ファイル修正後リロード
 
     state パーティ画面 {
-        自パーティ一覧 --> 自分ポケモン詳細: ポケモン選択
-        自分ポケモン詳細 --> 自パーティ一覧: 戻る / 別ポケモン選択
+        state "自パーティ: 未選択（詳細非表示）" as OwnUnselected
+        state "自パーティ: 選択中（詳細表示）" as OwnSelected
+        [*] --> OwnUnselected
+        OwnUnselected --> OwnSelected: 初回ポケモン選択
+        OwnSelected --> OwnSelected: 別ポケモン選択（詳細更新）
 
         相手スロット一覧 --> サジェスト検索: スロットにフォーカス
         サジェスト検索 --> 相手ポケモン詳細: 候補を選択
@@ -324,74 +1007,113 @@ stateDiagram-v2
 
 特性補正:
   - 未定義の特性 → 1.0（デフォルト）
-  - 定義あり → party.json に補正値を記載（例: もうか → 1.5）
+  - 定義あり → マスターデータの abilities から参照（例: もうか → 1.5）
 
 持ち物補正:
   - 未定義の持ち物 → 1.0（デフォルト）
-  - 定義あり → party.json に補正値を記載（例: いのちのたま → 1.3）
+  - 定義あり → マスターデータの items から参照（例: いのちのたま → 1.3）
 
-威力の特殊ケース:
-  - 威力不定技（power = null） → 代替最大値を使用
-  - 複数回攻撃技 → 最大総威力で計算
+威力の特殊ケース（P0）:
+  - 威力不定技（power = null） → null を返す（「−」表示）。moves-power-patch.json で最大威力を定義した技は C# ツールが変換後の power を設定するため null にならない
+  - 複数回攻撃技 → C# ツールが Showdown の multihit[1]（最大ヒット数）を使って basePower × multihit[1] を moves.json の power として出力する
 ```
 
 **実装例**:
 
 ```js
+// status技・威力不定技（power: null）は null を返す（「−」表示）
 function calcPowerIndex(move, actualStats, pokemonTypes, abilityModifier, itemModifier) {
-  if (move.category === 'status') return null;
+  if (move.category === 'Status') return null;
+  if (move.power === null) return null;
 
-  const basePower = move.power ?? move.maxPower;
-  const attackStat = move.category === 'physical' ? actualStats.atk : actualStats.spa;
+  const attackStat = move.category === 'Physical' ? actualStats.atk : actualStats.spa;
+  // isStab特性（てきおうりょく等）の場合、呼び出し元がstab倍率を2.0として
+  // abilityModifierに反映済みのため、ここでは常に通常STAB倍率（1.5）を使用する
   const stab = pokemonTypes.includes(move.type) ? 1.5 : 1.0;
 
-  return basePower * attackStat * stab * abilityModifier * itemModifier;
+  return move.power * attackStat * stab * abilityModifier * itemModifier;
 }
 ```
 
 ---
 
-### 素早さ4パターン計算
+### 素早さ6パターン計算
 
-**目的**: 相手ポケモンが取りうる素早さの範囲を4パターンで表示し、先手・後手の判断を補助する
+**目的**: 相手ポケモンが取りうる素早さの範囲を6パターンで表示し、先手・後手の判断を補助する
 
-**計算式** (レベル50):
+**計算式** (Pokémon Champions):
 
 ```
-素早さ実数値 = floor( floor((2×種族値 + IV + floor(EV/4)) × 50/100) + 5 ) × 性格補正
+素早さ実数値 = floor((種族値 + 能力ポイント + 20) × 性格補正)
+スカーフ込み = floor(素早さ実数値 × 1.5)
 ```
 
-| パターン | IV | EV | 性格補正 |
-|---------|----|----|---------|
-| 最速     | 31 | 252 | 1.1 |
-| 準速     | 31 | 252 | 1.0 |
-| 無振り   | 31 | 0   | 1.0 |
-| 最遅     | 0  | 0   | 0.9 |
+| パターン | 能力ポイント | 性格補正 | 持ち物補正 |
+|---------|------------|---------|-----------|
+| 最速スカーフ | 32 | 1.1 | 1.5 |
+| 準速スカーフ | 32 | 1.0 | 1.5 |
+| 最速         | 32 | 1.1 | — |
+| 準速         | 32 | 1.0 | — |
+| 無振り       | 0  | 1.0 | — |
+| 最遅         | 0  | 0.9 | — |
+
+> 能力ポイントの範囲は 0〜32。スカーフ補正はベース実数値に対して floor を適用する。
 
 **実装例**:
 
 ```js
-function calcSpeed(baseSpe, iv, ev, natureModifier) {
-  return Math.floor(
-    Math.floor((2 * baseSpe + iv + Math.floor(ev / 4)) * 50 / 100 + 5) * natureModifier
-  );
+function calcSpeed(baseSpe, abilityPoints, natureModifier) {
+  return Math.floor((baseSpe + abilityPoints + 20) * natureModifier);
 }
 
 function calcSpeedPatterns(baseSpe) {
+  const fastest = calcSpeed(baseSpe, 32, 1.1);
+  const fast    = calcSpeed(baseSpe, 32, 1.0);
   return {
-    fastest:  calcSpeed(baseSpe, 31, 252, 1.1),
-    fast:     calcSpeed(baseSpe, 31, 252, 1.0),
-    neutral:  calcSpeed(baseSpe, 31,   0, 1.0),
-    slowest:  calcSpeed(baseSpe,  0,   0, 0.9),
+    fastestScarf: Math.floor(fastest * 1.5),
+    fastScarf:    Math.floor(fast    * 1.5),
+    fastest,
+    fast,
+    neutral:  calcSpeed(baseSpe, 0, 1.0),
+    slowest:  calcSpeed(baseSpe, 0, 0.9),
   };
 }
 ```
 
 ---
 
+### 実数値計算式
+
+Pokémon Champions における全能力値の計算式。自分パーティの実数値（`OwnPokemonDetail` 表示・火力指数計算に使用）と相手ポケモンの素早さ6パターン計算の両方で使用する。
+
+```
+最大HP              = 種族値 + 能力ポイント + 75
+攻撃・防御・特攻・特防・素早さ = floor((種族値 + 能力ポイント + 20) × 性格補正)
+```
+
+- 能力ポイント: 0〜32
+- 性格補正: 1.1（上昇）/ 1.0（無補正）/ 0.9（下降）
+- レベル補正・IV・EVは存在しない（従来のメインシリーズとは異なる）
+
+実装は `src/logic/calc-actual-stats.js` の純粋関数として提供する:
+
+```
+calcActualStats(baseStats, abilityPoints, natureModifiers) → { hp, atk, def, spa, spd, spe }
+```
+
+- `baseStats`: `pokedex.json` の `baseStats` オブジェクト
+- `abilityPoints`: `party.json` の `abilityPoints` オブジェクト
+- `natureModifiers`: `DataLoader.getNatureModifiers()` の戻り値（`{ atk: 1.1 }` 等。補正なしステータスはキーなし）
+
+---
+
 ## UI設計
 
 ### レイアウト
+
+対象環境: PCブラウザ（Chrome最新版）。モバイル対応はスコープ外。
+
+**初期状態（自分ポケモン未選択）**:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -403,7 +1125,27 @@ function calcSpeedPatterns(baseSpe) {
 │  │ タイプ │ │ タイプ │ │ タイプ │  ┌─────────────────────┐ │
 │  └──────┘ └──────┘ └──────┘  │ [相手ポケモン詳細]      │ │
 │  ┌──────┐ ┌──────┐ ┌──────┐  │ 種族値 / 特性候補      │ │
-│  │ ポケモン│ │ ポケモン│ │ ポケモン│  │ 素早さ4パターン       │ │
+│  │ ポケモン│ │ ポケモン│ │ ポケモン│  │ 素早さ6パターン       │ │
+│  └──────┘ └──────┘ └──────┘  └─────────────────────┘ │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+> 相手ポケモン詳細パネルは、いずれかのスロットで種族名が確定するまで空状態（何も表示しない）とする。
+
+**自分ポケモン選択後**（カード一覧はそのまま残し、画面下部に詳細パネルを展開する）:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  [自分パーティ]               [相手パーティ]              │
+│                                                         │
+│  ┌──────┐ ┌──────┐ ┌──────┐  □______ □______ □______  │
+│  │*選択中*│ │ ポケモン│ │ ポケモン│  □______ □______ □______  │
+│  │  名前  │ │  名前  │ │  名前  │                         │
+│  │ タイプ │ │ タイプ │ │ タイプ │  ┌─────────────────────┐ │
+│  └──────┘ └──────┘ └──────┘  │ [相手ポケモン詳細]      │ │
+│  ┌──────┐ ┌──────┐ ┌──────┐  │ 種族値 / 特性候補      │ │
+│  │ ポケモン│ │ ポケモン│ │ ポケモン│  │ 素早さ6パターン       │ │
 │  └──────┘ └──────┘ └──────┘  └─────────────────────┘ │
 │                                                         │
 │  ┌──────────────────────────┐                           │
@@ -429,9 +1171,48 @@ function calcSpeedPatterns(baseSpe) {
 ## ファイル構造
 
 ```
+src/
+├── main.js                    # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
+├── data/
+│   └── loader.js              # JSON読み込み・キャッシュ（DataLoader）
+├── logic/
+│   ├── power-index-calc.js    # 火力指数計算（純粋関数）
+│   ├── speed-calc.js          # 素早さ6パターン計算（純粋関数）
+│   ├── name-search.js         # ひらがな/カタカナ正規化・前方一致検索（純粋関数）
+│   └── calc-actual-stats.js   # 実数値計算（純粋関数）
+└── ui/
+    ├── own-party-panel.js         # OwnPartyPanel: 自分パーティ一覧
+    ├── own-pokemon-detail.js      # OwnPokemonDetail: 自分ポケモン詳細
+    ├── opponent-party-panel.js    # OpponentPartyPanel: 相手パーティ入力
+    ├── opponent-pokemon-detail.js # OpponentPokemonDetail: 相手ポケモン詳細
+    └── search-input.js            # SearchInput: サジェスト検索入力
+
 data/
-├── pokemon-data.json   # C# ツールが生成するマスターデータ
-└── party.json          # ユーザーが手編集する自分パーティ定義
+├── pokedex.json        # C# ツールが生成: ポケモン図鑑データ（最終出力）
+├── moves.json          # C# ツールが生成: 技データ（最終出力）
+├── items.json          # C# ツールが生成: 持ち物補正データ（最終出力）
+├── abilities.json      # C# ツールが生成: 特性補正データ（最終出力）
+├── types.json          # 手書き管理: タイプ名日本語変換マップ
+├── move-categories.json # 手書き管理: 技分類日本語変換マップ
+├── natures.json         # 手書き管理: 性格補正倍率マップ
+└── party.json           # ユーザーが手編集: 自分パーティ定義
+
+cache/                  # C# ツールの中間データ（gitignore対象）
+├── showdown-pokedex.json    # Showdownから取得した英語データ（変換なし）
+├── showdown-moves.json      # Showdownから取得した英語データ（変換なし）
+├── showdown-items.json      # Showdownから取得した英語データ（変換なし）
+├── showdown-abilities.json  # Showdownから取得した英語データ（変換なし）
+├── pokeapi-translations.json  # PokéAPIから取得した日本語翻訳データ（独立保持）
+└── checksums.json             # showdown-*.json / pokeapi-translations.json / champions-patch.json / moves-power-patch.json のハッシュ値（増分実行用）
+
+tools/
+└── PokelensTools/
+    ├── PokelensTools.csproj
+    ├── Program.cs
+    ├── champions-patch.json      # 手動管理: Champions差分パッチ
+    ├── moves-power-patch.json    # 手動管理: 威力不定技（power: null）の最大威力定義（複数回攻撃技はC#自動計算のため対象外）
+    ├── items-modifiers.json      # 手動管理: 持ち物補正値定義（Showdown英語キー）
+    └── abilities-modifiers.json  # 手動管理: 特性補正値定義（Showdown英語キー）
 ```
 
 ---
@@ -441,9 +1222,13 @@ data/
 | エラー種別 | 処理 | ユーザーへの表示 |
 |-----------|------|-----------------|
 | `party.json` が見つからない | 起動を中断 | 「party.json が見つかりません」 |
-| `pokemon-data.json` が見つからない | 起動を中断 | 「pokemon-data.json が見つかりません。C# ツールを実行してください」 |
-| 技名がマスターデータに存在しない | 補正値1.0として計算を継続 | （ユーザーへの表示なし） |
-| ポケモン名入力で候補なし | 候補一覧を非表示 | 「見つかりません」 |
+| `party.json` の構文が不正 | 起動を中断 | 「party.json の形式が正しくありません。JSONを確認してください」 |
+| `party.json` の各エントリに必須フィールド（`species`・`nature`・`abilityPoints`・`moves`）が欠落 | 起動を中断 | 「party.json の形式が正しくありません。JSONを確認してください」 |
+| `pokedex.json` / `moves.json` / `items.json` / `abilities.json` が見つからない | 起動を中断 | 「データファイルが見つかりません。C# ツールを実行してください」 |
+| `types.json` / `move-categories.json` / `natures.json` が見つからない | 起動を中断 | 「[ファイル名] が見つかりません。リポジトリを確認してください」 |
+| `party.json` の `species` が `pokedex.json` に存在しない | 該当スロットをエラー表示して起動を継続（他スロットは正常表示） | 該当スロットに「不明なポケモン: [species名]」を表示 |
+| 技名が `moves.json` に存在しない | 補正値1.0として計算を継続。技一覧のタイプ・威力・命中率・分類欄は `−` を表示し、火力指数も `−` とする | 技名はそのまま表示し、データ欄のみ `−` |
+| ポケモン名入力で候補なし | 候補リスト内に「見つかりません」を表示（リストは表示したまま） | 「見つかりません」 |
 | 空欄のスロット選択 | 何もしない | — |
 
 ---
@@ -453,11 +1238,31 @@ data/
 ### ユニットテスト
 
 - `calcPowerIndex`: 物理技・特殊技・変化技・威力不定技・補正なしのケース
-- `calcSpeedPatterns`: 素早さ種族値を変えた4パターン計算の正確性
-- `searchByName`: ひらがな/カタカナ混在クエリの正規化と前方一致
+- `calcSpeedPatterns`: 素早さ種族値を変えた6パターン計算の正確性（スカーフパターンのfloor適用順序を含む）
+- `calcActualStats`: HP・各能力値の計算式、性格補正の上昇・下降・無補正ケース
+- `searchByName` / `normalizeQuery`: ひらがな/カタカナ混在クエリの正規化と前方一致
 - `DataLoader.load`: 正常系 / ファイル不存在時のエラー
 
 ### 統合テスト
 
-- `party.json` → DataLoader → OwnPokemonDetail の火力指数表示フロー
-- ポケモン名入力 → サジェスト → 相手詳細表示フロー
+UIレイヤーを含まないデータフローを対象とし、Vitest（JSDOMなし）で実行する。
+
+- `party.json` → DataLoader → `calcActualStats` → `calcPowerIndex` の火力指数算出フロー
+- `DataLoader.searchByName` → `NameSearch.searchByName` のサジェスト検索フロー
+
+### C# ツールのテスト方針
+
+テストフレームワーク: xUnit（`tools/PokelensTools.Tests/` プロジェクト）
+
+**ユニットテスト対象**:
+- MergeConverter: モックJSONを入力として `pokedex.json` / `moves.json` の出力内容を検証
+- パッチ適用ロジック: `champions-patch.json` の上書きマージ・`moves-power-patch.json` の `power` 上書きが正しく適用されるか
+- 増分実行判定: ハッシュ比較によるスキップ条件（変化あり / 変化なし / 初回起動）の各ケース
+- 日本語キー変換: `pokeapi-translations.json` を用いたShowdown英語キー → 日本語キーへの変換ロジック
+
+**統合テスト対象**:
+- パイプライン全体: フィクスチャとして用意したモックJSONセットを入力し、`data/*.json` の最終出力内容をスナップショットテストで検証する
+
+### カバレッジ目標
+
+ロジックレイヤー（`calcPowerIndex`・`calcSpeedPatterns`・`searchByName` など）は 80% 以上を維持する（詳細は `docs/architecture.md` のテスト戦略を参照）。
