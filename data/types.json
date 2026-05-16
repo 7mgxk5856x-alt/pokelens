@@ -1,0 +1,20 @@
+{
+  "Normal":   "ノーマル",
+  "Fire":     "ほのお",
+  "Water":    "みず",
+  "Electric": "でんき",
+  "Grass":    "くさ",
+  "Ice":      "こおり",
+  "Fighting": "かくとう",
+  "Poison":   "どく",
+  "Ground":   "じめん",
+  "Flying":   "ひこう",
+  "Psychic":  "エスパー",
+  "Bug":      "むし",
+  "Rock":     "いわ",
+  "Ghost":    "ゴースト",
+  "Dragon":   "ドラゴン",
+  "Dark":     "あく",
+  "Steel":    "はがね",
+  "Fairy":    "フェアリー"
+}
