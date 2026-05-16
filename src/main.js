@@ -1,5 +1,6 @@
 import { DataLoader } from './data/loader.js';
 import { OwnPartyPanel } from './ui/own-party-panel.js';
+import { OwnPokemonDetail } from './ui/own-pokemon-detail.js';
 
 async function init() {
   const errorEl = document.getElementById('error-message');
@@ -17,8 +18,10 @@ async function init() {
     return;
   }
 
-  new OwnPartyPanel(ownPartyEl, data.userParty.party, loader, (_entry, _pokemonData) => {
-    ownDetailEl.style.display = 'block';
+  const ownDetail = new OwnPokemonDetail(ownDetailEl, loader);
+
+  new OwnPartyPanel(ownPartyEl, data.userParty.party, loader, (entry) => {
+    ownDetail.update(entry);
   });
 }
 
