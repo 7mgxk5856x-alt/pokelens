@@ -25,7 +25,9 @@ pokelens/
 │   │   ├── champions-patch.json †
 │   │   ├── moves-power-patch.json †
 │   │   ├── items-modifiers.json †
-│   │   └── abilities-modifiers.json †
+│   │   ├── abilities-modifiers.json †
+│   │   ├── pokemon-name-patch.json †
+│   │   └── item-name-patch.json †
 │   └── PokelensTools.Tests/ †      # xUnit テストプロジェクト
 │       └── PokelensTools.Tests.csproj †
 ├── cache/ †                        # C# ツールの中間データ（gitignore対象）
@@ -197,7 +199,9 @@ tools/
 │   ├── champions-patch.json        # 手動管理: Champions差分パッチ（git管理対象）
 │   ├── moves-power-patch.json      # 手動管理: 威力不定技の最大威力定義（git管理対象）
 │   ├── items-modifiers.json        # 手動管理: 持ち物補正値定義（git管理対象）
-│   └── abilities-modifiers.json    # 手動管理: 特性補正値定義（git管理対象）
+│   ├── abilities-modifiers.json    # 手動管理: 特性補正値定義（git管理対象）
+│   ├── pokemon-name-patch.json     # 手動管理: ポケモン日本語名の上書き（フォルム一意化用、git管理対象）
+│   └── item-name-patch.json        # 手動管理: 持ち物日本語名の上書き（PokéAPI欠落補完用、git管理対象）
 └── PokelensTools.Tests/            # xUnit テストプロジェクト
     └── PokelensTools.Tests.csproj
 ```
@@ -218,7 +222,7 @@ tools/
 - `showdown-items.json`: Showdown から取得した英語持ち物データ（変換なし）
 - `showdown-abilities.json`: Showdown から取得した英語特性データ（変換なし）
 - `pokeapi-translations.json`: PokéAPI から取得した日本語翻訳データ
-- `checksums.json`: 増分実行用ハッシュ値（`showdown-*.json` / `pokeapi-translations.json` / `champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` の前回実行時ハッシュを保持）
+- `checksums.json`: 増分実行用ハッシュ値（`showdown-*.json` / `pokeapi-translations.json` / `champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` / `pokemon-name-patch.json` / `item-name-patch.json` の前回実行時ハッシュを保持）
 
 ```
 cache/

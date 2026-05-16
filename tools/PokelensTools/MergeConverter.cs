@@ -25,6 +25,8 @@ public static class MergeConverter
         string movesPowerPatchPath,
         string itemsModifiersPath,
         string abilitiesModifiersPath,
+        string pokemonNamePatchPath,
+        string itemNamePatchPath,
         string dataDir)
     {
         Directory.CreateDirectory(dataDir);
@@ -43,6 +45,12 @@ public static class MergeConverter
         var abilitiesModifiers = File.Exists(abilitiesModifiersPath)
             ? JsonNode.Parse(File.ReadAllText(abilitiesModifiersPath))?.AsObject() ?? new JsonObject()
             : new JsonObject();
+        var pokemonNamePatch = File.Exists(pokemonNamePatchPath)
+            ? JsonNode.Parse(File.ReadAllText(pokemonNamePatchPath))?.AsObject() ?? new JsonObject()
+            : new JsonObject();
+        var itemNamePatch = File.Exists(itemNamePatchPath)
+            ? JsonNode.Parse(File.ReadAllText(itemNamePatchPath))?.AsObject() ?? new JsonObject()
+            : new JsonObject();
 
         var pokemonNames = translations["pokemon"]?.AsObject() ?? new JsonObject();
         var moveNames = translations["moves"]?.AsObject() ?? new JsonObject();
@@ -51,7 +59,7 @@ public static class MergeConverter
 
         File.WriteAllText(
             Path.Combine(dataDir, "pokedex.json"),
-            JsonHelpers.ToIndentedJson(ConvertPokedex(pokedex, pokemonNames, abilityNames)));
+            JsonHelpers.ToIndentedJson(ConvertPokedex(pokedex, pokemonNames, abilityNames, pokemonNamePatch)));
 
         File.WriteAllText(
             Path.Combine(dataDir, "moves.json"),
@@ -59,7 +67,7 @@ public static class MergeConverter
 
         File.WriteAllText(
             Path.Combine(dataDir, "items.json"),
-            JsonHelpers.ToIndentedJson(ConvertItems(itemsModifiers, itemNames)));
+            JsonHelpers.ToIndentedJson(ConvertItems(itemsModifiers, itemNames, itemNamePatch)));
 
         File.WriteAllText(
             Path.Combine(dataDir, "abilities.json"),
@@ -69,7 +77,8 @@ public static class MergeConverter
     public static JsonObject ConvertPokedex(
         JsonObject showdownPokedex,
         JsonObject pokemonNames,
-        JsonObject abilityNames)
+        JsonObject abilityNames,
+        JsonObject pokemonNamePatch)
     {
         var result = new JsonObject();
 
@@ -80,6 +89,14 @@ public static class MergeConverter
             if (!pokemonNames.TryGetPropertyValue(key, out var nameNode)) continue;
             var jaName = nameNode?.GetValue<string>();
             if (string.IsNullOrEmpty(jaName)) continue;
+
+            if (pokemonNamePatch.TryGetPropertyValue(key, out var patchNode)
+                && patchNode is JsonValue patchVal
+                && patchVal.TryGetValue<string>(out var patchName)
+                && !string.IsNullOrEmpty(patchName))
+            {
+                jaName = patchName;
+            }
 
             var abilitiesSlots = entry["abilities"]?.AsObject();
             var abilitiesList = new JsonArray();
@@ -119,6 +136,7 @@ public static class MergeConverter
         foreach (var (key, val) in showdownMoves)
         {
             if (val is not JsonObject entry) continue;
+            if (entry["isZ"] != null || entry["isMax"] != null) continue;
 
             if (!moveNames.TryGetPropertyValue(key, out var nameNode)) continue;
             var jaName = nameNode?.GetValue<string>();
@@ -185,14 +203,27 @@ public static class MergeConverter
         return result;
     }
 
-    public static JsonObject ConvertItems(JsonObject itemsModifiers, JsonObject itemNames)
+    public static JsonObject ConvertItems(
+        JsonObject itemsModifiers,
+        JsonObject itemNames,
+        JsonObject itemNamePatch)
     {
         var result = new JsonObject();
 
         foreach (var (showdownKey, modifierEntry) in itemsModifiers)
         {
-            if (!itemNames.TryGetPropertyValue(showdownKey, out var nameNode)) continue;
-            var jaName = nameNode?.GetValue<string>();
+            string? jaName = null;
+            if (itemNamePatch.TryGetPropertyValue(showdownKey, out var patchNode)
+                && patchNode is JsonValue patchVal
+                && patchVal.TryGetValue<string>(out var patchName)
+                && !string.IsNullOrEmpty(patchName))
+            {
+                jaName = patchName;
+            }
+            else if (itemNames.TryGetPropertyValue(showdownKey, out var nameNode))
+            {
+                jaName = nameNode?.GetValue<string>();
+            }
             if (string.IsNullOrEmpty(jaName)) continue;
             result[jaName] = modifierEntry?.DeepClone();
         }

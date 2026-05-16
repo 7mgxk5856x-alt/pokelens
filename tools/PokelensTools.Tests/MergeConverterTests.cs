@@ -110,14 +110,14 @@ public class MergeConverterTests
     [Fact]
     public void ConvertPokedex_JapaneseName()
     {
-        var result = MergeConverter.ConvertPokedex(MakePokedex(), MakePokeapiNames(), MakeAbilityNames());
+        var result = MergeConverter.ConvertPokedex(MakePokedex(), MakePokeapiNames(), MakeAbilityNames(), new JsonObject());
         Assert.Equal("ピカチュウ", result["pikachu"]!["name"]!.GetValue<string>());
     }
 
     [Fact]
     public void ConvertPokedex_Abilities_JapaneseAndSlotOrder()
     {
-        var result = MergeConverter.ConvertPokedex(MakePokedex(), MakePokeapiNames(), MakeAbilityNames());
+        var result = MergeConverter.ConvertPokedex(MakePokedex(), MakePokeapiNames(), MakeAbilityNames(), new JsonObject());
         var abilities = result["pikachu"]!["abilities"]!.AsArray();
         // Slot "0" = Static → "せいでんき", slot "1" absent, slot "H" = Lightning Rod → "ひらいしん"
         Assert.Equal(2, abilities.Count);
@@ -138,11 +138,60 @@ public class MergeConverterTests
                 ["abilities"] = new JsonObject(),
             },
         };
-        var result = MergeConverter.ConvertPokedex(pokedex, new JsonObject(), new JsonObject());
+        var result = MergeConverter.ConvertPokedex(pokedex, new JsonObject(), new JsonObject(), new JsonObject());
         Assert.Empty(result);
     }
 
+    [Fact]
+    public void ConvertPokedex_NamePatch_OverridesTranslation()
+    {
+        var patch = new JsonObject { ["pikachu"] = "パートナーピカチュウ" };
+        var result = MergeConverter.ConvertPokedex(MakePokedex(), MakePokeapiNames(), MakeAbilityNames(), patch);
+        Assert.Equal("パートナーピカチュウ", result["pikachu"]!["name"]!.GetValue<string>());
+    }
+
     // ---------- ConvertMoves ----------
+
+    [Fact]
+    public void ConvertMoves_ZMoveAndMaxMove_Excluded()
+    {
+        var moves = new JsonObject
+        {
+            ["aciddownpour"] = new JsonObject
+            {
+                ["num"] = 628, ["name"] = "Acid Downpour",
+                ["type"] = "Poison", ["category"] = "Physical",
+                ["basePower"] = 1, ["accuracy"] = JsonValue.Create(true),
+                ["flags"] = new JsonObject(),
+                ["isZ"] = JsonValue.Create(true),
+            },
+            ["gmaxfireball"] = new JsonObject
+            {
+                ["num"] = 1000, ["name"] = "G-Max Fireball",
+                ["type"] = "Fire", ["category"] = "Physical",
+                ["basePower"] = 160, ["accuracy"] = JsonValue.Create(true),
+                ["flags"] = new JsonObject(),
+                ["isMax"] = JsonValue.Create(true),
+            },
+            ["thunderbolt"] = new JsonObject
+            {
+                ["num"] = 85, ["name"] = "Thunderbolt",
+                ["type"] = "Electric", ["category"] = "Special",
+                ["basePower"] = 90, ["accuracy"] = (JsonNode)100,
+                ["flags"] = new JsonObject(),
+            },
+        };
+        var names = new JsonObject
+        {
+            ["aciddownpour"] = "アシッドポイズンデリート",
+            ["gmaxfireball"] = "キョダイホノオダマ",
+            ["thunderbolt"] = "10まんボルト",
+        };
+        var result = MergeConverter.ConvertMoves(moves, names, new JsonObject());
+        Assert.False(result.ContainsKey("アシッドポイズンデリート"));
+        Assert.False(result.ContainsKey("キョダイホノオダマ"));
+        Assert.True(result.ContainsKey("10まんボルト"));
+    }
 
     [Fact]
     public void ConvertMoves_BasePower0_PowerNull()
@@ -234,7 +283,7 @@ public class MergeConverterTests
         };
         var itemNames = new JsonObject { ["choicescarf"] = "こだわりスカーフ" };
 
-        var result = MergeConverter.ConvertItems(modifiers, itemNames);
+        var result = MergeConverter.ConvertItems(modifiers, itemNames, new JsonObject());
 
         Assert.True(result.ContainsKey("こだわりスカーフ"));
         Assert.False(result.ContainsKey("choicescarf"));
@@ -247,8 +296,34 @@ public class MergeConverterTests
         {
             ["unknown_item"] = new JsonObject { ["modifier"] = new JsonObject { ["atk"] = 1.5 } },
         };
-        var result = MergeConverter.ConvertItems(modifiers, new JsonObject());
+        var result = MergeConverter.ConvertItems(modifiers, new JsonObject(), new JsonObject());
         Assert.Empty(result);
+    }
+
+    [Fact]
+    public void ConvertItems_NamePatch_OverridesTranslation()
+    {
+        var modifiers = new JsonObject
+        {
+            ["masterpieceteacup"] = new JsonObject { ["modifier"] = new JsonObject() },
+        };
+        var itemNames = new JsonObject { ["masterpieceteacup"] = "ボンサクのちゃわん" };
+        var patch = new JsonObject { ["masterpieceteacup"] = "ケッサクのちゃわん" };
+        var result = MergeConverter.ConvertItems(modifiers, itemNames, patch);
+        Assert.True(result.ContainsKey("ケッサクのちゃわん"));
+        Assert.False(result.ContainsKey("ボンサクのちゃわん"));
+    }
+
+    [Fact]
+    public void ConvertItems_NamePatch_FillsMissingTranslation()
+    {
+        var modifiers = new JsonObject
+        {
+            ["metalalloy"] = new JsonObject { ["modifier"] = new JsonObject() },
+        };
+        var patch = new JsonObject { ["metalalloy"] = "ふくごうきんぞく" };
+        var result = MergeConverter.ConvertItems(modifiers, new JsonObject(), patch);
+        Assert.True(result.ContainsKey("ふくごうきんぞく"));
     }
 
     // ---------- ConvertAbilities ----------

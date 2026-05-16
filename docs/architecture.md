@@ -88,13 +88,17 @@ pokelens は2つの独立したサブシステムで構成される:
 
 ```
 [Step 1] ShowdownFetcher  →  cache/showdown-*.json        （英語のまま保持。翻訳なし）
+                                                            ※ `isNonstandard` のアイテム・特性、`isZ`/`isMax` の技は取得時点で除外
 [Step 2] PokeAPIFetcher   →  cache/pokeapi-translations.json  （日本語翻訳のみ。独立保持）
+                                                              ※ ポケモンはフォルム認識 (`pokemon-form` API + species 補完)、
+                                                                 アイテムは slug ベース lookup
 [Step 3] champions-patch.json 適用  →  Showdown中間データを上書き
 [Step 4] MergeConverter   →  data/pokedex.json            （最終出力: 両データをマージ）
                           →  data/moves.json
                           →  data/items.json
                           →  data/abilities.json
-         ※入力: showdown-*.json + pokeapi-translations.json + items-modifiers.json + abilities-modifiers.json + moves-power-patch.json
+         ※入力: showdown-*.json + pokeapi-translations.json + items-modifiers.json + abilities-modifiers.json
+              + moves-power-patch.json + pokemon-name-patch.json + item-name-patch.json
 ```
 
 **増分実行**:
@@ -107,6 +111,7 @@ pokelens は2つの独立したサブシステムで構成される:
 | `champions-patch.json` のみ | Step3 以降を実行 |
 | `moves-power-patch.json` のみ | Step4 のみ実行 |
 | `items-modifiers.json` または `abilities-modifiers.json` のみ | Step4 のみ実行 |
+| `pokemon-name-patch.json` または `item-name-patch.json` のみ | Step4 のみ実行 |
 | 変化なし | 全ステップスキップ |
 
 詳細（複数ファイルが同時に変化した場合の判定ロジック等）は機能設計書「増分実行の仕組み（ハッシュ比較）」を参照。
@@ -155,7 +160,7 @@ sequenceDiagram
     CS->>CA: showdown-*.json に champions-patch.json を上書きマージ
 
     Note over CA,FS: Step4: 最終出力生成（英語→日本語変換はここでのみ）
-    CS->>CA: showdown-*.json + pokeapi-translations.json + items-modifiers.json + abilities-modifiers.json + moves-power-patch.json を読み込み
+    CS->>CA: showdown-*.json + pokeapi-translations.json + items-modifiers.json + abilities-modifiers.json + moves-power-patch.json + pokemon-name-patch.json + item-name-patch.json を読み込み
     CS->>FS: pokedex.json / moves.json / items.json / abilities.json を生成
 
     Note over FS,UI: 対戦時（ブラウザ起動）
@@ -194,7 +199,9 @@ tools/                     # C# データ準備ツール
 │   ├── champions-patch.json      # 手動管理: Champions差分パッチ
 │   ├── moves-power-patch.json    # 手動管理: 威力不定技（power: null）の最大威力定義
 │   ├── items-modifiers.json      # 手動管理: 持ち物補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
-│   └── abilities-modifiers.json  # 手動管理: 特性補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
+│   ├── abilities-modifiers.json  # 手動管理: 特性補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
+│   ├── pokemon-name-patch.json   # 手動管理: ポケモン日本語名の上書き（PokéAPIでフォルム名が一意化されない場合の補正）
+│   └── item-name-patch.json      # 手動管理: 持ち物日本語名の上書き（PokéAPIにない/誤訳されている場合の補正）
 └── PokelensTools.Tests/          # xUnit テストプロジェクト
     └── PokelensTools.Tests.csproj
 

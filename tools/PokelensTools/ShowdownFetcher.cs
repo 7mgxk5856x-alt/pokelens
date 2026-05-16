@@ -35,7 +35,7 @@ public static class ShowdownFetcher
             var baseStats = entry["baseStats"]?.AsObject();
             if (baseStats == null) continue;
 
-            filtered[key] = new JsonObject
+            var filteredEntry = new JsonObject
             {
                 ["num"] = num,
                 ["name"] = entry["name"]?.GetValue<string>(),
@@ -51,6 +51,11 @@ public static class ShowdownFetcher
                 },
                 ["abilities"] = entry["abilities"]?.DeepClone(),
             };
+
+            var forme = entry["forme"]?.GetValue<string>();
+            if (!string.IsNullOrEmpty(forme)) filteredEntry["forme"] = forme;
+
+            filtered[key] = filteredEntry;
         }
 
         File.WriteAllText(
@@ -88,6 +93,12 @@ public static class ShowdownFetcher
             var recoil = entry["recoil"];
             if (recoil != null) moveEntry["recoil"] = JsonValue.Create(true);
 
+            var isZ = entry["isZ"];
+            if (isZ != null) moveEntry["isZ"] = JsonValue.Create(true);
+
+            var isMax = entry["isMax"];
+            if (isMax != null) moveEntry["isMax"] = JsonValue.Create(true);
+
             filtered[key] = moveEntry;
         }
 
@@ -108,7 +119,12 @@ public static class ShowdownFetcher
             if (val is not JsonObject entry) continue;
             var num = entry["num"]?.GetValue<int>() ?? 0;
             if (num <= 0) continue;
-            filtered[key] = new JsonObject { ["num"] = num };
+            if (entry["isNonstandard"] != null) continue;
+            filtered[key] = new JsonObject
+            {
+                ["num"] = num,
+                ["name"] = entry["name"]?.GetValue<string>(),
+            };
         }
 
         File.WriteAllText(
@@ -128,6 +144,7 @@ public static class ShowdownFetcher
             if (val is not JsonObject entry) continue;
             var num = entry["num"]?.GetValue<int>() ?? 0;
             if (num <= 0) continue;
+            if (entry["isNonstandard"] != null) continue;
             filtered[key] = new JsonObject { ["num"] = num };
         }
 

@@ -1,0 +1,52 @@
+{
+  "_comment": "Override JP names for Showdown formes that PokéAPI cannot uniquely identify. Key = Showdown key, value = JP name. Applied in MergeConverter.ConvertPokedex after PokéAPI translation lookup.",
+
+  "taurospaldeacombat": "ケンタロス (パルデアのすがた・コンバット種)",
+  "taurospaldeablaze": "ケンタロス (パルデアのすがた・ブレイズ種)",
+  "taurospaldeaaqua": "ケンタロス (パルデアのすがた・アクア種)",
+
+  "darmanitangalarzen": "ヒヒダルマ (ガラルのすがた・ダルマモード)",
+
+  "greninjabond": "ゲッコウガ (バトルボンド)",
+
+  "ogerpontealtera": "オーガポン (みどりのめん・テラスタル)",
+  "ogerponwellspringtera": "オーガポン (いどのめん・テラスタル)",
+  "ogerponhearthflametera": "オーガポン (かまどのめん・テラスタル)",
+  "ogerponcornerstonetera": "オーガポン (いしずえのめん・テラスタル)",
+
+  "meowsticmmega": "メガニャオニクス♂",
+  "meowsticfmega": "メガニャオニクス♀",
+  "tatsugiricurlymega": "メガシャリタツ (そったすがた)",
+  "tatsugiridroopymega": "メガシャリタツ (たれたすがた)",
+  "tatsugiristretchymega": "メガシャリタツ (のびたすがた)",
+  "magearnaoriginalmega": "メガマギアナ (500ねんまえのいろ)",
+
+  "minior": "メテノ (コアのすがた)",
+  "miniormeteor": "メテノ (りゅうせいのすがた)",
+
+  "pichuspikyeared": "ギザみみピチュー",
+
+  "pikachustarter": "ピカチュウ (パートナー)",
+  "eeveestarter": "イーブイ (パートナー)",
+
+  "vivillonpokeball": "ビビヨン (モンスターボールがら)",
+  "rockruffdusk": "イワンコ (たそがれのすがた)",
+
+  "raticatealolatotem": "ラッタ (アローラのすがた・ぬしポケモン)",
+  "marowakalolatotem": "ガラガラ (アローラのすがた・ぬしポケモン)",
+  "gumshoostotem": "デカグース (ぬしポケモン)",
+  "vikavolttotem": "クワガノン (ぬしポケモン)",
+  "ribombeetotem": "アブリボン (ぬしポケモン)",
+  "araquanidtotem": "オニシズクモ (ぬしポケモン)",
+  "lurantistotem": "ラランテス (ぬしポケモン)",
+  "salazzletotem": "エンニュート (ぬしポケモン)",
+  "togedemarutotem": "トゲデマル (ぬしポケモン)",
+  "mimikyutotem": "ミミッキュ (ぬしポケモン)",
+  "mimikyubustedtotem": "ミミッキュ (ばれたすがた・ぬしポケモン)",
+  "kommoototem": "ジャラランガ (ぬしポケモン)",
+
+  "urshifugmax": "ウーラオス (キョダイマックスのすがた)",
+  "toxtricitygmax": "ストリンダー (キョダイマックスのすがた)",
+
+  "mausholdfour": "イッカネズミ (4ぴきかぞく)"
+}
