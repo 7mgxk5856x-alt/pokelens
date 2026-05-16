@@ -27,4 +27,7 @@ coverage/
 tools/**/bin/
 tools/**/obj/
 
+# .NET runfile discovery cache
+dotnet/
+
 .claude/settings.local.json
