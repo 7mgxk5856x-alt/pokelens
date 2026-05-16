@@ -23,4 +23,8 @@ data/abilities.json
 # Test coverage
 coverage/
 
+# .NET build output
+tools/**/bin/
+tools/**/obj/
+
 .claude/settings.local.json
