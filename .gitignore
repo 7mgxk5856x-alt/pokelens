@@ -31,3 +31,4 @@ tools/**/obj/
 dotnet/
 
 .claude/settings.local.json
+.claude/scheduled_tasks.lock

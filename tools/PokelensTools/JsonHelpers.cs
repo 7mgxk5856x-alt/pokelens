@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -6,7 +7,11 @@ namespace PokelensTools;
 
 internal static class JsonHelpers
 {
-    private static readonly JsonWriterOptions IndentedWriterOptions = new() { Indented = true };
+    private static readonly JsonWriterOptions IndentedWriterOptions = new()
+    {
+        Indented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     public static string ToIndentedJson(JsonNode node)
     {
