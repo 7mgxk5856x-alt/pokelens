@@ -1,2 +1,31 @@
 {
+  "_comment_format": "{ <showdown-key>: { \"modifier\": <resolveModifierが解釈するオブジェクト> } } / 火力補正がない特性はエントリを作らない / condition の意味は src/logic/resolve-modifier.js を参照",
+  "_comment_policy": "発動が「相手から受けた後」「天候」「ピンチHP」など戦況条件の特性も、火力指数は最大火力指向のため発動済みとして常時補正をかける。タイプ・技タグで判定可能な補正のみ扱う。",
+
+  "hugepower":      { "modifier": { "atk": 2.0 } },
+  "purepower":      { "modifier": { "atk": 2.0 } },
+  "gorillatactics": { "modifier": { "atk": 1.5 } },
+  "hustle":         { "modifier": { "atk": 1.5 } },
+
+  "adaptability":   { "modifier": { "stab": 2.0, "condition": "isStab" } },
+
+  "blaze":          { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Fire" } },
+  "torrent":        { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Water" } },
+  "overgrow":       { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Grass" } },
+  "swarm":          { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Bug" } },
+  "flashfire":      { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Fire" } },
+  "dragonsmaw":     { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Dragon" } },
+  "transistor":     { "modifier": { "atk": 1.3, "spa": 1.3, "condition": "isType", "moveType": "Electric" } },
+  "steelyspirit":   { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isType", "moveType": "Steel" } },
+  "waterbubble":    { "modifier": { "atk": 2.0, "spa": 2.0, "condition": "isType", "moveType": "Water" } },
+  "fairyaura":      { "modifier": { "atk": 1.33, "spa": 1.33, "condition": "isType", "moveType": "Fairy" } },
+  "darkaura":       { "modifier": { "atk": 1.33, "spa": 1.33, "condition": "isType", "moveType": "Dark" } },
+
+  "ironfist":       { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "isPunch" } },
+  "megalauncher":   { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isPulse" } },
+  "strongjaw":      { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isBite" } },
+  "reckless":       { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "isRecoil" } },
+  "sharpness":      { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isSlice" } },
+
+  "technician":     { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "powerMax60" } }
 }

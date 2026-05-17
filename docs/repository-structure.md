@@ -90,6 +90,7 @@ src/data/
 - `speed-calc.js`: 素早さ6パターン計算
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
 - `calc-actual-stats.js`: 実数値計算
+- `resolve-modifier.js`: 特性・持ち物の補正条件解決
 
 **命名規則**: kebab-case（複数単語はハイフン区切り）
 
@@ -104,7 +105,8 @@ src/logic/
 ├── power-index-calc.js
 ├── speed-calc.js
 ├── name-search.js
-└── calc-actual-stats.js
+├── calc-actual-stats.js
+└── resolve-modifier.js
 ```
 
 ---
@@ -151,6 +153,7 @@ tests/unit/
 ├── speed-calc.test.js
 ├── name-search.test.js
 ├── calc-actual-stats.test.js
+├── resolve-modifier.test.js
 └── loader.test.js          # DataLoader の正常系・ファイル不存在時のエラー
 ```
 
