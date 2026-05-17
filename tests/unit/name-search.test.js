@@ -33,6 +33,59 @@ describe('normalizeQuery()', () => {
   it('混在入力を一括で変換する', () => {
     expect(normalizeQuery('ｶﾞブりあス')).toBe('ガブリアス');
   });
+
+  describe('ローマ字入力 → カタカナ変換', () => {
+    it('"gabu" → "ガブ"', () => {
+      expect(normalizeQuery('gabu')).toBe('ガブ');
+    });
+
+    it('"kairyu" → "カイリュ"（拗音）', () => {
+      expect(normalizeQuery('kairyu')).toBe('カイリュ');
+    });
+
+    it('"shi" / "chi" / "tsu" のヘボン式', () => {
+      expect(normalizeQuery('shi')).toBe('シ');
+      expect(normalizeQuery('chi')).toBe('チ');
+      expect(normalizeQuery('tsu')).toBe('ツ');
+    });
+
+    it('大文字 / 大文字小文字混在も小文字として扱う', () => {
+      expect(normalizeQuery('GABU')).toBe('ガブ');
+      expect(normalizeQuery('Gabu')).toBe('ガブ');
+    });
+
+    it('末尾の単独 n は撥音「ン」', () => {
+      expect(normalizeQuery('pan')).toBe('パン');
+    });
+
+    it('nn は撥音「ン」', () => {
+      expect(normalizeQuery('minna')).toBe('ミンナ');
+      expect(normalizeQuery('minn')).toBe('ミン');
+    });
+
+    it('促音は子音重ねで「ッ」', () => {
+      expect(normalizeQuery('kka')).toBe('ッカ');
+      expect(normalizeQuery('katta')).toBe('カッタ');
+    });
+
+    it('半端な子音は無視して途中まで変換する', () => {
+      expect(normalizeQuery('gab')).toBe('ガ');
+      expect(normalizeQuery('gabur')).toBe('ガブ');
+    });
+
+    it('ローマ字とカタカナの混在もOK', () => {
+      expect(normalizeQuery('ガbu')).toBe('ガブ');
+    });
+
+    it('「n」+「y」は撥音にならず拗音テーブルが効く', () => {
+      expect(normalizeQuery('nyaa')).toBe('ニャア');
+    });
+
+    it('外来音 fa / vi など', () => {
+      expect(normalizeQuery('fairi')).toBe('ファイリ');
+      expect(normalizeQuery('vi')).toBe('ヴィ');
+    });
+  });
 });
 
 describe('searchByName()', () => {

@@ -1,5 +1,11 @@
 const NOT_FOUND_TEXT = '見つかりません';
 
+const NAVIGATE_DELTA = {
+  Tab: (e) => (e.shiftKey ? -1 : 1),
+  ArrowDown: () => 1,
+  ArrowUp: () => -1,
+};
+
 export class SearchInput {
   #loader;
   #onCommit;
@@ -90,12 +96,12 @@ export class SearchInput {
   }
 
   #handleKeydown(e) {
-    if (e.key === 'Tab') {
+    if (NAVIGATE_DELTA[e.key]) {
       if (this.#list.hidden) return;
       e.preventDefault();
       if (this.#notFound || this.#currentResults.length === 0) return;
       const n = this.#currentResults.length;
-      const delta = e.shiftKey ? -1 : 1;
+      const delta = NAVIGATE_DELTA[e.key](e);
       this.#hoverIndex = (this.#hoverIndex + delta + n) % n;
       this.#updateHover();
       return;
