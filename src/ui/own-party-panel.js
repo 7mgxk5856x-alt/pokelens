@@ -1,3 +1,16 @@
+const STAT_LABELS = [
+  ['hp', 'H'],
+  ['atk', 'A'],
+  ['def', 'B'],
+  ['spa', 'C'],
+  ['spd', 'D'],
+  ['spe', 'S'],
+];
+
+function formatBaseStats(baseStats) {
+  return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
+}
+
 export class OwnPartyPanel {
   #loader;
   #onSelect;
@@ -40,6 +53,11 @@ export class OwnPartyPanel {
     typesEl.className = 'types';
     typesEl.textContent = pokemonData.types.map((t) => this.#loader.getTypeName(t)).join(' / ');
     card.appendChild(typesEl);
+
+    const baseStatsEl = document.createElement('div');
+    baseStatsEl.className = 'base-stats';
+    baseStatsEl.textContent = formatBaseStats(pokemonData.baseStats);
+    card.appendChild(baseStatsEl);
 
     card.addEventListener('click', () => this.#selectCard(index, entry, pokemonData));
 

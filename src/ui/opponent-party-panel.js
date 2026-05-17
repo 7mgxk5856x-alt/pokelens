@@ -2,6 +2,19 @@ import { SearchInput } from './search-input.js';
 
 const PARTY_SIZE = 6;
 
+const STAT_LABELS = [
+  ['hp', 'H'],
+  ['atk', 'A'],
+  ['def', 'B'],
+  ['spa', 'C'],
+  ['spd', 'D'],
+  ['spe', 'S'],
+];
+
+function formatBaseStats(baseStats) {
+  return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
+}
+
 export class OpponentPartyPanel {
   #loader;
   #onSelect;
@@ -105,6 +118,11 @@ export class OpponentPartyPanel {
       typesEl.className = 'types';
       typesEl.textContent = data.types.map((t) => this.#loader.getTypeName(t)).join(' / ');
       slot.info.appendChild(typesEl);
+
+      const baseStatsEl = document.createElement('div');
+      baseStatsEl.className = 'base-stats';
+      baseStatsEl.textContent = formatBaseStats(data.baseStats);
+      slot.info.appendChild(baseStatsEl);
     }
     slot.info.hidden = false;
   }
