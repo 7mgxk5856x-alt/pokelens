@@ -140,9 +140,31 @@
         margin-bottom: 16px;
       }
       .opponent-card {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 6px;
+      }
+      .opponent-clear {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        background: #0f3460;
+        color: #eee;
+        border: none;
+        border-radius: 50%;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .opponent-clear:hover {
+        background: #e94560;
+      }
+      .opponent-clear[hidden] {
+        display: none;
       }
       .opponent-card .name {
         font-size: 14px;

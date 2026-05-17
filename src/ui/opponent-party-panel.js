@@ -6,6 +6,7 @@ export class OpponentPartyPanel {
   #loader;
   #onSelect;
   #slots;
+  #selectedIndex = null;
 
   constructor(container, loader, onSelect) {
     this.#loader = loader;
@@ -13,6 +14,9 @@ export class OpponentPartyPanel {
     this.#slots = Array.from({ length: PARTY_SIZE }, () => ({
       card: null,
       info: null,
+      searchWrapper: null,
+      search: null,
+      clearButton: null,
       species: null,
     }));
 
@@ -28,14 +32,27 @@ export class OpponentPartyPanel {
 
     const search = new SearchInput(this.#loader, (species) => this.#commitSlot(index, species));
     search.mount(card);
+    const searchWrapper = card.querySelector('.search-input');
 
     const info = document.createElement('div');
     info.className = 'opponent-info';
     info.hidden = true;
     card.appendChild(info);
 
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.className = 'opponent-clear';
+    clearButton.textContent = '×';
+    clearButton.hidden = true;
+    clearButton.setAttribute('aria-label', 'クリア');
+    clearButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.#clearSlot(index);
+    });
+    card.appendChild(clearButton);
+
     card.addEventListener('click', (e) => {
-      if (e.target.tagName === 'INPUT') return;
+      if (e.target.tagName === 'INPUT' || e.target === clearButton) return;
       if (this.#slots[index].species) {
         this.#selectSlot(index);
       }
@@ -43,6 +60,9 @@ export class OpponentPartyPanel {
 
     this.#slots[index].card = card;
     this.#slots[index].info = info;
+    this.#slots[index].searchWrapper = searchWrapper;
+    this.#slots[index].search = search;
+    this.#slots[index].clearButton = clearButton;
     return card;
   }
 
@@ -50,7 +70,25 @@ export class OpponentPartyPanel {
     const slot = this.#slots[index];
     slot.species = species;
     this.#renderInfo(slot, species);
+    slot.searchWrapper.hidden = true;
+    slot.clearButton.hidden = false;
     this.#selectSlot(index);
+  }
+
+  #clearSlot(index) {
+    const slot = this.#slots[index];
+    const wasSelected = this.#selectedIndex === index;
+    slot.species = null;
+    slot.info.hidden = true;
+    slot.info.replaceChildren();
+    slot.searchWrapper.hidden = false;
+    slot.clearButton.hidden = true;
+    slot.card.classList.remove('selected');
+    slot.search.clear();
+    if (wasSelected) {
+      this.#selectedIndex = null;
+      this.#onSelect(null);
+    }
   }
 
   #renderInfo(slot, species) {
@@ -74,6 +112,7 @@ export class OpponentPartyPanel {
   #selectSlot(index) {
     for (const slot of this.#slots) slot.card.classList.remove('selected');
     this.#slots[index].card.classList.add('selected');
+    this.#selectedIndex = index;
     this.#onSelect(this.#slots[index].species);
   }
 }
