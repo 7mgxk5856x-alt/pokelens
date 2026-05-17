@@ -167,7 +167,7 @@ describe('resolveModifier()', () => {
     });
   });
 
-  describe('タグ条件（isPunch / isPulse / isBite / isRecoil / isSlice）', () => {
+  describe('タグ条件（isPunch / isPulse / isBite / isRecoil / isSlice / isContact / isSound / hasSecondary）', () => {
     it('isPunch + 該当タグありで multiplier を返す', () => {
       const r = resolveModifier(
         { atk: 1.2, condition: 'isPunch' },
@@ -188,7 +188,7 @@ describe('resolveModifier()', () => {
       expect(r.multiplier).toBe(1.0);
     });
 
-    it.each(['isPulse', 'isBite', 'isRecoil', 'isSlice'])(
+    it.each(['isPulse', 'isBite', 'isRecoil', 'isSlice', 'isContact', 'isSound', 'hasSecondary'])(
       '%s + 該当タグありで multiplier を返す',
       (condName) => {
         const r = resolveModifier(
@@ -200,6 +200,36 @@ describe('resolveModifier()', () => {
         expect(r.multiplier).toBe(1.2);
       }
     );
+
+    it('isContact + 該当タグなしで 1.0', () => {
+      const r = resolveModifier(
+        { atk: 1.3, condition: 'isContact' },
+        physical({ tags: ['isProtect'] }),
+        ['Ground'],
+        'ability'
+      );
+      expect(r.multiplier).toBe(1.0);
+    });
+
+    it('isSound + 該当タグありで Special 技に spa が適用される', () => {
+      const r = resolveModifier(
+        { atk: 1.3, spa: 1.3, condition: 'isSound' },
+        special({ tags: ['isSound'] }),
+        ['Normal'],
+        'ability'
+      );
+      expect(r.multiplier).toBe(1.3);
+    });
+
+    it('hasSecondary + 該当タグなしで 1.0', () => {
+      const r = resolveModifier(
+        { atk: 1.3, condition: 'hasSecondary' },
+        physical({ tags: [] }),
+        ['Ground'],
+        'ability'
+      );
+      expect(r.multiplier).toBe(1.0);
+    });
 
     it('move.tags が undefined でも安全に 1.0 を返す', () => {
       const r = resolveModifier(
@@ -251,6 +281,79 @@ describe('resolveModifier()', () => {
         'ability'
       );
       expect(r.multiplier).toBe(1.0);
+    });
+  });
+
+  describe('convertNormalTo（スキン系: Normal技を別タイプに変換 + 倍率）', () => {
+    const skinModifier = {
+      atk: 1.2,
+      spa: 1.2,
+      condition: 'convertNormalTo',
+      convertedType: 'Fairy',
+    };
+
+    it('Normal 技は moveTypeOverride を伴って multiplier を返す', () => {
+      const r = resolveModifier(skinModifier, physical({ type: 'Normal' }), ['Normal'], 'ability');
+      expect(r).toEqual({
+        multiplier: 1.2,
+        typesForCalc: ['Normal'],
+        moveTypeOverride: 'Fairy',
+      });
+    });
+
+    it('Normal 以外の技には適用されず moveTypeOverride も付かない', () => {
+      const r = resolveModifier(skinModifier, physical({ type: 'Ground' }), ['Normal'], 'ability');
+      expect(r).toEqual({ multiplier: 1.0, typesForCalc: ['Normal'] });
+      expect(r.moveTypeOverride).toBeUndefined();
+    });
+
+    it('convertedType 未指定なら 1.0 を返し moveTypeOverride も付かない', () => {
+      const r = resolveModifier(
+        { atk: 1.2, condition: 'convertNormalTo' },
+        physical({ type: 'Normal' }),
+        ['Normal'],
+        'ability'
+      );
+      expect(r).toEqual({ multiplier: 1.0, typesForCalc: ['Normal'] });
+    });
+
+    it('Special 技でも moveTypeOverride を返す', () => {
+      const r = resolveModifier(skinModifier, special({ type: 'Normal' }), ['Normal'], 'ability');
+      expect(r.moveTypeOverride).toBe('Fairy');
+      expect(r.multiplier).toBe(1.2);
+    });
+  });
+
+  describe('convertAllTo（ノーマライズ系: 全技を別タイプに変換 + 倍率）', () => {
+    const normalize = {
+      atk: 1.2,
+      spa: 1.2,
+      condition: 'convertAllTo',
+      convertedType: 'Normal',
+    };
+
+    it('Normal 以外の技も moveTypeOverride を伴って multiplier を返す', () => {
+      const r = resolveModifier(normalize, physical({ type: 'Ground' }), ['Ground'], 'ability');
+      expect(r).toEqual({
+        multiplier: 1.2,
+        typesForCalc: ['Ground'],
+        moveTypeOverride: 'Normal',
+      });
+    });
+
+    it('Normal 技にも moveTypeOverride を返す（既に Normal でも上書きで一貫）', () => {
+      const r = resolveModifier(normalize, physical({ type: 'Normal' }), ['Normal'], 'ability');
+      expect(r.moveTypeOverride).toBe('Normal');
+    });
+
+    it('convertedType 未指定なら 1.0 を返す', () => {
+      const r = resolveModifier(
+        { atk: 1.2, condition: 'convertAllTo' },
+        physical(),
+        ['Ground'],
+        'ability'
+      );
+      expect(r).toEqual({ multiplier: 1.0, typesForCalc: ['Ground'] });
     });
   });
 

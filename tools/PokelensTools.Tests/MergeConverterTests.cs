@@ -272,6 +272,64 @@ public class MergeConverterTests
         Assert.Null(result["はねる"]!["tags"]);
     }
 
+    [Fact]
+    public void ConvertMoves_SecondaryObject_AddsHasSecondaryTag()
+    {
+        var moves = new JsonObject
+        {
+            ["flamethrower"] = new JsonObject
+            {
+                ["num"] = 53, ["name"] = "Flamethrower",
+                ["type"] = "Fire", ["category"] = "Special",
+                ["basePower"] = 90, ["accuracy"] = (JsonNode)100,
+                ["flags"] = new JsonObject(),
+                ["secondary"] = new JsonObject { ["chance"] = 10, ["status"] = "brn" },
+            },
+        };
+        var names = new JsonObject { ["flamethrower"] = "かえんほうしゃ" };
+
+        var result = MergeConverter.ConvertMoves(moves, names, new JsonObject());
+        var tags = result["かえんほうしゃ"]!["tags"]!.AsArray()
+            .Select(t => t!.GetValue<string>()).ToList();
+        Assert.Contains("hasSecondary", tags);
+    }
+
+    [Fact]
+    public void ConvertMoves_SecondariesArray_AddsHasSecondaryTag()
+    {
+        var moves = new JsonObject
+        {
+            ["firefang"] = new JsonObject
+            {
+                ["num"] = 424, ["name"] = "Fire Fang",
+                ["type"] = "Fire", ["category"] = "Physical",
+                ["basePower"] = 65, ["accuracy"] = (JsonNode)95,
+                ["flags"] = new JsonObject { ["bite"] = 1 },
+                ["secondaries"] = new JsonArray
+                {
+                    new JsonObject { ["chance"] = 10, ["status"] = "brn" },
+                    new JsonObject { ["chance"] = 10, ["volatileStatus"] = "flinch" },
+                },
+            },
+        };
+        var names = new JsonObject { ["firefang"] = "ほのおのキバ" };
+
+        var result = MergeConverter.ConvertMoves(moves, names, new JsonObject());
+        var tags = result["ほのおのキバ"]!["tags"]!.AsArray()
+            .Select(t => t!.GetValue<string>()).ToList();
+        Assert.Contains("hasSecondary", tags);
+    }
+
+    [Fact]
+    public void ConvertMoves_NoSecondary_NoHasSecondaryTag()
+    {
+        // thunderbolt は secondary 含まない MakeMoves 定義
+        var result = MergeConverter.ConvertMoves(MakeMoves(), MakeMoveNames(), new JsonObject());
+        var tags = result["10まんボルト"]!["tags"]!.AsArray()
+            .Select(t => t!.GetValue<string>()).ToList();
+        Assert.DoesNotContain("hasSecondary", tags);
+    }
+
     // ---------- ConvertItems ----------
 
     [Fact]

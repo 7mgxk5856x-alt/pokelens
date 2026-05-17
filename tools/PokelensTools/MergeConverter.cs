@@ -173,7 +173,7 @@ public static class MergeConverter
                 // accuracy: true → null (must-hit)
             }
 
-            // Compute tags from flags + recoil
+            // Compute tags from flags + recoil + secondary
             var tags = new List<string>();
             if (flags != null)
             {
@@ -181,6 +181,13 @@ public static class MergeConverter
                     tags.Add(FlagToTag(flag));
             }
             if (hasRecoil) tags.Add("isRecoil");
+
+            // Showdownの secondary（オブジェクト）/ secondaries（配列）が存在すれば追加効果あり
+            var secondary = entry["secondary"];
+            var secondaries = entry["secondaries"];
+            bool hasSecondary = secondary is JsonObject
+                || (secondaries is JsonArray sArr && sArr.Count > 0);
+            if (hasSecondary) tags.Add("hasSecondary");
 
             var moveEntry = new JsonObject
             {

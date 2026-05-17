@@ -26,6 +26,15 @@
   "strongjaw":      { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isBite" } },
   "reckless":       { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "isRecoil" } },
   "sharpness":      { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "isSlice" } },
+  "toughclaws":     { "modifier": { "atk": 1.3, "spa": 1.3, "condition": "isContact" } },
+  "punkrock":       { "modifier": { "atk": 1.3, "spa": 1.3, "condition": "isSound" } },
+  "sheerforce":     { "modifier": { "atk": 1.3, "spa": 1.3, "condition": "hasSecondary" } },
+
+  "pixilate":       { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertNormalTo", "convertedType": "Fairy" } },
+  "refrigerate":    { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertNormalTo", "convertedType": "Ice" } },
+  "aerilate":       { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertNormalTo", "convertedType": "Flying" } },
+  "galvanize":      { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertNormalTo", "convertedType": "Electric" } },
+  "normalize":      { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertAllTo", "convertedType": "Normal" } },
 
   "technician":     { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "powerMax60" } }
 }
