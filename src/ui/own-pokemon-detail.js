@@ -122,15 +122,20 @@ export class OwnPokemonDetail {
     const itemModifier = this.#loader.getItemModifier(partyEntry.item);
 
     const abilityResolved = resolveModifier(abilityModifier, move, pokemonData.types, 'ability');
+
+    const effectiveMove = abilityResolved.moveTypeOverride
+      ? { ...move, type: abilityResolved.moveTypeOverride }
+      : move;
+
     const itemResolved = resolveModifier(
       itemModifier,
-      move,
+      effectiveMove,
       abilityResolved.typesForCalc,
       'item'
     );
 
     return calcPowerIndex(
-      move,
+      effectiveMove,
       actualStats,
       itemResolved.typesForCalc,
       abilityResolved.multiplier,

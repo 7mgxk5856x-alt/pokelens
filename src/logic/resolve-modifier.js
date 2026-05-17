@@ -1,4 +1,13 @@
-const TAG_CONDITIONS = new Set(['isPunch', 'isPulse', 'isBite', 'isRecoil', 'isSlice']);
+const TAG_CONDITIONS = new Set([
+  'isPunch',
+  'isPulse',
+  'isBite',
+  'isRecoil',
+  'isSlice',
+  'isContact',
+  'isSound',
+  'hasSecondary',
+]);
 
 const DEFAULT_STAB = 2.0;
 
@@ -52,6 +61,28 @@ export function resolveModifier(modifier, move, pokemonTypes, kind) {
     return {
       multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
       typesForCalc: pokemonTypes,
+    };
+  }
+
+  if (condition === 'convertNormalTo') {
+    if (move.type !== 'Normal' || modifier.convertedType == null) {
+      return { multiplier: 1.0, typesForCalc: pokemonTypes };
+    }
+    return {
+      multiplier: pickStatMultiplier(modifier, move),
+      typesForCalc: pokemonTypes,
+      moveTypeOverride: modifier.convertedType,
+    };
+  }
+
+  if (condition === 'convertAllTo') {
+    if (modifier.convertedType == null) {
+      return { multiplier: 1.0, typesForCalc: pokemonTypes };
+    }
+    return {
+      multiplier: pickStatMultiplier(modifier, move),
+      typesForCalc: pokemonTypes,
+      moveTypeOverride: modifier.convertedType,
     };
   }
 

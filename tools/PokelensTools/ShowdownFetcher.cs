@@ -93,6 +93,12 @@ public static class ShowdownFetcher
             var recoil = entry["recoil"];
             if (recoil != null) moveEntry["recoil"] = JsonValue.Create(true);
 
+            var secondary = entry["secondary"];
+            if (secondary is JsonObject) moveEntry["secondary"] = secondary.DeepClone();
+
+            var secondaries = entry["secondaries"];
+            if (secondaries is JsonArray) moveEntry["secondaries"] = secondaries.DeepClone();
+
             var isZ = entry["isZ"];
             if (isZ != null) moveEntry["isZ"] = JsonValue.Create(true);
 
