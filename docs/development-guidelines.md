@@ -181,6 +181,7 @@ element.innerHTML = pokemonName;
 | 対象 | 種別 | ファイル |
 |------|------|---------|
 | 火力指数計算 | ユニット | `tests/unit/power-index-calc.test.js` |
+| 補正条件解決 | ユニット | `tests/unit/resolve-modifier.test.js` |
 | 素早さ計算 | ユニット | `tests/unit/speed-calc.test.js` |
 | 名前検索・正規化 | ユニット | `tests/unit/name-search.test.js` |
 | 実数値計算 | ユニット | `tests/unit/calc-actual-stats.test.js` |

@@ -895,9 +895,9 @@ const powerIndex = calcPowerIndex(move, actualStats, typesForCalc, abilityModifi
 // タイプ不一致時: power × atk × 1.0(stab) × 1.0(ability) × itemModifier
 ```
 
-この判定ロジックは `src/ui/own-pokemon-detail.js` 内のヘルパー関数として実装する。
+この判定ロジックは `src/logic/resolve-modifier.js` の純粋関数 `resolveModifier(modifier, move, pokemonTypes, kind)` として実装し、`src/ui/own-pokemon-detail.js` が import して使用する（`src/logic/` 配下を純粋関数で実装する開発規約に従う）。
 
-`itemModifier` の condition 解決も `abilityModifier` と同じ判定ロジックを適用する。`isStab` condition は `items.json` には存在しないため `typesForCalc` の上書きは不要。持ち物未登録（`getItemModifier()` が `null` を返す）の場合は `itemModifier = 1.0` とする。
+`itemModifier` の condition 解決も同じ `resolveModifier` を `kind: 'item'` で呼び出して適用する。`isStab` condition は `kind === 'item'` の場合「タイプ一致時のみ通常の倍率掛けを行い、STAB 倍率自体は置換しない（`typesForCalc` は `pokemonTypes` のまま）」という挙動になる（たつじんのおびのようなタイプ一致時補正の表現に使う）。持ち物未登録（`getItemModifier()` が `null` を返す）の場合は `itemModifier = 1.0` とする。
 
 ---
 

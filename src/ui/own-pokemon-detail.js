@@ -1,5 +1,6 @@
 import { calcActualStats } from '../logic/calc-actual-stats.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
+import { resolveModifier } from '../logic/resolve-modifier.js';
 
 const STAT_LABELS = [
   ['hp', 'H'],
@@ -13,57 +14,6 @@ const STAT_LABELS = [
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 
 const DASH = '−';
-
-const TAG_CONDITIONS = new Set(['isPunch', 'isPulse', 'isBite', 'isRecoil', 'isSlice']);
-
-function pickStatMultiplier(modifier, move) {
-  if (move.category === 'Physical') return modifier.atk ?? 1.0;
-  if (move.category === 'Special') return modifier.spa ?? 1.0;
-  return 1.0;
-}
-
-function resolveModifier(modifier, move, pokemonTypes, kind) {
-  if (!modifier) return { multiplier: 1.0, typesForCalc: pokemonTypes };
-
-  const condition = modifier.condition ?? null;
-
-  if (condition === 'isStab' && kind === 'ability') {
-    if (pokemonTypes.includes(move.type)) {
-      return { multiplier: modifier.stab ?? 2.0, typesForCalc: [] };
-    }
-    return { multiplier: 1.0, typesForCalc: pokemonTypes };
-  }
-
-  if (condition === null) {
-    return { multiplier: pickStatMultiplier(modifier, move), typesForCalc: pokemonTypes };
-  }
-
-  if (condition === 'isType') {
-    const match = modifier.moveType != null && move.type === modifier.moveType;
-    return {
-      multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
-      typesForCalc: pokemonTypes,
-    };
-  }
-
-  if (TAG_CONDITIONS.has(condition)) {
-    const match = move.tags?.includes(condition) ?? false;
-    return {
-      multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
-      typesForCalc: pokemonTypes,
-    };
-  }
-
-  if (condition === 'powerMax60') {
-    const match = move.power != null && move.power <= 60;
-    return {
-      multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
-      typesForCalc: pokemonTypes,
-    };
-  }
-
-  return { multiplier: 1.0, typesForCalc: pokemonTypes };
-}
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
