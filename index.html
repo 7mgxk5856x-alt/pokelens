@@ -134,10 +134,26 @@
         font-weight: bold;
       }
       #opponent-party {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .opponent-card {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        margin-bottom: 16px;
+      }
+      .opponent-card .name {
+        font-size: 14px;
+        font-weight: bold;
+      }
+      .opponent-card .types {
+        font-size: 12px;
+        color: #aaa;
+      }
+      .opponent-info[hidden] {
+        display: none;
       }
       #opponent-detail {
         display: none;
@@ -175,12 +191,12 @@
       }
       .search-input .opp-input {
         width: 100%;
-        padding: 8px 10px;
-        background: #16213e;
+        padding: 6px 8px;
+        background: #1a2540;
         color: #eee;
         border: 1px solid #0f3460;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 13px;
         font-family: inherit;
       }
       .search-input .opp-input:focus {
