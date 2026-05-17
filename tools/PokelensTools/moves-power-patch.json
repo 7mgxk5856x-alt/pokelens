@@ -16,8 +16,17 @@
   "heavyslam": { "power": 120 },
   "heatcrash": { "power": 120 },
 
+  "crushgrip": { "power": 120 },
+  "wringout": { "power": 120 },
+  "hardpress": { "power": 100 },
+
   "gyroball": { "power": 150 },
   "electroball": { "power": 150 },
+  "magnitude": { "power": 150 },
+
+  "present": { "power": 120 },
+  "trumpcard": { "power": 200 },
+  "fling": { "power": 130 },
 
   "reversal": { "power": 200 },
   "flail": { "power": 200 },
