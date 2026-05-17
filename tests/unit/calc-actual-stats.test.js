@@ -1,5 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { calcActualStats } from '../../src/logic/calc-actual-stats.js';
+import { calcActualStats, calcHp, calcStat } from '../../src/logic/calc-actual-stats.js';
+
+describe('calcHp()', () => {
+  it('Champions計算式: base + ap + 75', () => {
+    expect(calcHp(108, 32)).toBe(215);
+    expect(calcHp(108, 0)).toBe(183);
+  });
+});
+
+describe('calcStat()', () => {
+  it('Champions計算式: floor((base + ap + 20) × nature)', () => {
+    expect(calcStat(130, 32, 1.1)).toBe(200);
+    expect(calcStat(102, 0, 1.0)).toBe(122);
+    expect(calcStat(80, 0, 0.9)).toBe(90);
+  });
+
+  it('性格補正なし(1.0)でも動作する', () => {
+    expect(calcStat(100, 32, 1.0)).toBe(152);
+  });
+
+  it('下降補正の floor 端数を切り捨てる', () => {
+    expect(calcStat(85, 0, 0.9)).toBe(94);
+  });
+});
 
 const GARCHOMP = { hp: 108, atk: 130, def: 95, spa: 80, spd: 85, spe: 102 };
 
