@@ -30,7 +30,11 @@ async function init() {
   });
 
   new OpponentPartyPanel(opponentPartyEl, loader, (species) => {
-    opponentDetail.update(species);
+    if (species === null) {
+      opponentDetail.hide();
+    } else {
+      opponentDetail.update(species);
+    }
   });
 }
 

@@ -47,6 +47,11 @@ export class OpponentPokemonDetail {
     this.#container.style.display = 'block';
   }
 
+  hide() {
+    this.#container.replaceChildren();
+    this.#container.style.display = 'none';
+  }
+
   #buildHeader(pokemonData) {
     const header = el('div', 'detail-header');
     header.appendChild(el('span', 'name', pokemonData.name));

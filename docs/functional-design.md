@@ -919,10 +919,17 @@ const powerIndex = calcPowerIndex(move, actualStats, typesForCalc, abilityModifi
 **イベントフロー**:
 1. SearchInput から `species` 確定イベントを受け取る
 2. `OpponentParty.slots[i].species` を確定した種族名（日本語名カタカナ）に更新する
-3. 該当カード上に名前・タイプを描画する（`opponent-info` 領域）
-4. 該当カードに `.selected` クラスを付与し、他の全カードからは外す（`.pokemon-card.selected` のスタイルでハイライト）
-5. `OpponentPokemonDetail` に確定した `species` を渡して詳細パネルを更新する
-6. 確定済みカードを再クリックすると、再度同じ species で詳細パネルを表示する（input 要素自身のクリックは選択処理を起動しない）
+3. 該当カードの SearchInput を非表示にし、`opponent-info` 領域に名前・タイプを描画する（自分パーティのカードと同じ表示形式）
+4. カード右上の「×」ボタン（`.opponent-clear`）を表示する
+5. 該当カードに `.selected` クラスを付与し、他の全カードからは外す（`.pokemon-card.selected` のスタイルでハイライト）
+6. `OpponentPokemonDetail` に確定した `species` を渡して詳細パネルを更新する
+7. 確定済みカードを再クリックすると、再度同じ species で詳細パネルを表示する（input 要素および「×」ボタン自身のクリックは選択処理を起動しない）
+
+**クリア操作（「×」ボタン）**:
+1. ボタンクリックは `e.stopPropagation()` でカード選択処理を抑止
+2. `SearchInput.clear()` で入力値とサジェストを初期化
+3. SearchInput を再表示、`opponent-info` と「×」ボタンを非表示
+4. `.selected` クラスを外し、当該スロットが直前まで選択中だった場合は `onSelect(null)` を発火する（`main.js` がこれを受けて `OpponentPokemonDetail.hide()` を呼び詳細パネルをクリアする）
 
 ---
 

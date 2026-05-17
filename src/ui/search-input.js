@@ -134,4 +134,10 @@ export class SearchInput {
     this.#hideSuggestions();
     this.#onCommit(entry.name);
   }
+
+  clear() {
+    if (!this.#input) return;
+    this.#input.value = '';
+    this.#hideSuggestions();
+  }
 }
