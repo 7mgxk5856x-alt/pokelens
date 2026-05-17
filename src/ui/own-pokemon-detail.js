@@ -46,7 +46,9 @@ export class OwnPokemonDetail {
       this.#buildHeader(pokemonData),
       this.#buildAbilityRow(entry.ability),
       this.#buildItemRow(entry.item),
-      this.#buildStatsRow(actualStats),
+      this.#buildNatureRow(entry.nature, natureModifiers),
+      this.#buildBaseStatsRow(pokemonData.baseStats),
+      this.#buildActualStatsRow(actualStats),
       this.#buildMovesTable(entry, pokemonData, actualStats)
     );
     this.#container.style.display = 'block';
@@ -68,9 +70,32 @@ export class OwnPokemonDetail {
     return el('div', 'detail-row', `持ち物: ${item ?? DASH}`);
   }
 
-  #buildStatsRow(actualStats) {
+  #buildNatureRow(nature, natureModifiers) {
+    if (!nature) return el('div', 'detail-row', `性格: ${DASH}`);
+    const up = [];
+    const down = [];
+    for (const [key, label] of STAT_LABELS) {
+      const mod = natureModifiers[key];
+      if (mod > 1) up.push(label);
+      else if (mod < 1) down.push(label);
+    }
+    const suffix =
+      up.length || down.length
+        ? ` (${up.map((s) => `${s}↑`).join(' ')}${up.length && down.length ? ' / ' : ''}${down
+            .map((s) => `${s}↓`)
+            .join(' ')})`
+        : ' (補正なし)';
+    return el('div', 'detail-row', `性格: ${nature}${suffix}`);
+  }
+
+  #buildBaseStatsRow(baseStats) {
+    const text = STAT_LABELS.map(([key, label]) => `${label} ${baseStats[key]}`).join(' / ');
+    return el('div', 'detail-stats', `種族値: ${text}`);
+  }
+
+  #buildActualStatsRow(actualStats) {
     const text = STAT_LABELS.map(([key, label]) => `${label} ${actualStats[key]}`).join(' / ');
-    return el('div', 'detail-stats', text);
+    return el('div', 'detail-stats', `実数値: ${text}`);
   }
 
   #buildMovesTable(entry, pokemonData, actualStats) {
