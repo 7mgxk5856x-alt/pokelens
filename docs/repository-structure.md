@@ -95,7 +95,7 @@ src/data/
 **命名規則**: kebab-case（複数単語はハイフン区切り）
 
 **依存関係**:
-- 依存可能: なし（外部依存を持たない純粋関数）
+- 依存可能: `src/logic/` 内の他の純粋関数（依存サイクルを作らないこと。例: `speed-calc.js` が `calc-actual-stats.js` の `calcStat` を import）
 - 依存禁止: `src/ui/`、`src/data/`
 - ※ データは UI レイヤーが `DataLoader` から取得し、引数として渡す設計。`src/logic/` は `src/data/` を直接 import しない
 
