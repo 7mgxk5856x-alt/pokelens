@@ -46,7 +46,7 @@ dotnet test tools/PokelensTools.Tests         # C# テスト実行
 - `/setup-project` — `docs/ideas/` を元に上記6ドキュメントを対話的に作成。PRD承認後に後続ステップを自動実行。
 - `/add-feature <機能名>` — 完全自動実行。`.steering/YYYYMMDD-<機能名>/` 配下にステアリングファイルを作成し、タスクを全実装、`implementation-validator`サブエージェントで品質検証、`test`・`lint`・`typecheck`の全パスを確認、必要に応じてdocsを更新。
 - `/review-doc <パス>` — `doc-reviewer`サブエージェントでドキュメントをレビュー。
-- `/review-code [<パス>]` — `code-reviewer`サブエージェントでコードをレビュー。可読性・設計・テスト・セキュリティ・仕様整合性の5観点で評価。引数を省略した場合は `git diff HEAD`(ステージ済み + 未ステージ)を対象にする。修正は自動で行わない。
+- `/review-code [<パス>]` — `code-reviewer`サブエージェントでコードをレビュー。可読性・設計・テスト・セキュリティ・仕様整合性・ドメイン妥当性・解析性・資源管理性の8観点で評価。引数を省略した場合は `git diff HEAD`(ステージ済み + 未ステージ)を対象にする。修正は自動で行わない。
 - `/suggest-commit-message` — `commit-message-writer`サブエージェントで `git diff HEAD` からコミットメッセージ案を提案。Conventional Commits 規約準拠。`git commit` は実行しない。
 
 ### ステアリングファイル
