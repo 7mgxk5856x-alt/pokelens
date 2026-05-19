@@ -340,7 +340,14 @@ public class PokeAPIFetcher
         {
             response = await _http.GetAsync(url);
         }
-        catch (Exception ex)
+        catch (TaskCanceledException)
+        {
+            // HttpClient surfaces request timeouts as TaskCanceledException.
+            // No CancellationToken is passed, so external cancellation is not a possibility here.
+            Console.WriteLine($"    Warning: HTTP timeout for {url}");
+            return null;
+        }
+        catch (HttpRequestException ex)
         {
             Console.WriteLine($"    Warning: HTTP error for {url}: {ex.Message}");
             return null;
