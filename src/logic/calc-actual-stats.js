@@ -2,12 +2,12 @@ const HP_OFFSET = 75;
 const STAT_OFFSET = 20;
 const STATS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
 
-export function calcHp(base, ap) {
-  return base + ap + HP_OFFSET;
+export function calcHp(base, abilityPoints) {
+  return base + abilityPoints + HP_OFFSET;
 }
 
-export function calcStat(base, ap, natureModifier) {
-  return Math.floor((base + ap + STAT_OFFSET) * natureModifier);
+export function calcStat(base, abilityPoints, natureModifier) {
+  return Math.floor((base + abilityPoints + STAT_OFFSET) * natureModifier);
 }
 
 export function calcActualStats(baseStats, abilityPoints, natureModifiers) {
