@@ -117,7 +117,7 @@ graph TB
 | ポケモン | `https://play.pokemonshowdown.com/data/pokedex.js` | タイプ・種族値・特性リスト |
 | 技 | `https://play.pokemonshowdown.com/data/moves.js` | 技名・タイプ・分類・威力・フラグ |
 | 持ち物 | `https://play.pokemonshowdown.com/data/items.js` | 持ち物名・各種フラグ |
-| 特性 | `https://play.pokemonshowdown.com/data/abilities.js` | 特性名・num（PokéAPI連携用） |
+| 特性 | `https://play.pokemonshowdown.com/data/abilities.js` | num（PokéAPI連携用。英語名は不要なので保存しない。詳細は後述の Step1 抽出ロジック参照） |
 
 **PokéAPI（日本語名変換のみ）**
 
