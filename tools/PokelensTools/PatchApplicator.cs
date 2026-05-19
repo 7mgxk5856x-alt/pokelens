@@ -4,7 +4,6 @@ namespace PokelensTools;
 
 public static class PatchApplicator
 {
-
     public static void Apply(
         string showdownPokedexPath,
         string showdownMovesPath,
