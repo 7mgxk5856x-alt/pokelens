@@ -180,7 +180,7 @@ public class ShowdownFetcher
         int start = js.IndexOf('{');
         int end = js.LastIndexOf('}');
         if (start < 0 || end < 0)
-            throw new Exception("Invalid Showdown JS: no top-level object found");
+            throw new FormatException("Invalid Showdown JS: no top-level object found");
 
         string obj = js[start..(end + 1)];
         obj = QuoteUnquotedKeys(obj);
