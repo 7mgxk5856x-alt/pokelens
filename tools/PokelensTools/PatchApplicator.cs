@@ -41,34 +41,39 @@ public static class PatchApplicator
             if (existing is not JsonObject entry) continue;
 
             if (changes["baseStats"]?.AsObject() is JsonObject patchStats)
-            {
-                var entryStats = entry["baseStats"]?.AsObject();
-                if (entryStats != null)
-                {
-                    foreach (var (stat, val) in patchStats)
-                    {
-                        entryStats[stat] = val?.DeepClone();
-                    }
-                }
-            }
+                MergeBaseStats(entry, patchStats);
 
             if (changes["types"] is JsonArray patchTypes)
-                entry["types"] = patchTypes.DeepClone();
+                MergeTypes(entry, patchTypes);
 
             if (changes["abilities"]?.AsObject() is JsonObject patchAbilities)
-            {
-                var entryAbilities = entry["abilities"]?.AsObject();
-                if (entryAbilities != null)
-                {
-                    foreach (var (slot, val) in patchAbilities)
-                    {
-                        entryAbilities[slot] = val?.DeepClone();
-                    }
-                }
-            }
+                MergeAbilities(entry, patchAbilities);
         }
 
         File.WriteAllText(pokedexPath, JsonHelpers.ToIndentedJson(pokedex));
+    }
+
+    private static void MergeBaseStats(JsonObject entry, JsonObject patchStats)
+    {
+        var entryStats = entry["baseStats"]?.AsObject();
+        if (entryStats == null) return;
+
+        foreach (var (stat, val) in patchStats)
+            entryStats[stat] = val?.DeepClone();
+    }
+
+    private static void MergeTypes(JsonObject entry, JsonArray patchTypes)
+    {
+        entry["types"] = patchTypes.DeepClone();
+    }
+
+    private static void MergeAbilities(JsonObject entry, JsonObject patchAbilities)
+    {
+        var entryAbilities = entry["abilities"]?.AsObject();
+        if (entryAbilities == null) return;
+
+        foreach (var (slot, val) in patchAbilities)
+            entryAbilities[slot] = val?.DeepClone();
     }
 
     public static void ApplyMovesPatch(string movesPath, JsonObject? patchSection)
