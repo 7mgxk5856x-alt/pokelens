@@ -10,10 +10,17 @@ public static class PatchApplicator
         string showdownMovesPath,
         string championsPatchPath)
     {
-        if (!File.Exists(championsPatchPath)) return;
+        // champions-patch.json はパイプライン構成上、常に存在するべきファイル。
+        // 不在やパース失敗をサイレントにスキップすると Step4 が古いキャッシュで進行してしまうため、
+        // 明示的に例外として伝播させる。
+        if (!File.Exists(championsPatchPath))
+            throw new FileNotFoundException(
+                $"champions-patch.json が見つかりません: {championsPatchPath}",
+                championsPatchPath);
 
-        var patch = JsonNode.Parse(File.ReadAllText(championsPatchPath))?.AsObject();
-        if (patch == null) return;
+        var patch = JsonNode.Parse(File.ReadAllText(championsPatchPath))?.AsObject()
+            ?? throw new InvalidDataException(
+                $"champions-patch.json のパースに失敗しました: {championsPatchPath}");
 
         ApplyPokedexPatch(showdownPokedexPath, patch["pokedex"]?.AsObject());
         ApplyMovesPatch(showdownMovesPath, patch["moves"]?.AsObject());
@@ -23,7 +30,9 @@ public static class PatchApplicator
     {
         if (patchSection == null) return;
 
-        var pokedex = JsonNode.Parse(File.ReadAllText(pokedexPath))!.AsObject();
+        var pokedex = JsonNode.Parse(File.ReadAllText(pokedexPath))?.AsObject()
+            ?? throw new InvalidDataException(
+                $"ポケデックスキャッシュのパースに失敗しました: {pokedexPath}");
 
         foreach (var (key, patchEntry) in patchSection)
         {
@@ -66,7 +75,9 @@ public static class PatchApplicator
     {
         if (patchSection == null) return;
 
-        var moves = JsonNode.Parse(File.ReadAllText(movesPath))!.AsObject();
+        var moves = JsonNode.Parse(File.ReadAllText(movesPath))?.AsObject()
+            ?? throw new InvalidDataException(
+                $"技キャッシュのパースに失敗しました: {movesPath}");
 
         foreach (var (key, patchEntry) in patchSection)
         {
