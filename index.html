@@ -12,8 +12,8 @@
       }
       body {
         font-family: sans-serif;
-        background: #1a1a2e;
-        color: #eee;
+        background: #f5f5f7;
+        color: #1f2937;
         padding: 16px;
       }
       #error-message {
@@ -31,26 +31,38 @@
       }
       #own-side {
         flex: 1;
+        background: #e8f1fb;
+        border: 1px solid #bcdcfb;
+        border-radius: 12px;
+        padding: 16px;
       }
       #opponent-side {
         flex: 1;
+        background: #fde8e8;
+        border: 1px solid #fbc4c4;
+        border-radius: 12px;
+        padding: 16px;
       }
       h2 {
         font-size: 14px;
-        color: #aaa;
         margin-bottom: 8px;
         text-transform: uppercase;
         letter-spacing: 1px;
       }
-      #own-party {
+      #own-side h2 {
+        color: #1e3a5f;
+      }
+      #opponent-side h2 {
+        color: #7f1d1d;
+      }
+      #own-party,
+      #opponent-party {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         margin-bottom: 16px;
       }
       .pokemon-card {
-        background: #16213e;
-        border: 2px solid #0f3460;
         border-radius: 8px;
         padding: 12px;
         cursor: pointer;
@@ -61,12 +73,27 @@
         gap: 4px;
         height: 100px;
       }
-      .pokemon-card:hover {
-        border-color: #e94560;
+      #own-side .pokemon-card {
+        background: #ffffff;
+        border: 2px solid #93c5fd;
       }
-      .pokemon-card.selected {
-        border-color: #e94560;
-        background: #1f2f5a;
+      #own-side .pokemon-card:hover {
+        border-color: #2563eb;
+      }
+      #own-side .pokemon-card.selected {
+        border-color: #2563eb;
+        background: #dbeafe;
+      }
+      #opponent-side .pokemon-card {
+        background: #ffffff;
+        border: 2px solid #fca5a5;
+      }
+      #opponent-side .pokemon-card:hover {
+        border-color: #dc2626;
+      }
+      #opponent-side .pokemon-card.selected {
+        border-color: #dc2626;
+        background: #fee2e2;
       }
       .pokemon-card .name {
         font-size: 17px;
@@ -77,7 +104,7 @@
       }
       .pokemon-card .types {
         font-size: 14px;
-        color: #aaa;
+        color: #6b7280;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -85,22 +112,28 @@
       .pokemon-card .base-stats {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 13px;
-        color: #ddd;
+        color: #374151;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
       .pokemon-card .error {
         font-size: 14px;
-        color: #e74c3c;
+        color: #b91c1c;
       }
-      #own-detail {
+      #own-detail,
+      #opponent-detail {
         display: none;
-        background: #16213e;
-        border: 1px solid #0f3460;
+        background: #ffffff;
         border-radius: 8px;
         padding: 16px;
         min-height: 80px;
+      }
+      #own-detail {
+        border: 1px solid #93c5fd;
+      }
+      #opponent-detail {
+        border: 1px solid #fca5a5;
       }
       .detail-header {
         display: flex;
@@ -108,7 +141,12 @@
         align-items: baseline;
         margin-bottom: 8px;
         padding-bottom: 8px;
-        border-bottom: 1px solid #0f3460;
+      }
+      #own-detail .detail-header {
+        border-bottom: 1px solid #bcdcfb;
+      }
+      #opponent-detail .detail-header {
+        border-bottom: 1px solid #fbc4c4;
       }
       .detail-header .name {
         font-size: 18px;
@@ -116,7 +154,7 @@
       }
       .detail-header .types {
         font-size: 13px;
-        color: #aaa;
+        color: #6b7280;
       }
       .detail-row {
         font-size: 13px;
@@ -126,7 +164,7 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 13px;
         margin: 8px 0 12px;
-        color: #ddd;
+        color: #374151;
       }
       .detail-moves {
         width: 100%;
@@ -137,10 +175,17 @@
       .detail-moves td {
         padding: 6px 8px;
         text-align: left;
-        border-bottom: 1px solid #0f3460;
+      }
+      #own-detail .detail-moves th,
+      #own-detail .detail-moves td {
+        border-bottom: 1px solid #bcdcfb;
+      }
+      #opponent-detail .detail-moves th,
+      #opponent-detail .detail-moves td {
+        border-bottom: 1px solid #fbc4c4;
       }
       .detail-moves th {
-        color: #aaa;
+        color: #6b7280;
         font-weight: normal;
         font-size: 11px;
         text-transform: uppercase;
@@ -150,12 +195,6 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         text-align: right;
         font-weight: bold;
-      }
-      #opponent-party {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-bottom: 16px;
       }
       .opponent-card {
         position: relative;
@@ -167,8 +206,8 @@
         width: 20px;
         height: 20px;
         padding: 0;
-        background: #0f3460;
-        color: #eee;
+        background: #fca5a5;
+        color: #ffffff;
         border: none;
         border-radius: 50%;
         font-size: 14px;
@@ -176,7 +215,7 @@
         cursor: pointer;
       }
       .opponent-clear:hover {
-        background: #e94560;
+        background: #dc2626;
       }
       .opponent-clear[hidden] {
         display: none;
@@ -189,14 +228,6 @@
       .opponent-info[hidden] {
         display: none;
       }
-      #opponent-detail {
-        display: none;
-        background: #16213e;
-        border: 1px solid #0f3460;
-        border-radius: 8px;
-        padding: 16px;
-        min-height: 80px;
-      }
       .speed-patterns {
         list-style: none;
         margin: 4px 0 0;
@@ -206,15 +237,15 @@
       }
       .speed-patterns li {
         padding: 2px 0;
-        color: #ddd;
+        color: #374151;
       }
       .speed-patterns .label {
-        color: #aaa;
+        color: #6b7280;
         margin-right: 8px;
       }
       .detail-section-title {
         font-size: 11px;
-        color: #aaa;
+        color: #6b7280;
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-top: 12px;
@@ -226,16 +257,16 @@
       .search-input .opp-input {
         width: 100%;
         padding: 6px 8px;
-        background: #1a2540;
-        color: #eee;
-        border: 1px solid #0f3460;
+        background: #ffffff;
+        color: #1f2937;
+        border: 1px solid #fca5a5;
         border-radius: 4px;
         font-size: 13px;
         font-family: inherit;
       }
       .search-input .opp-input:focus {
         outline: none;
-        border-color: #e94560;
+        border-color: #dc2626;
       }
       .suggest-list {
         position: absolute;
@@ -245,8 +276,8 @@
         list-style: none;
         margin: 2px 0 0;
         padding: 0;
-        background: #1f2f5a;
-        border: 1px solid #0f3460;
+        background: #ffffff;
+        border: 1px solid #fca5a5;
         border-radius: 6px;
         z-index: 10;
         max-height: 280px;
@@ -258,14 +289,15 @@
       .suggest-item {
         padding: 6px 10px;
         font-size: 13px;
+        color: #1f2937;
         cursor: pointer;
       }
       .suggest-item:hover,
       .suggest-item.is-hover {
-        background: #0f3460;
+        background: #fee2e2;
       }
       .suggest-item.is-not-found {
-        color: #888;
+        color: #9ca3af;
         cursor: default;
       }
       .suggest-item.is-not-found:hover {
