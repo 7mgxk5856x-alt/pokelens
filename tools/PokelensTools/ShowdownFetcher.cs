@@ -41,7 +41,7 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    private static JsonObject? BuildPokedexEntry(JsonObject entry)
+    public static JsonObject? BuildPokedexEntry(JsonObject entry)
     {
         var num = entry["num"]?.GetValue<int>() ?? 0;
         if (num <= 0) return null;
@@ -89,7 +89,7 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    private static JsonObject? BuildMoveEntry(JsonObject entry)
+    public static JsonObject? BuildMoveEntry(JsonObject entry)
     {
         var num = entry["num"]?.GetValue<int>() ?? 0;
         if (num <= 0) return null;
@@ -119,21 +119,13 @@ public class ShowdownFetcher
     public async Task FetchItemsAsync(string cacheDir)
     {
         var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/items.js");
-        var json = JsToJson(js);
-        var root = JsonNode.Parse(json)!.AsObject();
+        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
-            if (entry["isNonstandard"] != null) continue;
-            filtered[key] = new JsonObject
-            {
-                ["num"] = num,
-                ["name"] = entry["name"]?.GetValue<string>(),
-            };
+            if (val is JsonObject entry && BuildItemEntry(entry) is { } itemEntry)
+                filtered[key] = itemEntry;
         }
 
         File.WriteAllText(
@@ -141,25 +133,47 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
+    public static JsonObject? BuildItemEntry(JsonObject entry)
+    {
+        var num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0) return null;
+        // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来のアイテムは現代対戦の対象外。
+        // functional-design.md 「除外フィルタ」参照。
+        if (entry["isNonstandard"] != null) return null;
+
+        return new JsonObject
+        {
+            ["num"] = num,
+            ["name"] = entry["name"]?.GetValue<string>(),
+        };
+    }
+
     public async Task FetchAbilitiesAsync(string cacheDir)
     {
         var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/abilities.js");
-        var json = JsToJson(js);
-        var root = JsonNode.Parse(json)!.AsObject();
+        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
-            if (entry["isNonstandard"] != null) continue;
-            filtered[key] = new JsonObject { ["num"] = num };
+            if (val is JsonObject entry && BuildAbilityEntry(entry) is { } abilityEntry)
+                filtered[key] = abilityEntry;
         }
 
         File.WriteAllText(
             Path.Combine(cacheDir, "showdown-abilities.json"),
             JsonHelpers.ToIndentedJson(filtered));
+    }
+
+    public static JsonObject? BuildAbilityEntry(JsonObject entry)
+    {
+        var num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0) return null;
+        // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来の特性は現代対戦の対象外。
+        // functional-design.md 「除外フィルタ」参照。
+        if (entry["isNonstandard"] != null) return null;
+
+        return new JsonObject { ["num"] = num };
     }
 
     private async Task<string> FetchTextAsync(string url)

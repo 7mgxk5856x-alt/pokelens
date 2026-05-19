@@ -117,4 +117,114 @@ public class ShowdownFetcherTests
         Assert.True(parsed["protect"]!["accuracy"]!.GetValue<bool>());
         Assert.Equal(0, parsed["protect"]!["basePower"]!.GetValue<int>());
     }
+
+    [Fact]
+    public void JsToJson_NoTopLevelObject_ThrowsFormatException()
+    {
+        Assert.Throws<FormatException>(() => ShowdownFetcher.JsToJson("'use strict';"));
+    }
+
+    // ---------- BuildMoveEntry: isZ / isMax exclusion ----------
+
+    [Fact]
+    public void BuildMoveEntry_IsZ_ReturnsNull()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 628,
+            ["name"] = "Acid Downpour",
+            ["type"] = "Poison",
+            ["category"] = "Physical",
+            ["basePower"] = 1,
+            ["accuracy"] = JsonValue.Create(true),
+            ["flags"] = new JsonObject(),
+            ["isZ"] = JsonValue.Create(true),
+        };
+        Assert.Null(ShowdownFetcher.BuildMoveEntry(entry));
+    }
+
+    [Fact]
+    public void BuildMoveEntry_IsMax_ReturnsNull()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 1000,
+            ["name"] = "G-Max Fireball",
+            ["type"] = "Fire",
+            ["category"] = "Physical",
+            ["basePower"] = 160,
+            ["accuracy"] = JsonValue.Create(true),
+            ["flags"] = new JsonObject(),
+            ["isMax"] = JsonValue.Create(true),
+        };
+        Assert.Null(ShowdownFetcher.BuildMoveEntry(entry));
+    }
+
+    [Fact]
+    public void BuildMoveEntry_StandardMove_ReturnsEntry()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 85,
+            ["name"] = "Thunderbolt",
+            ["type"] = "Electric",
+            ["category"] = "Special",
+            ["basePower"] = 90,
+            ["accuracy"] = (JsonNode)100,
+            ["flags"] = new JsonObject(),
+        };
+        var built = ShowdownFetcher.BuildMoveEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal(90, built!["basePower"]!.GetValue<int>());
+    }
+
+    // ---------- BuildItemEntry / BuildAbilityEntry: isNonstandard exclusion ----------
+
+    [Fact]
+    public void BuildItemEntry_IsNonstandard_ReturnsNull()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 999,
+            ["name"] = "Past Berry",
+            ["isNonstandard"] = "Past",
+        };
+        Assert.Null(ShowdownFetcher.BuildItemEntry(entry));
+    }
+
+    [Fact]
+    public void BuildItemEntry_StandardItem_ReturnsEntry()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 1,
+            ["name"] = "Choice Scarf",
+        };
+        var built = ShowdownFetcher.BuildItemEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal("Choice Scarf", built!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void BuildAbilityEntry_IsNonstandard_ReturnsNull()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 999,
+            ["isNonstandard"] = "Future",
+        };
+        Assert.Null(ShowdownFetcher.BuildAbilityEntry(entry));
+    }
+
+    [Fact]
+    public void BuildAbilityEntry_StandardAbility_ReturnsEntry()
+    {
+        var entry = new JsonObject
+        {
+            ["num"] = 9,
+        };
+        var built = ShowdownFetcher.BuildAbilityEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal(9, built!["num"]!.GetValue<int>());
+    }
 }
