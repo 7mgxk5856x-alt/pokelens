@@ -32,3 +32,6 @@ dotnet/
 
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Temporary files for slash commands (e.g. /suggest-commit-message output)
+.claude/tmp/
