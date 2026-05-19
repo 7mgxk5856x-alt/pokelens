@@ -13,20 +13,20 @@ public class ShowdownFetcher
         _http = http;
     }
 
-    public async Task FetchAll(string cacheDir)
+    public async Task FetchAllAsync(string cacheDir)
     {
         Directory.CreateDirectory(cacheDir);
         await Task.WhenAll(
-            FetchPokedex(cacheDir),
-            FetchMoves(cacheDir),
-            FetchItems(cacheDir),
-            FetchAbilities(cacheDir)
+            FetchPokedexAsync(cacheDir),
+            FetchMovesAsync(cacheDir),
+            FetchItemsAsync(cacheDir),
+            FetchAbilitiesAsync(cacheDir)
         );
     }
 
-    public async Task FetchPokedex(string cacheDir)
+    public async Task FetchPokedexAsync(string cacheDir)
     {
-        var js = await FetchText("https://play.pokemonshowdown.com/data/pokedex.js");
+        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/pokedex.js");
         var json = JsToJson(js);
         var root = JsonNode.Parse(json)!.AsObject();
 
@@ -68,9 +68,9 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    public async Task FetchMoves(string cacheDir)
+    public async Task FetchMovesAsync(string cacheDir)
     {
-        var js = await FetchText("https://play.pokemonshowdown.com/data/moves.js");
+        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/moves.js");
         var json = JsToJson(js);
         var root = JsonNode.Parse(json)!.AsObject();
 
@@ -118,9 +118,9 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    public async Task FetchItems(string cacheDir)
+    public async Task FetchItemsAsync(string cacheDir)
     {
-        var js = await FetchText("https://play.pokemonshowdown.com/data/items.js");
+        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/items.js");
         var json = JsToJson(js);
         var root = JsonNode.Parse(json)!.AsObject();
 
@@ -143,9 +143,9 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    public async Task FetchAbilities(string cacheDir)
+    public async Task FetchAbilitiesAsync(string cacheDir)
     {
-        var js = await FetchText("https://play.pokemonshowdown.com/data/abilities.js");
+        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/abilities.js");
         var json = JsToJson(js);
         var root = JsonNode.Parse(json)!.AsObject();
 
@@ -164,7 +164,7 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    private async Task<string> FetchText(string url)
+    private async Task<string> FetchTextAsync(string url)
     {
         var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode)

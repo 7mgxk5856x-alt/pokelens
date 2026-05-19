@@ -29,7 +29,7 @@ var pokeApiFetcher = new PokeAPIFetcher(http);
 
 // Step 1: Always fetch Showdown data
 Console.WriteLine("[Step 1] Fetching Showdown data...");
-await showdownFetcher.FetchAll(cacheDir);
+await showdownFetcher.FetchAllAsync(cacheDir);
 Console.WriteLine("  Done.");
 
 // Compute current checksums for incremental run decision
@@ -61,7 +61,7 @@ if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 if (steps.NeedsStep2)
 {
     Console.WriteLine("[Step 2] Fetching PokéAPI translations...");
-    await pokeApiFetcher.FetchTranslations(
+    await pokeApiFetcher.FetchTranslationsAsync(
         cacheDir,
         pokedexCachePath,
         movesCachePath,
