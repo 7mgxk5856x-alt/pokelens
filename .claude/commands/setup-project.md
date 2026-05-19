@@ -104,7 +104,7 @@ ls docs/ideas/
 - 機能の追加: /add-feature [機能名] を実行してください
   例: /add-feature ユーザー認証
 
-- ドキュメントレビュー: /review-docs [パス] を実行してください
-  例: /review-docs docs/product-requirements.md
+- ドキュメントレビュー: /review-doc [パス] を実行してください
+  例: /review-doc docs/product-requirements.md
 」
 ```
