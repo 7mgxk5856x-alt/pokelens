@@ -152,6 +152,7 @@ function romajiToKatakana(input) {
 export function normalizeQuery(query) {
   if (query === '') return '';
 
+  // ASCII 英字が含まれない純粋カナ入力はローマ字変換をスキップする（テーブル走査によるオーバーヘッドを避けるため）
   const preprocessed = /[a-zA-Z]/.test(query) ? romajiToKatakana(query) : query;
 
   let result = '';
