@@ -21,9 +21,15 @@ var abilitiesModifiersPath = Path.Combine(toolsDir, "abilities-modifiers.json");
 var pokemonNamePatchPath  = Path.Combine(toolsDir, "pokemon-name-patch.json");
 var itemNamePatchPath     = Path.Combine(toolsDir, "item-name-patch.json");
 
+// Shared HttpClient: injected into both fetchers so they no longer hold their own
+// static instances. Lifetime is bound to Program.cs and the instance is disposed on exit.
+using var http = new HttpClient();
+var showdownFetcher = new ShowdownFetcher(http);
+var pokeApiFetcher = new PokeAPIFetcher(http);
+
 // Step 1: Always fetch Showdown data
 Console.WriteLine("[Step 1] Fetching Showdown data...");
-await ShowdownFetcher.FetchAll(cacheDir);
+await showdownFetcher.FetchAll(cacheDir);
 Console.WriteLine("  Done.");
 
 // Compute current checksums for incremental run decision
@@ -55,7 +61,7 @@ if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 if (steps.NeedsStep2)
 {
     Console.WriteLine("[Step 2] Fetching PokéAPI translations...");
-    await PokeAPIFetcher.FetchTranslations(
+    await pokeApiFetcher.FetchTranslations(
         cacheDir,
         pokedexCachePath,
         movesCachePath,

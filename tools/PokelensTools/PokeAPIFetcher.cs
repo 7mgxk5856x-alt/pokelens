@@ -5,25 +5,30 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-public static class PokeAPIFetcher
+public class PokeAPIFetcher
 {
-    private static readonly HttpClient Http = new();
+    private readonly HttpClient _http;
     private static readonly JsonSerializerOptions WriteOptions =
         new() { WriteIndented = true };
     private const int ConcurrencyLimit = 8;
 
     // Per-num caches dedupe pokemon-species fetches across variants of the same dex number.
-    private static readonly ConcurrentDictionary<int, Task<JsonNode?>> SpeciesCache = new();
+    private readonly ConcurrentDictionary<int, Task<JsonNode?>> _speciesCache = new();
+
+    public PokeAPIFetcher(HttpClient http)
+    {
+        _http = http;
+    }
 
     // Fetches Japanese name translations for all Pokémon, moves, abilities, and items.
-    public static async Task FetchTranslations(
+    public async Task FetchTranslations(
         string cacheDir,
         string showdownPokedexPath,
         string showdownMovesPath,
         string showdownItemsPath,
         string showdownAbilitiesPath)
     {
-        SpeciesCache.Clear();
+        _speciesCache.Clear();
 
         Console.WriteLine("  Fetching Pokémon names from PokéAPI...");
         var pokemon = await FetchPokemonNames(showdownPokedexPath);
@@ -62,7 +67,7 @@ public static class PokeAPIFetcher
     // - Variant entries → pokemon-form's form_names. PokéAPI sometimes returns just
     //   the form qualifier (e.g., "けんのおう" for Zacian-Crowned), so when the form
     //   name doesn't contain the species name, combine as "species (form)".
-    private static async Task<JsonObject> FetchPokemonNames(string showdownPokedexPath)
+    private async Task<JsonObject> FetchPokemonNames(string showdownPokedexPath)
     {
         var showdownData = JsonNode.Parse(File.ReadAllText(showdownPokedexPath))!.AsObject();
 
@@ -112,7 +117,7 @@ public static class PokeAPIFetcher
         return result;
     }
 
-    private static async Task<string?> ResolvePokemonJapaneseName(
+    private async Task<string?> ResolvePokemonJapaneseName(
         string showdownName, int num, string? forme)
     {
         var speciesName = await GetSpeciesJaName(num);
@@ -131,15 +136,15 @@ public static class PokeAPIFetcher
         return formName;
     }
 
-    private static async Task<string?> GetSpeciesJaName(int num)
+    private async Task<string?> GetSpeciesJaName(int num)
     {
         var node = await GetSpeciesNode(num);
         return node == null ? null : ExtractJaName(node, "names");
     }
 
-    private static Task<JsonNode?> GetSpeciesNode(int num)
+    private Task<JsonNode?> GetSpeciesNode(int num)
     {
-        return SpeciesCache.GetOrAdd(num, async n =>
+        return _speciesCache.GetOrAdd(num, async n =>
         {
             var body = await FetchTextOrNull($"https://pokeapi.co/api/v2/pokemon-species/{n}/");
             return body == null ? null : JsonNode.Parse(body);
@@ -149,7 +154,7 @@ public static class PokeAPIFetcher
     // Try the Showdown-derived slug; if that misses, walk pokemon-species varieties to
     // find a matching slug (e.g., Showdown "ogerponwellspring" → "Ogerpon-Wellspring" →
     // slug "ogerpon-wellspring" → PokéAPI variety "ogerpon-wellspring-mask").
-    private static async Task<string?> GetFormJaName(string showdownName, int num)
+    private async Task<string?> GetFormJaName(string showdownName, int num)
     {
         var slug = DerivePokemonFormSlug(showdownName);
         var node = await FetchFormNode(slug);
@@ -169,7 +174,7 @@ public static class PokeAPIFetcher
         return ExtractJaName(fallback, "form_names");
     }
 
-    private static async Task<JsonNode?> FetchFormNode(string slug)
+    private async Task<JsonNode?> FetchFormNode(string slug)
     {
         var body = await FetchTextOrNull($"https://pokeapi.co/api/v2/pokemon-form/{slug}/");
         return body == null ? null : JsonNode.Parse(body);
@@ -212,7 +217,7 @@ public static class PokeAPIFetcher
 
     // Slug-based item name fetcher. Showdown's numeric IDs diverge from PokéAPI's,
     // so we resolve by hyphenated lowercase name instead.
-    private static async Task<JsonObject> FetchItemNames(string showdownItemsPath)
+    private async Task<JsonObject> FetchItemNames(string showdownItemsPath)
     {
         var showdownData = JsonNode.Parse(File.ReadAllText(showdownItemsPath))!.AsObject();
 
@@ -273,7 +278,7 @@ public static class PokeAPIFetcher
         return sb.ToString();
     }
 
-    private static async Task<JsonObject> FetchCategory(
+    private async Task<JsonObject> FetchCategory(
         string showdownCachePath,
         Func<int, string> urlBuilder,
         string categoryName)
@@ -319,7 +324,7 @@ public static class PokeAPIFetcher
         return result;
     }
 
-    public static async Task<string?> FetchJapaneseName(string url)
+    public async Task<string?> FetchJapaneseName(string url)
     {
         var body = await FetchTextOrNull(url);
         if (body == null) return null;
@@ -328,12 +333,12 @@ public static class PokeAPIFetcher
         return ExtractJaName(node, "names");
     }
 
-    private static async Task<string?> FetchTextOrNull(string url)
+    private async Task<string?> FetchTextOrNull(string url)
     {
         HttpResponseMessage response;
         try
         {
-            response = await Http.GetAsync(url);
+            response = await _http.GetAsync(url);
         }
         catch (Exception ex)
         {

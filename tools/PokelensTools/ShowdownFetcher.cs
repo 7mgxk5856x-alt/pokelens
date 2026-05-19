@@ -4,11 +4,16 @@ using System.Text.RegularExpressions;
 
 namespace PokelensTools;
 
-public static class ShowdownFetcher
+public class ShowdownFetcher
 {
-    private static readonly HttpClient Http = new();
+    private readonly HttpClient _http;
 
-    public static async Task FetchAll(string cacheDir)
+    public ShowdownFetcher(HttpClient http)
+    {
+        _http = http;
+    }
+
+    public async Task FetchAll(string cacheDir)
     {
         Directory.CreateDirectory(cacheDir);
         await Task.WhenAll(
@@ -19,7 +24,7 @@ public static class ShowdownFetcher
         );
     }
 
-    public static async Task FetchPokedex(string cacheDir)
+    public async Task FetchPokedex(string cacheDir)
     {
         var js = await FetchText("https://play.pokemonshowdown.com/data/pokedex.js");
         var json = JsToJson(js);
@@ -63,7 +68,7 @@ public static class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    public static async Task FetchMoves(string cacheDir)
+    public async Task FetchMoves(string cacheDir)
     {
         var js = await FetchText("https://play.pokemonshowdown.com/data/moves.js");
         var json = JsToJson(js);
@@ -113,7 +118,7 @@ public static class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    public static async Task FetchItems(string cacheDir)
+    public async Task FetchItems(string cacheDir)
     {
         var js = await FetchText("https://play.pokemonshowdown.com/data/items.js");
         var json = JsToJson(js);
@@ -138,7 +143,7 @@ public static class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    public static async Task FetchAbilities(string cacheDir)
+    public async Task FetchAbilities(string cacheDir)
     {
         var js = await FetchText("https://play.pokemonshowdown.com/data/abilities.js");
         var json = JsToJson(js);
@@ -159,9 +164,9 @@ public static class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    private static async Task<string> FetchText(string url)
+    private async Task<string> FetchText(string url)
     {
-        var response = await Http.GetAsync(url);
+        var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
             throw new Exception($"Failed to fetch {url}: {response.StatusCode}");
         return await response.Content.ReadAsStringAsync();
