@@ -168,7 +168,10 @@ public class ShowdownFetcher
     {
         var response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"Failed to fetch {url}: {response.StatusCode}");
+            throw new HttpRequestException(
+                $"Failed to fetch {url}: {(int)response.StatusCode} {response.StatusCode}",
+                inner: null,
+                statusCode: response.StatusCode);
         return await response.Content.ReadAsStringAsync();
     }
 
