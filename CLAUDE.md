@@ -48,6 +48,7 @@ lint / format はコミットフックでは走らない。必要に応じて `n
 - `/review-doc <パス>` — `doc-reviewer`サブエージェントでドキュメントをレビュー。
 - `/review-code [<パス>]` — `code-reviewer`サブエージェントでコードをレビュー。可読性・設計・テスト・セキュリティ・仕様整合性・ドメイン妥当性・解析性・資源管理性の8観点で評価。引数を省略した場合は `git diff HEAD`(ステージ済み + 未ステージ)を対象にする。修正は自動で行わない。
 - `/suggest-commit-message` — `commit-message-writer`サブエージェントで `git diff HEAD` からコミットメッセージ案を提案。Conventional Commits 規約準拠。`git commit` は実行しない。
+- `/sweep-source-code` — `src/**/*.js` と `tools/PokelensTools/**/*.cs` を順番にレビューし、自動修正可能な指摘は1点ずつコミット。残件は `.steering/YYYYMMDD-sweep-source-code/remaining.md` に集約し、最後に main 宛 PR を作成する。
 
 ### ステアリングファイル
 
