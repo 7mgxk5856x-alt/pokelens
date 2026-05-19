@@ -84,6 +84,33 @@ public class PatchApplicatorTests
     }
 
     [Fact]
+    public void ApplyPokedexPatch_Abilities_PartialOverwrite()
+    {
+        var pokedexPath = WriteTempJson(MakeSamplePokedex());
+        var patch = new JsonObject
+        {
+            ["pikachu"] = new JsonObject
+            {
+                ["abilities"] = new JsonObject
+                {
+                    ["0"] = "Surge Surfer",  // override existing slot
+                    ["1"] = "Hidden Power",  // add new slot
+                },
+            },
+        };
+
+        PatchApplicator.ApplyPokedexPatch(pokedexPath, patch);
+
+        var result = JsonNode.Parse(File.ReadAllText(pokedexPath))!.AsObject();
+        var abilities = result["pikachu"]!["abilities"]!.AsObject();
+        Assert.Equal("Surge Surfer", abilities["0"]!.GetValue<string>());     // patched
+        Assert.Equal("Hidden Power", abilities["1"]!.GetValue<string>());     // added
+        Assert.Equal("Lightning Rod", abilities["H"]!.GetValue<string>());    // unchanged
+
+        File.Delete(pokedexPath);
+    }
+
+    [Fact]
     public void ApplyPokedexPatch_UnspecifiedFields_Unchanged()
     {
         var pokedexPath = WriteTempJson(MakeSamplePokedex());
@@ -117,6 +144,42 @@ public class PatchApplicatorTests
 
         var result = JsonNode.Parse(File.ReadAllText(movesPath))!.AsObject();
         Assert.Equal(110, result["thunderbolt"]!["basePower"]!.GetValue<int>());
+
+        File.Delete(movesPath);
+    }
+
+    [Fact]
+    public void ApplyMovesPatch_Accuracy_Overwrite()
+    {
+        var movesPath = WriteTempJson(MakeSampleMoves());
+        var patch = new JsonObject
+        {
+            ["thunderbolt"] = new JsonObject { ["accuracy"] = 85 },
+        };
+
+        PatchApplicator.ApplyMovesPatch(movesPath, patch);
+
+        var result = JsonNode.Parse(File.ReadAllText(movesPath))!.AsObject();
+        Assert.Equal(85, result["thunderbolt"]!["accuracy"]!.GetValue<int>()); // patched
+        Assert.Equal(90, result["thunderbolt"]!["basePower"]!.GetValue<int>()); // unchanged
+
+        File.Delete(movesPath);
+    }
+
+    [Fact]
+    public void ApplyMovesPatch_Category_Overwrite()
+    {
+        var movesPath = WriteTempJson(MakeSampleMoves());
+        var patch = new JsonObject
+        {
+            ["thunderbolt"] = new JsonObject { ["category"] = "Physical" },
+        };
+
+        PatchApplicator.ApplyMovesPatch(movesPath, patch);
+
+        var result = JsonNode.Parse(File.ReadAllText(movesPath))!.AsObject();
+        Assert.Equal("Physical", result["thunderbolt"]!["category"]!.GetValue<string>()); // patched
+        Assert.Equal("Electric", result["thunderbolt"]!["type"]!.GetValue<string>());     // unchanged
 
         File.Delete(movesPath);
     }
