@@ -24,7 +24,7 @@ dotnet test tools/PokelensTools.Tests         # C# テスト実行
 
 単一ファイルのテスト実行: `npx vitest run tests/unit/speed-calc.test.js`
 
-コミット前にhusky + lint-stagedが`.js`ファイルへESLintとPrettierを自動適用する。
+lint / format はコミットフックでは走らない。必要に応じて `npm run lint` / `npm run format` を手動で実行する。
 
 ## 開発ワークフロー（スペック駆動開発）
 
