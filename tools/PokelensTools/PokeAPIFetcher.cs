@@ -12,7 +12,16 @@ public class PokeAPIFetcher
         new() { WriteIndented = true };
     private const int ConcurrencyLimit = 8;
 
-    // Per-num caches dedupe pokemon-species fetches across variants of the same dex number.
+    // Per-num cache that dedupes pokemon-species fetches across variants of the same dex number
+    // (e.g., Rotom and Rotom-Wash both resolve via species num=479 → single HTTP call).
+    //
+    // Lifetime contract: FetchTranslationsAsync is expected to be called at most once per
+    // PokeAPIFetcher instance (Program.cs creates a new instance per CLI invocation). The
+    // Clear() at the top of FetchTranslationsAsync defends against accidental re-use, but if
+    // the contract is violated while a previous call's tasks are still in flight, the cache
+    // can be cleared mid-flight and partial results may be observed. If concurrent or repeated
+    // translation runs ever become a requirement, drop this field and pass a local
+    // ConcurrentDictionary down the call chain instead.
     private readonly ConcurrentDictionary<int, Task<JsonNode?>> _speciesCache = new();
 
     public PokeAPIFetcher(HttpClient http)
@@ -83,38 +92,17 @@ public class PokeAPIFetcher
             targets.Add((key, num, englishName, forme));
         }
 
-        using var gate = new SemaphoreSlim(ConcurrencyLimit);
-        var resolved = new (string Key, string? JaName)[targets.Count];
-        var tasks = new Task[targets.Count];
-        for (int i = 0; i < targets.Count; i++)
+        return await RunParallelAsync(targets, async t =>
         {
-            var idx = i;
-            var t = targets[idx];
-            tasks[idx] = Task.Run(async () =>
+            var ja = await ResolvePokemonJapaneseNameAsync(t.Name, t.Num, t.Forme);
+            if (ja == null)
             {
-                await gate.WaitAsync();
-                try
-                {
-                    var ja = await ResolvePokemonJapaneseNameAsync(t.Name, t.Num, t.Forme);
-                    resolved[idx] = (t.Key, ja);
-                    if (ja == null)
-                    {
-                        var slug = DerivePokemonFormSlug(t.Name);
-                        Console.WriteLine(
-                            $"    Warning: no Japanese name for pokemon/{t.Key} (id={t.Num}, slug={slug})");
-                    }
-                }
-                finally { gate.Release(); }
-            });
-        }
-        await Task.WhenAll(tasks);
-
-        var result = new JsonObject();
-        foreach (var (key, ja) in resolved)
-        {
-            if (ja != null) result[key] = ja;
-        }
-        return result;
+                var slug = DerivePokemonFormSlug(t.Name);
+                Console.WriteLine(
+                    $"    Warning: no Japanese name for pokemon/{t.Key} (id={t.Num}, slug={slug})");
+            }
+            return (t.Key, ja);
+        });
     }
 
     private async Task<string?> ResolvePokemonJapaneseNameAsync(
@@ -232,35 +220,14 @@ public class PokeAPIFetcher
             targets.Add((key, name));
         }
 
-        using var gate = new SemaphoreSlim(ConcurrencyLimit);
-        var resolved = new (string Key, string? JaName)[targets.Count];
-        var tasks = new Task[targets.Count];
-        for (int i = 0; i < targets.Count; i++)
+        return await RunParallelAsync(targets, async t =>
         {
-            var idx = i;
-            var t = targets[idx];
-            tasks[idx] = Task.Run(async () =>
-            {
-                await gate.WaitAsync();
-                try
-                {
-                    var slug = DeriveItemSlug(t.Name);
-                    var ja = await FetchJapaneseNameAsync($"https://pokeapi.co/api/v2/item/{slug}/");
-                    resolved[idx] = (t.Key, ja);
-                    if (ja == null)
-                        Console.WriteLine($"    Warning: no Japanese name for items/{t.Key} (slug={slug})");
-                }
-                finally { gate.Release(); }
-            });
-        }
-        await Task.WhenAll(tasks);
-
-        var result = new JsonObject();
-        foreach (var (key, ja) in resolved)
-        {
-            if (ja != null) result[key] = ja;
-        }
-        return result;
+            var slug = DeriveItemSlug(t.Name);
+            var ja = await FetchJapaneseNameAsync($"https://pokeapi.co/api/v2/item/{slug}/");
+            if (ja == null)
+                Console.WriteLine($"    Warning: no Japanese name for items/{t.Key} (slug={slug})");
+            return (t.Key, ja);
+        });
     }
 
     // Showdown's `name` (e.g., "Rotom-Wash", "Mr. Mime", "Flabébé") → PokéAPI form slug.
@@ -294,6 +261,22 @@ public class PokeAPIFetcher
             targets.Add((key, num));
         }
 
+        return await RunParallelAsync(targets, async t =>
+        {
+            var ja = await FetchJapaneseNameAsync(urlBuilder(t.Num));
+            if (ja == null)
+                Console.WriteLine($"    Warning: no Japanese name for {categoryName}/{t.Key} (id={t.Num})");
+            return (t.Key, ja);
+        });
+    }
+
+    // Run a resolver across targets with bounded parallelism and collect non-null results
+    // into a JsonObject keyed by the resolver's Key. Centralizes the SemaphoreSlim gating
+    // and result aggregation shared by the three FetchXxxAsync methods.
+    private async Task<JsonObject> RunParallelAsync<T>(
+        IReadOnlyList<T> targets,
+        Func<T, Task<(string Key, string? JaName)>> resolver)
+    {
         using var gate = new SemaphoreSlim(ConcurrencyLimit);
         var resolved = new (string Key, string? JaName)[targets.Count];
         var tasks = new Task[targets.Count];
@@ -304,13 +287,7 @@ public class PokeAPIFetcher
             tasks[idx] = Task.Run(async () =>
             {
                 await gate.WaitAsync();
-                try
-                {
-                    var ja = await FetchJapaneseNameAsync(urlBuilder(t.Num));
-                    resolved[idx] = (t.Key, ja);
-                    if (ja == null)
-                        Console.WriteLine($"    Warning: no Japanese name for {categoryName}/{t.Key} (id={t.Num})");
-                }
+                try { resolved[idx] = await resolver(t); }
                 finally { gate.Release(); }
             });
         }
