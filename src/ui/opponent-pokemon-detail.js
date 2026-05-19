@@ -36,7 +36,11 @@ export class OpponentPokemonDetail {
 
   update(species) {
     const pokemonData = this.#loader.getPokemonByName(species);
-    if (!pokemonData) return;
+    if (!pokemonData) {
+      // マスターデータに存在しない species を受け取った場合、前回の表示残留を防ぐため非表示にする
+      this.hide();
+      return;
+    }
 
     this.#container.replaceChildren(
       this.#buildHeader(pokemonData),
