@@ -80,6 +80,9 @@ public class ShowdownFetcher
             if (val is not JsonObject entry) continue;
             var num = entry["num"]?.GetValue<int>() ?? 0;
             if (num <= 0) continue;
+            // Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で
+            // 使用不可のためここで除外する。functional-design.md 「除外フィルタ」参照。
+            if (entry["isZ"] != null || entry["isMax"] != null) continue;
 
             var moveEntry = new JsonObject
             {
@@ -103,12 +106,6 @@ public class ShowdownFetcher
 
             var secondaries = entry["secondaries"];
             if (secondaries is JsonArray) moveEntry["secondaries"] = secondaries.DeepClone();
-
-            var isZ = entry["isZ"];
-            if (isZ != null) moveEntry["isZ"] = JsonValue.Create(true);
-
-            var isMax = entry["isMax"];
-            if (isMax != null) moveEntry["isMax"] = JsonValue.Create(true);
 
             filtered[key] = moveEntry;
         }

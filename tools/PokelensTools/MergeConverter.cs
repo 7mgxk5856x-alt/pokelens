@@ -136,7 +136,6 @@ public static class MergeConverter
         foreach (var (key, val) in showdownMoves)
         {
             if (val is not JsonObject entry) continue;
-            if (entry["isZ"] != null || entry["isMax"] != null) continue;
 
             if (!moveNames.TryGetPropertyValue(key, out var nameNode)) continue;
             var jaName = nameNode?.GetValue<string>();

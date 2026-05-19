@@ -151,47 +151,8 @@ public class MergeConverterTests
     }
 
     // ---------- ConvertMoves ----------
-
-    [Fact]
-    public void ConvertMoves_ZMoveAndMaxMove_Excluded()
-    {
-        var moves = new JsonObject
-        {
-            ["aciddownpour"] = new JsonObject
-            {
-                ["num"] = 628, ["name"] = "Acid Downpour",
-                ["type"] = "Poison", ["category"] = "Physical",
-                ["basePower"] = 1, ["accuracy"] = JsonValue.Create(true),
-                ["flags"] = new JsonObject(),
-                ["isZ"] = JsonValue.Create(true),
-            },
-            ["gmaxfireball"] = new JsonObject
-            {
-                ["num"] = 1000, ["name"] = "G-Max Fireball",
-                ["type"] = "Fire", ["category"] = "Physical",
-                ["basePower"] = 160, ["accuracy"] = JsonValue.Create(true),
-                ["flags"] = new JsonObject(),
-                ["isMax"] = JsonValue.Create(true),
-            },
-            ["thunderbolt"] = new JsonObject
-            {
-                ["num"] = 85, ["name"] = "Thunderbolt",
-                ["type"] = "Electric", ["category"] = "Special",
-                ["basePower"] = 90, ["accuracy"] = (JsonNode)100,
-                ["flags"] = new JsonObject(),
-            },
-        };
-        var names = new JsonObject
-        {
-            ["aciddownpour"] = "アシッドポイズンデリート",
-            ["gmaxfireball"] = "キョダイホノオダマ",
-            ["thunderbolt"] = "10まんボルト",
-        };
-        var result = MergeConverter.ConvertMoves(moves, names, new JsonObject());
-        Assert.False(result.ContainsKey("アシッドポイズンデリート"));
-        Assert.False(result.ContainsKey("キョダイホノオダマ"));
-        Assert.True(result.ContainsKey("10まんボルト"));
-    }
+    // Note: Zワザ・ダイマックスワザの除外は ShowdownFetcher.FetchMovesAsync (Step1) の責務に
+    // 移ったため、MergeConverter 側ではフィルタしない。ここではテストしない。
 
     [Fact]
     public void ConvertMoves_BasePower0_PowerNull()
