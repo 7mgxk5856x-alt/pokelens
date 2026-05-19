@@ -330,8 +330,14 @@ public class PokeAPIFetcher
             return null;
         }
 
+        // 404 はリソース不在で正常な fallback ケースなので無言で null。
+        // 400 は slug 形式の不備など呼び出し側のバグを示すので Warning を残す。
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
-        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest) return null;
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            Console.WriteLine($"    Warning: 400 Bad Request for {url} — slug 形式に問題がある可能性");
+            return null;
+        }
         if (!response.IsSuccessStatusCode)
         {
             Console.WriteLine($"    Warning: {response.StatusCode} for {url}");
