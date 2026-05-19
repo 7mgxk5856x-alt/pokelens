@@ -27,40 +27,13 @@ public class ShowdownFetcher
     public async Task FetchPokedexAsync(string cacheDir)
     {
         var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/pokedex.js");
-        var json = JsToJson(js);
-        var root = JsonNode.Parse(json)!.AsObject();
+        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
-
-            var baseStats = entry["baseStats"]?.AsObject();
-            if (baseStats == null) continue;
-
-            var filteredEntry = new JsonObject
-            {
-                ["num"] = num,
-                ["name"] = entry["name"]?.GetValue<string>(),
-                ["types"] = entry["types"]?.DeepClone(),
-                ["baseStats"] = new JsonObject
-                {
-                    ["hp"] = baseStats["hp"]?.GetValue<int>(),
-                    ["atk"] = baseStats["atk"]?.GetValue<int>(),
-                    ["def"] = baseStats["def"]?.GetValue<int>(),
-                    ["spa"] = baseStats["spa"]?.GetValue<int>(),
-                    ["spd"] = baseStats["spd"]?.GetValue<int>(),
-                    ["spe"] = baseStats["spe"]?.GetValue<int>(),
-                },
-                ["abilities"] = entry["abilities"]?.DeepClone(),
-            };
-
-            var forme = entry["forme"]?.GetValue<string>();
-            if (!string.IsNullOrEmpty(forme)) filteredEntry["forme"] = forme;
-
-            filtered[key] = filteredEntry;
+            if (val is JsonObject entry && BuildPokedexEntry(entry) is { } pokedexEntry)
+                filtered[key] = pokedexEntry;
         }
 
         File.WriteAllText(
@@ -68,51 +41,79 @@ public class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
+    private static JsonObject? BuildPokedexEntry(JsonObject entry)
+    {
+        var num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0) return null;
+
+        var baseStats = entry["baseStats"]?.AsObject();
+        if (baseStats == null) return null;
+
+        var pokedexEntry = new JsonObject
+        {
+            ["num"] = num,
+            ["name"] = entry["name"]?.GetValue<string>(),
+            ["types"] = entry["types"]?.DeepClone(),
+            ["baseStats"] = new JsonObject
+            {
+                ["hp"] = baseStats["hp"]?.GetValue<int>(),
+                ["atk"] = baseStats["atk"]?.GetValue<int>(),
+                ["def"] = baseStats["def"]?.GetValue<int>(),
+                ["spa"] = baseStats["spa"]?.GetValue<int>(),
+                ["spd"] = baseStats["spd"]?.GetValue<int>(),
+                ["spe"] = baseStats["spe"]?.GetValue<int>(),
+            },
+            ["abilities"] = entry["abilities"]?.DeepClone(),
+        };
+
+        var forme = entry["forme"]?.GetValue<string>();
+        if (!string.IsNullOrEmpty(forme)) pokedexEntry["forme"] = forme;
+
+        return pokedexEntry;
+    }
+
     public async Task FetchMovesAsync(string cacheDir)
     {
         var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/moves.js");
-        var json = JsToJson(js);
-        var root = JsonNode.Parse(json)!.AsObject();
+        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
-            // Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で
-            // 使用不可のためここで除外する。functional-design.md 「除外フィルタ」参照。
-            if (entry["isZ"] != null || entry["isMax"] != null) continue;
-
-            var moveEntry = new JsonObject
-            {
-                ["num"] = num,
-                ["name"] = entry["name"]?.GetValue<string>(),
-                ["type"] = entry["type"]?.GetValue<string>(),
-                ["category"] = entry["category"]?.GetValue<string>(),
-                ["basePower"] = entry["basePower"]?.GetValue<int>() ?? 0,
-                ["accuracy"] = entry["accuracy"]?.DeepClone(),
-                ["flags"] = entry["flags"]?.DeepClone() ?? new JsonObject(),
-            };
-
-            var multihit = entry["multihit"];
-            if (multihit != null) moveEntry["multihit"] = multihit.DeepClone();
-
-            var recoil = entry["recoil"];
-            if (recoil != null) moveEntry["recoil"] = JsonValue.Create(true);
-
-            var secondary = entry["secondary"];
-            if (secondary is JsonObject) moveEntry["secondary"] = secondary.DeepClone();
-
-            var secondaries = entry["secondaries"];
-            if (secondaries is JsonArray) moveEntry["secondaries"] = secondaries.DeepClone();
-
-            filtered[key] = moveEntry;
+            if (val is JsonObject entry && BuildMoveEntry(entry) is { } moveEntry)
+                filtered[key] = moveEntry;
         }
 
         File.WriteAllText(
             Path.Combine(cacheDir, "showdown-moves.json"),
             JsonHelpers.ToIndentedJson(filtered));
+    }
+
+    private static JsonObject? BuildMoveEntry(JsonObject entry)
+    {
+        var num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0) return null;
+        // Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で
+        // 使用不可のためここで除外する。functional-design.md 「除外フィルタ」参照。
+        if (entry["isZ"] != null || entry["isMax"] != null) return null;
+
+        var moveEntry = new JsonObject
+        {
+            ["num"] = num,
+            ["name"] = entry["name"]?.GetValue<string>(),
+            ["type"] = entry["type"]?.GetValue<string>(),
+            ["category"] = entry["category"]?.GetValue<string>(),
+            ["basePower"] = entry["basePower"]?.GetValue<int>() ?? 0,
+            ["accuracy"] = entry["accuracy"]?.DeepClone(),
+            ["flags"] = entry["flags"]?.DeepClone() ?? new JsonObject(),
+        };
+
+        if (entry["multihit"] is { } multihit) moveEntry["multihit"] = multihit.DeepClone();
+        if (entry["recoil"] != null) moveEntry["recoil"] = JsonValue.Create(true);
+        if (entry["secondary"] is JsonObject secondary) moveEntry["secondary"] = secondary.DeepClone();
+        if (entry["secondaries"] is JsonArray secondaries) moveEntry["secondaries"] = secondaries.DeepClone();
+
+        return moveEntry;
     }
 
     public async Task FetchItemsAsync(string cacheDir)
