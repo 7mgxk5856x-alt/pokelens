@@ -341,7 +341,7 @@ public class PokeAPIFetcher
         return await response.Content.ReadAsStringAsync();
     }
 
-    private static string? ExtractJaName(JsonNode root, string arrayKey)
+    public static string? ExtractJaName(JsonNode root, string arrayKey)
     {
         var arr = root[arrayKey]?.AsArray();
         if (arr == null) return null;
