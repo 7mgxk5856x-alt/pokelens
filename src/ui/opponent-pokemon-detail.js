@@ -75,7 +75,7 @@ export class OpponentPokemonDetail {
   }
 
   #buildSpeedSection(baseSpe) {
-    const wrapper = document.createElement('div');
+    const wrapper = el('div', 'detail-speed');
     wrapper.appendChild(el('div', 'detail-section-title', '素早さ'));
 
     const patterns = calcSpeedPatterns(baseSpe);
