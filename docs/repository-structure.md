@@ -33,7 +33,10 @@ pokelens/
 ├── cache/ †                        # C# ツールの中間データ（gitignore対象）
 ├── data/ †                         # データファイル（JSONのみ）
 ├── docs/                           # プロジェクトドキュメント
-│   └── ideas/                      # 初期アイデア・要件メモ（参照専用）
+│   ├── ideas/                      # 初期アイデア・要件メモ（参照専用）
+│   └── testing/                    # テスト派生ドキュメント
+│       ├── automated/              # 自動テストのケース一覧（単体・統合）
+│       └── manual/                 # 手動テストの仕様書（作成予定）
 ├── .claude/                        # Claude Code 設定
 ├── .devcontainer/                  # 開発コンテナ設定
 ├── .husky/                         # コミット前フック（husky）
@@ -281,6 +284,11 @@ data/
 - `ideas/`: プロジェクト初期アイデア・要件メモ（参照専用）
   - `initial-requirements.md`: `/setup-project` コマンドの入力として使用した初期アイデア・要件メモ。作成後は読み取り専用で参照のみ（git 管理対象）
   - `initial-requirements-sample.md`: 記述フォーマットのサンプル（gitignore 対象）
+- `testing/`: テストに関する派生・参照ドキュメント（永続ドキュメントとは別管理）
+  - `automated/`: 自動テストのケース一覧（テストコードから手動で抽出したスナップショット。テスト追加・変更時に更新）
+    - `unit-test-cases.md`: 単体テスト（フロントエンド Vitest ＋ C# xUnit）のケース一覧
+    - `integration-test-cases.md`: 統合テスト（C# パイプライン）のケース一覧
+  - `manual/`: 手動テストの仕様書（作成予定）
 
 ---
 
