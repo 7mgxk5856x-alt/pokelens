@@ -1,4 +1,5 @@
 import { calcSpeedPatterns } from '../logic/speed-calc.js';
+import { el } from './dom-utils.js';
 
 const STAT_LABELS = [
   ['hp', 'H'],
@@ -19,13 +20,6 @@ const SPEED_PATTERN_LABELS = [
 ];
 
 const DASH = '−';
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
 
 export class OpponentPokemonDetail {
   #container;

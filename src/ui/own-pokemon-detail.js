@@ -1,6 +1,7 @@
 import { calcActualStats } from '../logic/calc-actual-stats.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
+import { el } from './dom-utils.js';
 
 const STAT_LABELS = [
   ['hp', 'H'],
@@ -14,13 +15,6 @@ const STAT_LABELS = [
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 
 const DASH = '−';
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
 
 export class OwnPokemonDetail {
   #container;
