@@ -122,6 +122,7 @@ export class OwnPokemonDetail {
     tr.appendChild(el('td', 'move-name', moveEntry.name));
 
     if (!move) {
+      // 技名 TD はメソッド冒頭で追加済みのため、MOVE_COLUMNS の残り 5 列分（タイプ・威力・分類・命中・火力指数）を空文字または DASH で埋める
       tr.appendChild(el('td', null, ''));
       tr.appendChild(el('td', null, DASH));
       tr.appendChild(el('td', null, ''));
