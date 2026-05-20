@@ -79,12 +79,11 @@ export class OwnPokemonDetail {
       if (mod > 1) up.push(label);
       else if (mod < 1) down.push(label);
     }
+    const upText = up.map((s) => `${s}↑`).join(' ');
+    const downText = down.map((s) => `${s}↓`).join(' ');
+    const separator = up.length && down.length ? ' / ' : '';
     const suffix =
-      up.length || down.length
-        ? ` (${up.map((s) => `${s}↑`).join(' ')}${up.length && down.length ? ' / ' : ''}${down
-            .map((s) => `${s}↓`)
-            .join(' ')})`
-        : ' (補正なし)';
+      up.length || down.length ? ` (${upText}${separator}${downText})` : ' (補正なし)';
     return el('div', 'detail-row', `性格: ${nature}${suffix}`);
   }
 
