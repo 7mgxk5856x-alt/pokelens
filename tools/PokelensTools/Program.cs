@@ -107,5 +107,7 @@ if (steps.NeedsStep4)
 }
 
 // Update checksums
+// Step2〜Step4 が例外で終了した場合は SaveChecksums に到達しないため、
+// 次回起動で同ステップから再実行される（部分失敗の回復性を担保するための意図的設計）。
 IncrementalRunner.SaveChecksums(current, checksumsPath);
 Console.WriteLine("Completed successfully.");
