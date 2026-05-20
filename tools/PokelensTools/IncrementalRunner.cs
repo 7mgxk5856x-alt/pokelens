@@ -25,7 +25,7 @@ public static class IncrementalRunner
         if (!File.Exists(filePath)) return string.Empty;
         using var sha = SHA256.Create();
         using var stream = File.OpenRead(filePath);
-        var hash = sha.ComputeHash(stream);
+        byte[] hash = sha.ComputeHash(stream);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
