@@ -14,6 +14,7 @@ export class SearchInput {
   #currentResults = [];
   #hoverIndex = null;
   #notFound = false;
+  #abortController = null;
 
   constructor(loader, onCommit) {
     this.#loader = loader;
@@ -34,10 +35,18 @@ export class SearchInput {
     this.#list.hidden = true;
     wrapper.appendChild(this.#list);
 
-    this.#input.addEventListener('input', () => this.#handleInput());
-    this.#input.addEventListener('keydown', (e) => this.#handleKeydown(e));
+    // signal 経由でリスナーを束ね、unmount() で一括解除できるようにする（リスナーリーク防止）
+    this.#abortController = new AbortController();
+    const { signal } = this.#abortController;
+    this.#input.addEventListener('input', () => this.#handleInput(), { signal });
+    this.#input.addEventListener('keydown', (e) => this.#handleKeydown(e), { signal });
 
     container.appendChild(wrapper);
+  }
+
+  unmount() {
+    this.#abortController?.abort();
+    this.#abortController = null;
   }
 
   #handleInput() {
