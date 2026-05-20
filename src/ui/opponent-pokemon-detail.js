@@ -18,6 +18,8 @@ const SPEED_PATTERN_LABELS = [
   ['slowest', '最遅'],
 ];
 
+const DASH = '−';
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -65,7 +67,7 @@ export class OpponentPokemonDetail {
   }
 
   #buildAbilitiesRow(abilities) {
-    const text = abilities.length > 0 ? abilities.join('、') : '−';
+    const text = abilities.length > 0 ? abilities.join('、') : DASH;
     return el('div', 'detail-row', `特性候補: ${text}`);
   }
 
