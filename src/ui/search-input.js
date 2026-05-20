@@ -60,6 +60,8 @@ export class SearchInput {
   }
 
   #renderResults() {
+    // replaceChildren() で前回の li を破棄するとそれに付与した mousedown リスナーも GC される。
+    // 候補ごとに entry を閉じ込めたクロージャを持たせたいため、イベントデリゲーションではなく li 単位で登録する。
     this.#list.replaceChildren();
     this.#currentResults.forEach((entry, index) => {
       const li = document.createElement('li');
