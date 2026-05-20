@@ -1,12 +1,56 @@
 {
   "permissions": {
     "allow": [
-      "Skill(prd-writing)",
-      "Skill(functional-design)",
       "Skill(architecture-design)",
-      "Skill(repository-structure)",
       "Skill(development-guidelines)",
-      "Skill(glossary-creation)"
+      "Skill(functional-design)",
+      "Skill(glossary-creation)",
+      "Skill(prd-writing)",
+      "Skill(repository-structure)",
+      "Skill(steering)",
+
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git remote -v)",
+      "Bash(git show *)",
+      "Bash(git rev-parse *)",
+
+      "Bash(ls *)",
+      "Bash(dir *)",
+      "Bash(tree *)",
+      "Bash(pwd)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(where *)",
+      "Bash(env)",
+
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(fd *)",
+
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(npm list *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run test *)",
+      "Bash(npm test *)",
+
+      "Bash(docker ps *)",
+      "Bash(docker images *)",
+      "Bash(devcontainer *)",
+
+      "Bash(mkdir -p /workspaces/pokelens/.claude/tmp)",
+      "Bash(mkdir -p /workspaces/pokelens/.claude/tmp/*)",
+      "Bash(rm -rf /workspaces/pokelens/.claude/tmp)",
+      "Bash(rm -f /workspaces/pokelens/.claude/tmp/*)",
+
+      "Bash(mkdir -p /workspaces/pokelens/.steering/*)",
+      "Bash(touch /workspaces/pokelens/.steering/*)"
     ],
     "deny": [],
     "ask": []
