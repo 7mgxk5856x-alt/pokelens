@@ -11,5 +11,8 @@
     "deny": [],
     "ask": []
   },
-  "hooks": {}
+  "hooks": {},
+  "enabledPlugins": {
+    "claude-mem@thedotmack": true
+  }
 }
