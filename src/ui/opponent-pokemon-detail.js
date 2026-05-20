@@ -1,13 +1,6 @@
 import { calcSpeedPatterns } from '../logic/speed-calc.js';
-
-const STAT_LABELS = [
-  ['hp', 'H'],
-  ['atk', 'A'],
-  ['def', 'B'],
-  ['spa', 'C'],
-  ['spd', 'D'],
-  ['spe', 'S'],
-];
+import { el } from './dom-utils.js';
+import { STAT_LABELS } from './stat-labels.js';
 
 const SPEED_PATTERN_LABELS = [
   ['fastestScarf', '最速スカーフ'],
@@ -18,12 +11,7 @@ const SPEED_PATTERN_LABELS = [
   ['slowest', '最遅'],
 ];
 
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
+const DASH = '−';
 
 export class OpponentPokemonDetail {
   #container;
@@ -36,7 +24,11 @@ export class OpponentPokemonDetail {
 
   update(species) {
     const pokemonData = this.#loader.getPokemonByName(species);
-    if (!pokemonData) return;
+    if (!pokemonData) {
+      // マスターデータに存在しない species を受け取った場合、前回の表示残留を防ぐため非表示にする
+      this.hide();
+      return;
+    }
 
     this.#container.replaceChildren(
       this.#buildHeader(pokemonData),
@@ -61,7 +53,7 @@ export class OpponentPokemonDetail {
   }
 
   #buildAbilitiesRow(abilities) {
-    const text = abilities.length > 0 ? abilities.join('、') : '−';
+    const text = abilities.length > 0 ? abilities.join('、') : DASH;
     return el('div', 'detail-row', `特性候補: ${text}`);
   }
 
@@ -71,7 +63,7 @@ export class OpponentPokemonDetail {
   }
 
   #buildSpeedSection(baseSpe) {
-    const wrapper = document.createElement('div');
+    const wrapper = el('div', 'detail-speed');
     wrapper.appendChild(el('div', 'detail-section-title', '素早さ'));
 
     const patterns = calcSpeedPatterns(baseSpe);

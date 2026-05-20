@@ -63,6 +63,10 @@ describe('normalizeQuery()', () => {
       expect(normalizeQuery('minn')).toBe('ミン');
     });
 
+    it('nn の後に拗音 y が続く場合は撥音 + 拗音として変換される', () => {
+      expect(normalizeQuery('nnya')).toBe('ンニャ');
+    });
+
     it('促音は子音重ねで「ッ」', () => {
       expect(normalizeQuery('kka')).toBe('ッカ');
       expect(normalizeQuery('katta')).toBe('カッタ');

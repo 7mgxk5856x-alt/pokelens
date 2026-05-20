@@ -124,6 +124,14 @@ describe('DataLoader.load()', () => {
     );
   });
 
+  it('party.json の party キーが配列でない場合は throw する', async () => {
+    setupFetch({ './data/party.json': makeOkResponse({ party: {} }) });
+    const loader = new DataLoader();
+    await expect(loader.load()).rejects.toThrow(
+      'party.json の形式が正しくありません。JSONを確認してください'
+    );
+  });
+
   it('party.json に必須フィールド species が欠落している場合は throw する', async () => {
     const invalidParty = {
       party: [{ ability: 'さめはだ', nature: 'いじっぱり', abilityPoints: {}, moves: [] }],

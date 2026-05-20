@@ -14,6 +14,7 @@ export class SearchInput {
   #currentResults = [];
   #hoverIndex = null;
   #notFound = false;
+  #abortController = null;
 
   constructor(loader, onCommit) {
     this.#loader = loader;
@@ -34,10 +35,18 @@ export class SearchInput {
     this.#list.hidden = true;
     wrapper.appendChild(this.#list);
 
-    this.#input.addEventListener('input', () => this.#handleInput());
-    this.#input.addEventListener('keydown', (e) => this.#handleKeydown(e));
+    // signal 経由でリスナーを束ね、unmount() で一括解除できるようにする（リスナーリーク防止）
+    this.#abortController = new AbortController();
+    const { signal } = this.#abortController;
+    this.#input.addEventListener('input', () => this.#handleInput(), { signal });
+    this.#input.addEventListener('keydown', (e) => this.#handleKeydown(e), { signal });
 
     container.appendChild(wrapper);
+  }
+
+  unmount() {
+    this.#abortController?.abort();
+    this.#abortController = null;
   }
 
   #handleInput() {
@@ -60,6 +69,8 @@ export class SearchInput {
   }
 
   #renderResults() {
+    // replaceChildren() で前回の li を破棄するとそれに付与した mousedown リスナーも GC される。
+    // 候補ごとに entry を閉じ込めたクロージャを持たせたいため、イベントデリゲーションではなく li 単位で登録する。
     this.#list.replaceChildren();
     this.#currentResults.forEach((entry, index) => {
       const li = document.createElement('li');
@@ -102,7 +113,8 @@ export class SearchInput {
       if (this.#notFound || this.#currentResults.length === 0) return;
       const n = this.#currentResults.length;
       const delta = NAVIGATE_DELTA[e.key](e);
-      this.#hoverIndex = (this.#hoverIndex + delta + n) % n;
+      // #renderResults 経由でリスト表示時は #hoverIndex = 0 が保証されるが、防御的に null フォールバックを置く
+      this.#hoverIndex = ((this.#hoverIndex ?? 0) + delta + n) % n;
       this.#updateHover();
       return;
     }
@@ -118,6 +130,7 @@ export class SearchInput {
     if (e.key === 'Escape') {
       if (this.#list.hidden) return;
       e.preventDefault();
+      // Escape はサジェストのみを閉じ、入力テキストは保持する（再入力しやすくするため）
       this.#hideSuggestions();
     }
   }

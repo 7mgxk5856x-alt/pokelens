@@ -11,11 +11,18 @@ async function init() {
   const opponentPartyEl = document.getElementById('opponent-party');
   const opponentDetailEl = document.getElementById('opponent-detail');
 
+  if (!errorEl || !ownPartyEl || !ownDetailEl || !opponentPartyEl || !opponentDetailEl) {
+    // 必須 DOM 要素が欠けると以降のエラー表示自体も失敗するため、コンソールに記録して早期 return する
+    // eslint-disable-next-line no-console -- 表示できる UI 要素が存在しない最終フォールバック
+    console.error('[pokelens] 必須 DOM 要素が見つかりません。index.html を確認してください');
+    return;
+  }
+
   const loader = new DataLoader();
 
-  let data;
+  let userParty;
   try {
-    data = await loader.load();
+    ({ userParty } = await loader.load());
   } catch (e) {
     errorEl.textContent = e.message;
     errorEl.style.display = 'block';
@@ -25,7 +32,7 @@ async function init() {
   const ownDetail = new OwnPokemonDetail(ownDetailEl, loader);
   const opponentDetail = new OpponentPokemonDetail(opponentDetailEl, loader);
 
-  new OwnPartyPanel(ownPartyEl, data.userParty.party, loader, (entry) => {
+  new OwnPartyPanel(ownPartyEl, userParty.party, loader, (entry) => {
     ownDetail.update(entry);
   });
 

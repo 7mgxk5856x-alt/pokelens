@@ -1,26 +1,12 @@
 import { calcActualStats } from '../logic/calc-actual-stats.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
-
-const STAT_LABELS = [
-  ['hp', 'H'],
-  ['atk', 'A'],
-  ['def', 'B'],
-  ['spa', 'C'],
-  ['spd', 'D'],
-  ['spe', 'S'],
-];
+import { el } from './dom-utils.js';
+import { STAT_LABELS } from './stat-labels.js';
 
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 
 const DASH = '−';
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
 
 export class OwnPokemonDetail {
   #container;
@@ -79,12 +65,11 @@ export class OwnPokemonDetail {
       if (mod > 1) up.push(label);
       else if (mod < 1) down.push(label);
     }
+    const upText = up.map((s) => `${s}↑`).join(' ');
+    const downText = down.map((s) => `${s}↓`).join(' ');
+    const separator = up.length && down.length ? ' / ' : '';
     const suffix =
-      up.length || down.length
-        ? ` (${up.map((s) => `${s}↑`).join(' ')}${up.length && down.length ? ' / ' : ''}${down
-            .map((s) => `${s}↓`)
-            .join(' ')})`
-        : ' (補正なし)';
+      up.length || down.length ? ` (${upText}${separator}${downText})` : ' (補正なし)';
     return el('div', 'detail-row', `性格: ${nature}${suffix}`);
   }
 
@@ -122,6 +107,7 @@ export class OwnPokemonDetail {
     tr.appendChild(el('td', 'move-name', moveEntry.name));
 
     if (!move) {
+      // 技名 TD はメソッド冒頭で追加済みのため、MOVE_COLUMNS の残り 5 列分（タイプ・威力・分類・命中・火力指数）を空文字または DASH で埋める
       tr.appendChild(el('td', null, ''));
       tr.appendChild(el('td', null, DASH));
       tr.appendChild(el('td', null, ''));

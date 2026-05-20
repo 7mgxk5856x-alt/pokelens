@@ -36,7 +36,7 @@ public class ShowdownFetcher
                 filtered[key] = pokedexEntry;
         }
 
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             Path.Combine(cacheDir, "showdown-pokedex.json"),
             JsonHelpers.ToIndentedJson(filtered));
     }
@@ -84,7 +84,7 @@ public class ShowdownFetcher
                 filtered[key] = moveEntry;
         }
 
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             Path.Combine(cacheDir, "showdown-moves.json"),
             JsonHelpers.ToIndentedJson(filtered));
     }
@@ -128,7 +128,7 @@ public class ShowdownFetcher
                 filtered[key] = itemEntry;
         }
 
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             Path.Combine(cacheDir, "showdown-items.json"),
             JsonHelpers.ToIndentedJson(filtered));
     }
@@ -160,7 +160,7 @@ public class ShowdownFetcher
                 filtered[key] = abilityEntry;
         }
 
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             Path.Combine(cacheDir, "showdown-abilities.json"),
             JsonHelpers.ToIndentedJson(filtered));
     }

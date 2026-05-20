@@ -14,6 +14,7 @@ const DEFAULT_STAB = 2.0;
 function pickStatMultiplier(modifier, move) {
   if (move.category === 'Physical') return modifier.atk ?? 1.0;
   if (move.category === 'Special') return modifier.spa ?? 1.0;
+  // Status 技は calcPowerIndex 側で null 判定済みのため 1.0 フォールバックで問題ない
   return 1.0;
 }
 
