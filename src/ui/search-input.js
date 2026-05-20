@@ -104,7 +104,8 @@ export class SearchInput {
       if (this.#notFound || this.#currentResults.length === 0) return;
       const n = this.#currentResults.length;
       const delta = NAVIGATE_DELTA[e.key](e);
-      this.#hoverIndex = (this.#hoverIndex + delta + n) % n;
+      // #renderResults 経由でリスト表示時は #hoverIndex = 0 が保証されるが、防御的に null フォールバックを置く
+      this.#hoverIndex = ((this.#hoverIndex ?? 0) + delta + n) % n;
       this.#updateHover();
       return;
     }
