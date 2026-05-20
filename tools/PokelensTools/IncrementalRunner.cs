@@ -47,6 +47,8 @@ public static class IncrementalRunner
 
         bool needsStep2 = showdownChanged;
         bool needsStep3 = showdownChanged || championsPatchChanged;
+        // Step3 以前の再実行は必ず Step4 のマージにも反映する必要がある。
+        // 加えて pokeapi 翻訳・Step4 専用パッチ（moves-power-patch 等）の変化も Step4 のみで再マージできる。
         bool needsStep4 = needsStep2 || needsStep3 || pokeapiChanged || step4OnlyChanged;
 
         return new Steps(needsStep2, needsStep3, needsStep4);
