@@ -121,6 +121,7 @@ export class SearchInput {
     if (e.key === 'Escape') {
       if (this.#list.hidden) return;
       e.preventDefault();
+      // Escape はサジェストのみを閉じ、入力テキストは保持する（再入力しやすくするため）
       this.#hideSuggestions();
     }
   }
