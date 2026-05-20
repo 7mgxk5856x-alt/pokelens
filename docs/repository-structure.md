@@ -36,7 +36,7 @@ pokelens/
 │   ├── ideas/                      # 初期アイデア・要件メモ（参照専用）
 │   └── testing/                    # テスト派生ドキュメント
 │       ├── automated/              # 自動テストのケース一覧（単体・統合）
-│       └── manual/                 # 手動テストの仕様書（作成予定）
+│       └── manual/                 # 手動テストの仕様書（統合・E2E）
 ├── .claude/                        # Claude Code 設定
 ├── .devcontainer/                  # 開発コンテナ設定
 ├── .husky/                         # コミット前フック（husky）
@@ -288,7 +288,8 @@ data/
   - `automated/`: 自動テストのケース一覧（テストコードから手動で抽出したスナップショット。テスト追加・変更時に更新）
     - `unit-test-cases.md`: 単体テスト（フロントエンド Vitest ＋ C# xUnit）のケース一覧
     - `integration-test-cases.md`: 統合テスト（C# パイプライン）のケース一覧
-  - `manual/`: 手動テストの仕様書（作成予定）
+  - `manual/`: 手動テストの仕様書（PRD の受け入れ条件から起こす。単体テストの手動版は作成しない）
+    - `integration-test-cases.md`: 手動・統合（E2E）テストのケース一覧（ブラウザ操作で P0 機能を検証）
 
 ---
 
