@@ -1,14 +1,6 @@
 import { calcSpeedPatterns } from '../logic/speed-calc.js';
 import { el } from './dom-utils.js';
-
-const STAT_LABELS = [
-  ['hp', 'H'],
-  ['atk', 'A'],
-  ['def', 'B'],
-  ['spa', 'C'],
-  ['spd', 'D'],
-  ['spe', 'S'],
-];
+import { STAT_LABELS } from './stat-labels.js';
 
 const SPEED_PATTERN_LABELS = [
   ['fastestScarf', '最速スカーフ'],

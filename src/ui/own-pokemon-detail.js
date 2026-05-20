@@ -2,15 +2,7 @@ import { calcActualStats } from '../logic/calc-actual-stats.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
 import { el } from './dom-utils.js';
-
-const STAT_LABELS = [
-  ['hp', 'H'],
-  ['atk', 'A'],
-  ['def', 'B'],
-  ['spa', 'C'],
-  ['spd', 'D'],
-  ['spe', 'S'],
-];
+import { STAT_LABELS } from './stat-labels.js';
 
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 

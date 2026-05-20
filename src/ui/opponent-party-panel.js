@@ -1,15 +1,7 @@
 import { SearchInput } from './search-input.js';
+import { STAT_LABELS } from './stat-labels.js';
 
 const PARTY_SIZE = 6;
-
-const STAT_LABELS = [
-  ['hp', 'H'],
-  ['atk', 'A'],
-  ['def', 'B'],
-  ['spa', 'C'],
-  ['spd', 'D'],
-  ['spe', 'S'],
-];
 
 function formatBaseStats(baseStats) {
   return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
