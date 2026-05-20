@@ -3,6 +3,12 @@ using PokelensTools;
 // Resolve repo root: when run via "dotnet run --project tools/PokelensTools" from repo root,
 // the working directory IS the repo root.
 var repoRoot = Directory.GetCurrentDirectory();
+if (!Directory.Exists(Path.Combine(repoRoot, "tools", "PokelensTools")))
+{
+    throw new DirectoryNotFoundException(
+        $"リポジトリルートが特定できません。CLAUDE.md の指示通り、リポジトリルートから " +
+        $"'dotnet run --project tools/PokelensTools' で実行してください。(CWD: {repoRoot})");
+}
 var cacheDir = Path.Combine(repoRoot, "cache");
 var dataDir = Path.Combine(repoRoot, "data");
 var toolsDir = Path.Combine(repoRoot, "tools", "PokelensTools");
