@@ -13,9 +13,9 @@ async function init() {
 
   const loader = new DataLoader();
 
-  let data;
+  let userParty;
   try {
-    data = await loader.load();
+    ({ userParty } = await loader.load());
   } catch (e) {
     errorEl.textContent = e.message;
     errorEl.style.display = 'block';
@@ -25,7 +25,7 @@ async function init() {
   const ownDetail = new OwnPokemonDetail(ownDetailEl, loader);
   const opponentDetail = new OpponentPokemonDetail(opponentDetailEl, loader);
 
-  new OwnPartyPanel(ownPartyEl, data.userParty.party, loader, (entry) => {
+  new OwnPartyPanel(ownPartyEl, userParty.party, loader, (entry) => {
     ownDetail.update(entry);
   });
 
