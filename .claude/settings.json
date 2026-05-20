@@ -28,6 +28,7 @@
       "Bash(wc *)",
       "Bash(where *)",
       "Bash(env)",
+      "Bash(echo *)",
 
       "Bash(grep *)",
       "Bash(rg *)",
@@ -48,6 +49,8 @@
       "Bash(mkdir -p /workspaces/pokelens/.claude/tmp/*)",
       "Bash(rm -rf /workspaces/pokelens/.claude/tmp)",
       "Bash(rm -f /workspaces/pokelens/.claude/tmp/*)",
+      "Bash(mkdir -p .claude/tmp)",
+      "Bash(rm -f .claude/tmp/commit-msg-*.txt)",
 
       "Bash(mkdir -p /workspaces/pokelens/.steering/*)",
       "Bash(touch /workspaces/pokelens/.steering/*)"
