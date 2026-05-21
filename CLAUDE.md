@@ -53,6 +53,7 @@ lint / format はコミットフックでは走らない。必要に応じて `n
 - `/review-test-cases <パス>` — `test-case-reviewer`サブエージェントでテストケース仕様書をレビュー。テスト設計技法(同値分割・境界値・デシジョンテーブル・状態遷移・組み合わせ/ペアワイズ・ユースケース/シナリオ・エラー推測)とテスト観点(カバレッジ/品質特性/記述品質)の2軸で評価し、PRDの受け入れ条件と突き合わせて未カバー条件・不足ケースを提案する。修正は自動で行わない。
 - `/review-claude-assets [<パス>]` — `claude-asset-reviewer`サブエージェントで `.claude/` 配下の作成物(コマンド・サブエージェント・スキル)をレビュー。単一責務・宣言との整合・冪等性・相互参照の実在・CLAUDE.md/development-guidelines との同期などを評価。引数省略時は `git diff HEAD` の `.claude/` 変更が対象。修正は自動で行わない。
 - `/suggest-commit-message` — `commit-message-writer`サブエージェントで `git diff HEAD` からコミットメッセージ案を提案。Conventional Commits 規約準拠。`git commit` は実行しない。
+- `/suggest-pr [<ベース>]` — `pr-writer`サブエージェントで、ブランチとベースの差分（コミット履歴＋変更内容）から PR の title・description 案を生成し `.claude/tmp/`(`pr-title.txt`/`pr-body.md`)に保存。ベースは省略時にブランチ名から自動判定。`gh pr create` は実行しない。
 
 ### ステアリングファイル
 
