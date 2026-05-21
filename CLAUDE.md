@@ -43,7 +43,8 @@ lint / format はコミットフックでは走らない。必要に応じて `n
 
 ### カスタムコマンド
 
-- `/setup-project` — `docs/ideas/` を元に上記6ドキュメントを対話的に作成。PRD承認後に後続ステップを自動実行。
+- `/setup-project` — `docs/ideas/` を元に **PRD（`docs/product-requirements.md`）のみ** を対話的に作成。承認されたら完了。レビュー(`/review-doc`)・改訂を経て PRD を固めてから `/setup-docs` へ。
+- `/setup-docs` — 承認済み PRD を元に残り5ドキュメント（機能設計・アーキテクチャ・リポジトリ構造・開発ガイドライン・用語集）をまとめて自動生成。PRD が無ければ `/setup-project` を案内して終了。
 - `/add-feature <機能名>` — 完全自動実行。`.steering/YYYYMMDD-<機能名>/` 配下にステアリングファイルを作成し、タスクを全実装、`implementation-validator`サブエージェントで品質検証、`test`・`lint`・`typecheck`の全パスを確認、追加した自動テストを `docs/testing/` の一覧へ反映、必要に応じてdocsを更新。
 - `/fix-code <修正内容>` — 完全自動実行。既存ソースの修正（バグ修正・リファクタ・`/review-code` 指摘の反映）を実装し、対応する自動テストを追加・更新、`implementation-validator`で検証、`test`・`lint`の全パスを確認、変更した自動テストを `docs/testing/` の一覧へ反映。新機能追加は `/add-feature` を使う。
 - `/review-doc <パス>` — `doc-reviewer`サブエージェントでドキュメントをレビュー。
