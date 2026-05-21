@@ -20,8 +20,8 @@ model: sonnet
 
 ## レビュー対象
 
-- 手動テスト仕様書（例: `docs/testing/manual/integration-test-cases.md`）
-- 自動テストのケース一覧（例: `docs/testing/automated/unit-test-cases.md` / `integration-test-cases.md`）
+- 手動（E2E）テスト仕様書（例: `docs/testing/e2e/manual-test-cases.md`）
+- 自動テストのケース一覧（例: `docs/testing/unit/automated-test-cases.md` / `docs/testing/integration/automated-test-cases.md`）
 - 上記に準じるテストケースの一覧・表
 
 > テストコードそのものの実装レビューは `code-reviewer`（`/review-code`）の担当です。

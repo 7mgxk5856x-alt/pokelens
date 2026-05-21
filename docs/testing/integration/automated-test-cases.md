@@ -2,7 +2,7 @@
 
 pokelens で実装済みの**自動・統合テスト**を、テストファイル・シナリオ単位でまとめたドキュメント。複数コンポーネントを通したデータフロー全体が正しく動作するかを俯瞰するための参照資料。
 
-> 単体テストは [unit-test-cases.md](./unit-test-cases.md) に分離。手動テストの仕様書は別途 `docs/testing/manual/` に作成予定。
+> 単体テストは [../unit/automated-test-cases.md](../unit/automated-test-cases.md) に分離。手動（E2E）テストの仕様書は [../e2e/manual-test-cases.md](../e2e/manual-test-cases.md) を参照。
 
 - **テストフレームワーク**: xUnit（.NET 8）
 - **対象**: `tools/PokelensTools.Tests/PipelineIntegrationTests.cs`
