@@ -40,8 +40,8 @@ ls docs/ideas/
 
 ### ステップ1: プロダクト要求定義書の作成
 
-1. **prd-writingスキル**をロード
-2. `docs/ideas/`の内容を元に`docs/product-requirements.md`を作成
+1. `Skill('prd-writing')` をロード
+2. `docs/ideas/`の内容を元に、スキルのテンプレートに従って`docs/product-requirements.md`を作成
 3. 壁打ちで出たアイデアを具体化：
    - 詳細なユーザーストーリー
    - 受け入れ条件
