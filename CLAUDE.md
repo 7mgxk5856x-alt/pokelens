@@ -51,6 +51,7 @@ lint / format はコミットフックでは走らない。必要に応じて `n
 - `/review-code [<パス>]` — `code-reviewer`サブエージェントでコードをレビュー。可読性・設計・テスト・セキュリティ・仕様整合性・ドメイン妥当性・解析性・資源管理性の8観点で評価。引数を省略した場合は `git diff HEAD`(ステージ済み + 未ステージ)を対象にする。修正は自動で行わない。
 - `/write-test-cases [<機能>]` — 完全自動実行。`docs/product-requirements.md` の受け入れ条件から手動・E2E テスト仕様書(`docs/testing/e2e/manual-test-cases.md`)を生成・更新。既存ファイルがあれば未カバー条件のみ追記(冪等)。コード由来の自動テスト一覧は対象外(`/add-feature`・`/fix-code` が担当)。`git commit` は実行しない。
 - `/review-test-cases <パス>` — `test-case-reviewer`サブエージェントでテストケース仕様書をレビュー。テスト設計技法(同値分割・境界値・デシジョンテーブル・状態遷移・組み合わせ/ペアワイズ・ユースケース/シナリオ・エラー推測)とテスト観点(カバレッジ/品質特性/記述品質)の2軸で評価し、PRDの受け入れ条件と突き合わせて未カバー条件・不足ケースを提案する。修正は自動で行わない。
+- `/review-claude-assets [<パス>]` — `claude-asset-reviewer`サブエージェントで `.claude/` 配下の作成物(コマンド・サブエージェント・スキル)をレビュー。単一責務・宣言との整合・冪等性・相互参照の実在・CLAUDE.md/development-guidelines との同期などを評価。引数省略時は `git diff HEAD` の `.claude/` 変更が対象。修正は自動で行わない。
 - `/suggest-commit-message` — `commit-message-writer`サブエージェントで `git diff HEAD` からコミットメッセージ案を提案。Conventional Commits 規約準拠。`git commit` は実行しない。
 
 ### ステアリングファイル
