@@ -1,10 +1,14 @@
 ---
-description: 初回セットアップ: 6つの永続ドキュメントを対話的に作成する
+description: 初回セットアップ: docs/ideas/ から PRD のみを対話的に作成する（残り5ドキュメントは /setup-docs で生成）
 ---
 
-# 初回プロジェクトセットアップ
+# 初回プロジェクトセットアップ（PRD 作成）
 
-このコマンドは、プロジェクトの6つの永続ドキュメントを対話的に作成します。
+このコマンドは、`docs/ideas/` を元に **プロダクト要求定義書（PRD, `docs/product-requirements.md`）のみ** を対話的に作成します。
+
+PRD は他の5つの永続ドキュメント（機能設計・アーキテクチャ・リポジトリ構造・開発ガイドライン・用語集）すべての根になります。そのため本コマンドは PRD の作成で完了し、**`/review-doc` でのレビュー・改訂を経て PRD が固まってから、`/setup-docs` で残り5ドキュメントを生成する** 2段階の運用とします（PRD と派生ドキュメントの作成コマンドを分離）。
+
+**`git commit` は行いません。**
 
 ## 実行方法
 
@@ -26,8 +30,12 @@ ls docs/ideas/
 
 # ファイルが存在しない場合
 ⚠️  docs/ideas/ にファイルがありません
-   対話形式でPRDを作成します
+   「先に docs/ideas/initial-requirements.md にアイデア・要件をまとめてから再実行してください」と案内して終了する
 ```
+
+`docs/ideas/` にアイデアファイルが存在することを前提とする（`prd-writing` スキルの前提条件に揃える）。ファイルが無ければ上記のとおり案内して終了し、PRD 作成には進まない。
+
+**`docs/product-requirements.md` が既にある場合**: 上書きして作り直す（再実行を許容）。既存内容を残したい場合は事前にバックアップする。
 
 ## 手順
 
@@ -38,73 +46,34 @@ ls docs/ideas/
 
 ### ステップ1: プロダクト要求定義書の作成
 
-1. **prd-writingスキル**をロード
-2. `docs/ideas/`の内容を元に`docs/product-requirements.md`を作成
-3. 壁打ちで出たアイデアを具体化：
+1. `Skill('prd-writing')` をロード
+2. `docs/ideas/`の内容を元に、スキルのテンプレートに従って`docs/product-requirements.md`を作成
+3. `docs/ideas/` の内容を元に、以下を具体化：
    - 詳細なユーザーストーリー
    - 受け入れ条件
    - 非機能要件
    - 成功指標
-4. ユーザーに確認を求め、**承認されるまで待機**
+4. 作成した PRD をユーザーに提示し、内容の確認・修正意見を求める。修正が必要なら指摘に従って改訂し、再度確認を求める。**承認されるまでこのサイクルを繰り返す。**
 
-**以降のステップはプロダクト要求定義書の内容を元にするため、自動的に作成する**
-
-### ステップ2: 機能設計書の作成
-
-1. **functional-designスキル**をロード
-1. `docs/product-requirements.md`を読む
-3. スキルのテンプレートとガイドに従って`docs/functional-design.md`を作成
-
-### ステップ3: アーキテクチャ設計書の作成
-
-1. **architecture-designスキル**をロード
-2. 既存のドキュメントを読む
-3. スキルのテンプレートとガイドに従って`docs/architecture.md`を作成
-
-### ステップ4: リポジトリ構造定義書の作成
-
-1. **repository-structureスキル**をロード
-2. 既存のドキュメントを読む
-3. スキルのテンプレートに従って`docs/repository-structure.md`を作成
-
-### ステップ5: 開発ガイドラインの作成
-
-1. **development-guidelinesスキル**をロード
-2. 既存のドキュメントを読む
-3. スキルのテンプレートに従って`docs/development-guidelines.md`を作成
-
-### ステップ6: 用語集の作成
-
-1. **glossary-creationスキル**をロード
-2. 既存のドキュメントを読む
-3. スキルのテンプレートに従って`docs/glossary.md`を作成
+> 本コマンドはここで完了する。残り5ドキュメントは PRD が固まってから `/setup-docs` で生成する（次の「完了条件」を参照）。
 
 ## 完了条件
 
-- 6つの永続ドキュメントが全て作成されていること
+- `docs/product-requirements.md` が作成され、ユーザーの承認を得ていること
 
 完了時のメッセージ:
 ```
-「初回セットアップが完了しました!
+「PRD を作成しました!
 
-作成したドキュメント:
 ✅ docs/product-requirements.md
-✅ docs/functional-design.md
-✅ docs/architecture.md
-✅ docs/repository-structure.md
-✅ docs/development-guidelines.md
-✅ docs/glossary.md
 
-これで開発を開始する準備が整いました。
+PRD は他の5ドキュメントの根になります。次の順で進めてください:
 
-今後の使い方:
-- ドキュメントの編集: 普通に会話で依頼してください
-  例: 「PRDに新機能を追加して」「architecture.mdを見直して」
+1. PRD をレビュー: /review-doc docs/product-requirements.md
+   指摘があれば改訂し、納得いくまでレビューを繰り返してください。
 
-- 機能の追加: /add-feature [機能名] を実行してください
-  例: /add-feature ユーザー認証
-
-- ドキュメントレビュー: /review-doc [パス] を実行してください
-  例: /review-doc docs/product-requirements.md
+2. PRD が固まったら派生ドキュメントを生成: /setup-docs
+   機能設計 / アーキテクチャ / リポジトリ構造 / 開発ガイドライン / 用語集 を
+   PRD を元にまとめて生成します。
 」
 ```

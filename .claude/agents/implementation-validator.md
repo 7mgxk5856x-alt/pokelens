@@ -202,21 +202,13 @@ model: sonnet
 npm run lint
 ```
 
-### 型チェック
-```bash
-npm run typecheck
-```
-
 ### テスト実行
 ```bash
 npm test
 npm run test:coverage
 ```
 
-### ビルド確認
-```bash
-npm run build
-```
+> C# データ準備ツール（`tools/PokelensTools/`）を変更した場合は `dotnet test tools/PokelensTools.Tests` も実行する。
 
 ## コード品質の詳細チェック
 
