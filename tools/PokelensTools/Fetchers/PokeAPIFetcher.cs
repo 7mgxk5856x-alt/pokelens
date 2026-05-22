@@ -97,19 +97,19 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            int num = entry["num"]?.GetValue<int>() ?? 0;
+            int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
             if (num <= 0)
             {
                 continue;
             }
 
-            string? englishName = entry["name"]?.GetValue<string>();
+            string? englishName = entry[ShowdownKey.Name]?.GetValue<string>();
             if (string.IsNullOrEmpty(englishName))
             {
                 continue;
             }
 
-            string? forme = entry["forme"]?.GetValue<string>();
+            string? forme = entry[ShowdownKey.Pokedex.Forme]?.GetValue<string>();
             targets.Add((key, num, englishName, forme));
         }
 
@@ -291,13 +291,13 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            int num = entry["num"]?.GetValue<int>() ?? 0;
+            int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
             if (num <= 0)
             {
                 continue;
             }
 
-            string? name = entry["name"]?.GetValue<string>();
+            string? name = entry[ShowdownKey.Name]?.GetValue<string>();
             if (string.IsNullOrEmpty(name))
             {
                 continue;
@@ -365,7 +365,7 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            int num = entry["num"]?.GetValue<int>() ?? 0;
+            int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
             if (num <= 0)
             {
                 continue;

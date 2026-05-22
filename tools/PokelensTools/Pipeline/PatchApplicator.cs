@@ -72,17 +72,17 @@ internal static class PatchApplicator
                 continue;
             }
 
-            if (changes["baseStats"]?.AsObject() is JsonObject patchStats)
+            if (changes[ShowdownKey.Pokedex.BaseStats]?.AsObject() is JsonObject patchStats)
             {
                 MergeBaseStats(entry, patchStats);
             }
 
-            if (changes["types"] is JsonArray patchTypes)
+            if (changes[ShowdownKey.Pokedex.Types] is JsonArray patchTypes)
             {
                 MergeTypes(entry, patchTypes);
             }
 
-            if (changes["abilities"]?.AsObject() is JsonObject patchAbilities)
+            if (changes[ShowdownKey.Pokedex.Abilities]?.AsObject() is JsonObject patchAbilities)
             {
                 MergeAbilities(entry, patchAbilities);
             }
@@ -93,7 +93,7 @@ internal static class PatchApplicator
 
     private static void MergeBaseStats(JsonObject entry, JsonObject patchStats)
     {
-        JsonObject? entryStats = entry["baseStats"]?.AsObject();
+        JsonObject? entryStats = entry[ShowdownKey.Pokedex.BaseStats]?.AsObject();
         if (entryStats == null)
         {
             return;
@@ -107,12 +107,12 @@ internal static class PatchApplicator
 
     private static void MergeTypes(JsonObject entry, JsonArray patchTypes)
     {
-        entry["types"] = patchTypes.DeepClone();
+        entry[ShowdownKey.Pokedex.Types] = patchTypes.DeepClone();
     }
 
     private static void MergeAbilities(JsonObject entry, JsonObject patchAbilities)
     {
-        JsonObject? entryAbilities = entry["abilities"]?.AsObject();
+        JsonObject? entryAbilities = entry[ShowdownKey.Pokedex.Abilities]?.AsObject();
         if (entryAbilities == null)
         {
             return;
@@ -157,19 +157,19 @@ internal static class PatchApplicator
                 continue;
             }
 
-            if (changes["basePower"] is JsonNode basePower)
+            if (changes[ShowdownKey.Move.BasePower] is JsonNode basePower)
             {
-                entry["basePower"] = basePower.DeepClone();
+                entry[ShowdownKey.Move.BasePower] = basePower.DeepClone();
             }
 
-            if (changes["accuracy"] is JsonNode accuracy)
+            if (changes[ShowdownKey.Move.Accuracy] is JsonNode accuracy)
             {
-                entry["accuracy"] = accuracy.DeepClone();
+                entry[ShowdownKey.Move.Accuracy] = accuracy.DeepClone();
             }
 
-            if (changes["category"] is JsonNode category)
+            if (changes[ShowdownKey.Move.Category] is JsonNode category)
             {
-                entry["category"] = category.DeepClone();
+                entry[ShowdownKey.Move.Category] = category.DeepClone();
             }
         }
 

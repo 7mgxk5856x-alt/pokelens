@@ -138,7 +138,7 @@ internal static class MergeConverter
                 jaName = patchName;
             }
 
-            JsonObject? abilitiesSlots = entry["abilities"]?.AsObject();
+            JsonObject? abilitiesSlots = entry[ShowdownKey.Pokedex.Abilities]?.AsObject();
             var abilitiesList = new JsonArray();
             foreach (var slot in new[] { "0", "1", "H" })
             {
@@ -159,10 +159,10 @@ internal static class MergeConverter
 
             result[key] = new JsonObject
             {
-                ["num"] = entry["num"]?.GetValue<int>(),
+                ["num"] = entry[ShowdownKey.Num]?.GetValue<int>(),
                 ["name"] = jaName,
-                ["types"] = entry["types"]?.DeepClone(),
-                ["baseStats"] = entry["baseStats"]?.DeepClone(),
+                ["types"] = entry[ShowdownKey.Pokedex.Types]?.DeepClone(),
+                ["baseStats"] = entry[ShowdownKey.Pokedex.BaseStats]?.DeepClone(),
                 ["abilities"] = abilitiesList,
             };
         }
@@ -201,11 +201,11 @@ internal static class MergeConverter
                 continue;
             }
 
-            int basePower = entry["basePower"]?.GetValue<int>() ?? 0;
-            JsonNode? accuracyNode = entry["accuracy"];
-            JsonObject? flags = entry["flags"]?.AsObject();
-            JsonNode? multihit = entry["multihit"];
-            bool hasRecoil = entry["recoil"]?.GetValue<bool>() == true;
+            int basePower = entry[ShowdownKey.Move.BasePower]?.GetValue<int>() ?? 0;
+            JsonNode? accuracyNode = entry[ShowdownKey.Move.Accuracy];
+            JsonObject? flags = entry[ShowdownKey.Move.Flags]?.AsObject();
+            JsonNode? multihit = entry[ShowdownKey.Move.Multihit];
+            bool hasRecoil = entry[ShowdownKey.Move.Recoil]?.GetValue<bool>() == true;
 
             // 威力を計算する
             int? power = basePower == 0 ? null : basePower;
@@ -253,8 +253,8 @@ internal static class MergeConverter
             }
 
             // Showdownの secondary（オブジェクト）/ secondaries（配列）が存在すれば追加効果あり
-            JsonNode? secondary = entry["secondary"];
-            JsonNode? secondaries = entry["secondaries"];
+            JsonNode? secondary = entry[ShowdownKey.Move.Secondary];
+            JsonNode? secondaries = entry[ShowdownKey.Move.Secondaries];
             bool hasSecondary = secondary is JsonObject
                 || (secondaries is JsonArray sArr && sArr.Count > 0);
             if (hasSecondary)
@@ -264,8 +264,8 @@ internal static class MergeConverter
 
             var moveEntry = new JsonObject
             {
-                ["type"] = entry["type"]?.GetValue<string>(),
-                ["category"] = entry["category"]?.GetValue<string>(),
+                ["type"] = entry[ShowdownKey.Move.Type]?.GetValue<string>(),
+                ["category"] = entry[ShowdownKey.Move.Category]?.GetValue<string>(),
                 ["power"] = power,
                 ["accuracy"] = accuracy,
             };
