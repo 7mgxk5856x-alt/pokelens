@@ -23,6 +23,9 @@ const CONDITION = Object.freeze({
 // convertNormalTo 条件で変換元となる技タイプ
 const NORMAL_TYPE = 'Normal';
 
+// powerMax60 条件が対象とする技の威力上限（この値以下の技に補正がかかる）
+const POWER_MAX_60_THRESHOLD = 60;
+
 const DEFAULT_STAB = 2.0;
 
 function pickStatMultiplier(modifier, move) {
@@ -88,7 +91,7 @@ export function resolveModifier(modifier, move, pokemonTypes, kind) {
   }
 
   if (condition === CONDITION.POWER_MAX_60) {
-    const match = move.power != null && move.power <= 60;
+    const match = move.power != null && move.power <= POWER_MAX_60_THRESHOLD;
     return {
       multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
       typesForCalc: pokemonTypes,
