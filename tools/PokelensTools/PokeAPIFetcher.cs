@@ -5,9 +5,11 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-/// <summary>
-/// PokéAPI からポケモン・技・特性・アイテムの日本語名を取得し、cache/ に翻訳辞書として保存する。
-/// </summary>
+/// <summary>PokéAPI からポケモン・技・特性・アイテムの日本語名を取得し、cache/ に翻訳辞書として保存する。</summary>
+/// <remarks>
+/// 取得は num 単位のキャッシュと並列数制限つきで行う。HTTP エラー・タイムアウト・404 は警告ログのみで握り潰し、
+/// その項目を翻訳なしとして扱う（パイプライン全体を止めない）。
+/// </remarks>
 internal class PokeAPIFetcher
 {
     private readonly HttpClient _http;
@@ -30,9 +32,13 @@ internal class PokeAPIFetcher
         _http = http;
     }
 
-    /// <summary>
-    /// ポケモン・技・特性・アイテムすべての日本語名を取得し、pokeapi-translations.json として cache/ に保存する。
-    /// </summary>
+    /// <summary>ポケモン・技・特性・アイテムすべての日本語名を取得し、pokeapi-translations.json として cache/ に保存する。</summary>
+    /// <remarks>PokeAPIFetcher インスタンスごとに最大 1 回の呼び出しを想定する（冒頭で内部キャッシュを Clear する）。出力先ディレクトリは無ければ作成する。</remarks>
+    /// <param name="cacheDir">翻訳辞書の保存先ディレクトリ。</param>
+    /// <param name="showdownPokedexPath">対象ポケモンを列挙する Showdown ポケデックスキャッシュのパス。</param>
+    /// <param name="showdownMovesPath">対象技を列挙する Showdown 技キャッシュのパス。</param>
+    /// <param name="showdownItemsPath">対象アイテムを列挙する Showdown アイテムキャッシュのパス。</param>
+    /// <param name="showdownAbilitiesPath">対象特性を列挙する Showdown 特性キャッシュのパス。</param>
     internal async Task FetchTranslationsAsync(
         string cacheDir,
         string showdownPokedexPath,
@@ -207,9 +213,11 @@ internal class PokeAPIFetcher
         return body == null ? null : JsonNode.Parse(body);
     }
 
-    /// <summary>
-    /// species の varieties から targetSlug と前方一致（双方向）し、かつ最も長い variety 名を返す。無ければ null。
-    /// </summary>
+    /// <summary>species の varieties から targetSlug に一致する variety 名を探す。</summary>
+    /// <remarks>双方向の前方一致（どちらかが他方の接頭辞）で判定し、複数該当する場合は最も長い名前を選ぶ。</remarks>
+    /// <param name="speciesNode">pokemon-species の JSON ノード。</param>
+    /// <param name="targetSlug">照合する Showdown 由来の slug。</param>
+    /// <returns>一致した variety 名。無ければ null。</returns>
     internal static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
     {
         JsonArray? varieties = speciesNode["varieties"]?.AsArray();
@@ -238,9 +246,10 @@ internal class PokeAPIFetcher
         return best;
     }
 
-    /// <summary>
-    /// Showdown のアイテム名（例: "Choice Scarf", "Wellspring Mask"）を PokéAPI のアイテム slug に変換する。
-    /// </summary>
+    /// <summary>Showdown のアイテム名（例: "Choice Scarf", "Wellspring Mask"）を PokéAPI のアイテム slug に変換する。</summary>
+    /// <remarks>小文字化し、空白・アンダースコアをハイフンに、アクセント付き e を e に正規化し、約物を除去する。</remarks>
+    /// <param name="showdownName">Showdown のアイテム名。</param>
+    /// <returns>PokéAPI のアイテム slug。</returns>
     internal static string DeriveItemSlug(string showdownName)
     {
         string lower = showdownName.ToLowerInvariant();
@@ -310,9 +319,10 @@ internal class PokeAPIFetcher
         });
     }
 
-    /// <summary>
-    /// Showdown のポケモン名（例: "Rotom-Wash", "Mr. Mime", "Flabébé"）を PokéAPI のフォルム slug に変換する。
-    /// </summary>
+    /// <summary>Showdown のポケモン名（例: "Rotom-Wash", "Mr. Mime", "Flabébé"）を PokéAPI のフォルム slug に変換する。</summary>
+    /// <remarks>小文字化し、空白・アンダースコアをハイフンに、アクセント付き e を e に正規化し、約物（%含む）を除去する。</remarks>
+    /// <param name="showdownName">Showdown のポケモン名。</param>
+    /// <returns>PokéAPI のフォルム slug。</returns>
     internal static string DerivePokemonFormSlug(string showdownName)
     {
         string lower = showdownName.ToLowerInvariant();
@@ -410,7 +420,10 @@ internal class PokeAPIFetcher
         return result;
     }
 
-    /// <summary>指定した PokéAPI リソース URL を取得し、その names 配列から日本語名を返す。取得失敗時は null。</summary>
+    /// <summary>指定した PokéAPI リソース URL を取得し、その names 配列から日本語名を返す。</summary>
+    /// <remarks>取得失敗（HTTP エラー・タイムアウト・404・パース不能）の場合は例外にせず null を返す。</remarks>
+    /// <param name="url">取得対象の PokéAPI リソース URL。</param>
+    /// <returns>日本語名。取得・抽出できなければ null。</returns>
     internal async Task<string?> FetchJapaneseNameAsync(string url)
     {
         string? body = await FetchTextOrNullAsync(url);
@@ -469,9 +482,11 @@ internal class PokeAPIFetcher
         return await response.Content.ReadAsStringAsync();
     }
 
-    /// <summary>
-    /// 指定キー（names / form_names）の配列から日本語名を取り出す。"ja" を優先し、無ければ "ja-Hrkt" にフォールバックする。
-    /// </summary>
+    /// <summary>指定キー（names / form_names）の配列から日本語名を取り出す。</summary>
+    /// <remarks>"ja" を優先し、無ければ "ja-Hrkt"（ふりがな）にフォールバックする。</remarks>
+    /// <param name="root">names / form_names を含む JSON ノード。</param>
+    /// <param name="arrayKey">参照する配列キー（"names" または "form_names"）。</param>
+    /// <returns>日本語名。見つからなければ null。</returns>
     internal static string? ExtractJaName(JsonNode root, string arrayKey)
     {
         JsonArray? arr = root[arrayKey]?.AsArray();

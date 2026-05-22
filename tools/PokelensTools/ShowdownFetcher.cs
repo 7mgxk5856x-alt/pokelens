@@ -4,10 +4,8 @@ using System.Text.RegularExpressions;
 
 namespace PokelensTools;
 
-/// <summary>
-/// Pokémon Showdown のデータ JS（pokedex / moves / items / abilities）を取得し、
-/// 現代対戦で必要なフィールドだけを抽出して cache/ に保存する。
-/// </summary>
+/// <summary>Pokémon Showdown のデータ JS（pokedex / moves / items / abilities）を取得し、cache/ に保存する。</summary>
+/// <remarks>取得した各エントリは現代対戦（Gen 9 標準）で必要なフィールドだけに絞り込んで保存する。</remarks>
 internal class ShowdownFetcher
 {
     private readonly HttpClient _http;
@@ -18,6 +16,10 @@ internal class ShowdownFetcher
     }
 
     /// <summary>4 種のデータ（pokedex / moves / items / abilities）を並行取得して cache/ に書き出す。</summary>
+    /// <remarks>出力先ディレクトリは無ければ作成する。</remarks>
+    /// <param name="cacheDir">取得結果の保存先ディレクトリ。</param>
+    /// <exception cref="HttpRequestException">いずれかのデータ取得が HTTP エラー（非成功ステータス）になった場合。</exception>
+    /// <exception cref="FormatException">取得した Showdown JS にトップレベルのオブジェクトが見つからない場合。</exception>
     internal async Task FetchAllAsync(string cacheDir)
     {
         Directory.CreateDirectory(cacheDir);
@@ -48,9 +50,10 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    /// <summary>
-    /// Showdown のポケモンエントリを成果物用に整形する。num が 0 以下、または baseStats が無い場合は対象外として null を返す。
-    /// </summary>
+    /// <summary>Showdown のポケモンエントリを成果物用に整形する。</summary>
+    /// <remarks>num が 0 以下、または baseStats が無いエントリは対象外として null を返す。</remarks>
+    /// <param name="entry">Showdown のポケモンエントリ。</param>
+    /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildPokedexEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -110,9 +113,10 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    /// <summary>
-    /// Showdown の技エントリを成果物用に整形する。num が 0 以下、または Z ワザ・(キョダイ)ダイマックスワザは対象外として null を返す。
-    /// </summary>
+    /// <summary>Showdown の技エントリを成果物用に整形する。</summary>
+    /// <remarks>num が 0 以下、または Z ワザ・(キョダイ)ダイマックスワザは現代対戦で使用不可のため対象外として null を返す。</remarks>
+    /// <param name="entry">Showdown の技エントリ。</param>
+    /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildMoveEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -180,9 +184,10 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    /// <summary>
-    /// Showdown のアイテムエントリを成果物用に整形する。num が 0 以下、または非標準（Past / Future / CAP）は対象外として null を返す。
-    /// </summary>
+    /// <summary>Showdown のアイテムエントリを成果物用に整形する。</summary>
+    /// <remarks>num が 0 以下、または非標準（Past / Future / CAP 由来）は対象外として null を返す。</remarks>
+    /// <param name="entry">Showdown のアイテムエントリ。</param>
+    /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildItemEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -223,9 +228,10 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
-    /// <summary>
-    /// Showdown の特性エントリを成果物用に整形する。num が 0 以下、または非標準（Past / Future / CAP）は対象外として null を返す。
-    /// </summary>
+    /// <summary>Showdown の特性エントリを成果物用に整形する。</summary>
+    /// <remarks>num が 0 以下、または非標準（Past / Future / CAP 由来）は対象外として null を返す。</remarks>
+    /// <param name="entry">Showdown の特性エントリ。</param>
+    /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildAbilityEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -257,10 +263,11 @@ internal class ShowdownFetcher
         return await response.Content.ReadAsStringAsync();
     }
 
-    /// <summary>
-    /// Showdown の JS オブジェクトリテラルを JSON に変換する。クオートなしのプロパティキーと
-    /// 末尾カンマ（trailing comma）に対応する。
-    /// </summary>
+    /// <summary>Showdown の JS オブジェクトリテラルを JSON に変換する。</summary>
+    /// <remarks>クオートなしのプロパティキーと末尾カンマ（trailing comma）に対応する。</remarks>
+    /// <param name="js">Showdown のデータ JS 文字列。</param>
+    /// <returns>パース可能な JSON 文字列。</returns>
+    /// <exception cref="FormatException">トップレベルのオブジェクトが見つからない場合。</exception>
     internal static string JsToJson(string js)
     {
         int start = js.IndexOf('{');

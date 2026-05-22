@@ -2,16 +2,20 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-/// <summary>
-/// champions-patch.json（Pokémon Champions 独自データ）を Showdown キャッシュにマージし、
-/// ポケデックス・技のキャッシュを上書きする。
-/// </summary>
+/// <summary>champions-patch.json（Pokémon Champions 独自データ）を Showdown キャッシュにマージする。</summary>
+/// <remarks>
+/// ポケデックス・技のキャッシュを上書きするため、PokéAPI 取得（Step2）の後・成果物生成（Step4）の前に実行する。
+/// パッチは常に存在すべきファイルであり、不在やパース失敗はサイレントにスキップせず例外として伝播させる。
+/// </remarks>
 internal static class PatchApplicator
 {
-    /// <summary>
-    /// champions-patch.json を読み込み、pokedex / moves セクションをそれぞれのキャッシュへ適用する。
-    /// パッチが見つからない・パースできない場合は例外を投げる。
-    /// </summary>
+    /// <summary>champions-patch.json を読み込み、pokedex / moves セクションをそれぞれのキャッシュへ適用する。</summary>
+    /// <remarks>不在やパース失敗を握り潰すと Step4 が古いキャッシュで進行してしまうため、明示的に例外を投げる。</remarks>
+    /// <param name="showdownPokedexPath">適用先のポケデックスキャッシュのパス。</param>
+    /// <param name="showdownMovesPath">適用先の技キャッシュのパス。</param>
+    /// <param name="championsPatchPath">読み込む champions-patch.json のパス。</param>
+    /// <exception cref="FileNotFoundException"><paramref name="championsPatchPath"/> のファイルが存在しない場合。</exception>
+    /// <exception cref="InvalidDataException">champions-patch.json、またはポケデックス・技キャッシュの JSON パースに失敗した場合。</exception>
     internal static void Apply(
         string showdownPokedexPath,
         string showdownMovesPath,
@@ -35,9 +39,11 @@ internal static class PatchApplicator
         ApplyMovesPatch(showdownMovesPath, patch["moves"]?.AsObject());
     }
 
-    /// <summary>
-    /// パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。patchSection が null なら何もしない。
-    /// </summary>
+    /// <summary>パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。</summary>
+    /// <remarks><paramref name="patchSection"/> が null なら何もしない。マージ後はキャッシュファイルを書き戻す。</remarks>
+    /// <param name="pokedexPath">マージ対象のポケデックスキャッシュのパス。</param>
+    /// <param name="patchSection">パッチの pokedex セクション。null 可。</param>
+    /// <exception cref="InvalidDataException">ポケデックスキャッシュの JSON パースに失敗した場合。</exception>
     internal static void ApplyPokedexPatch(string pokedexPath, JsonObject? patchSection)
     {
         if (patchSection == null)
@@ -118,9 +124,11 @@ internal static class PatchApplicator
         }
     }
 
-    /// <summary>
-    /// パッチの moves セクションを当該キャッシュにマージする（basePower / accuracy / category を上書き）。patchSection が null なら何もしない。
-    /// </summary>
+    /// <summary>パッチの moves セクションを当該キャッシュにマージする（basePower / accuracy / category を上書き）。</summary>
+    /// <remarks><paramref name="patchSection"/> が null なら何もしない。マージ後はキャッシュファイルを書き戻す。</remarks>
+    /// <param name="movesPath">マージ対象の技キャッシュのパス。</param>
+    /// <param name="patchSection">パッチの moves セクション。null 可。</param>
+    /// <exception cref="InvalidDataException">技キャッシュの JSON パースに失敗した場合。</exception>
     internal static void ApplyMovesPatch(string movesPath, JsonObject? patchSection)
     {
         if (patchSection == null)

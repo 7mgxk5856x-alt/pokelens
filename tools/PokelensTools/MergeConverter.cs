@@ -2,10 +2,8 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-/// <summary>
-/// Showdown のキャッシュと PokéAPI 翻訳・各種パッチをマージし、フロントエンド用の
-/// 成果物 JSON（pokedex / moves / items / abilities）を data/ に生成する。
-/// </summary>
+/// <summary>Showdown のキャッシュと PokéAPI 翻訳・各種パッチをマージし、フロントエンド用の成果物 JSON を生成する。</summary>
+/// <remarks>pokedex / moves / items / abilities の 4 ファイルを data/ に書き出す、パイプライン Step4 の中核。</remarks>
 internal static class MergeConverter
 {
     // Showdown の flag キー → JSON タグ名の対応表（例外を先に引き、無ければ汎用ルール）
@@ -15,6 +13,9 @@ internal static class MergeConverter
     };
 
     /// <summary>Showdown の flag キーを成果物のタグ名（例: "isSlice"）に変換する。</summary>
+    /// <remarks>例外的な対応を持つ flag は対応表を優先し、無ければ "is" + 先頭大文字化の汎用ルールを適用する。</remarks>
+    /// <param name="flag">Showdown の flag キー。</param>
+    /// <returns>成果物用のタグ名。</returns>
     internal static string FlagToTag(string flag)
     {
         if (FlagExceptions.TryGetValue(flag, out string? exception))
@@ -25,10 +26,19 @@ internal static class MergeConverter
         return "is" + char.ToUpperInvariant(flag[0]) + flag[1..];
     }
 
-    /// <summary>
-    /// 全入力（Showdown キャッシュ・翻訳・パッチ・修正子）を読み込んでマージし、
-    /// data/ 配下に pokedex / moves / items / abilities の各 JSON を書き出す。
-    /// </summary>
+    /// <summary>全入力（Showdown キャッシュ・翻訳・パッチ・修正子）を読み込んでマージし、成果物 JSON を出力する。</summary>
+    /// <remarks>data/ 配下に pokedex / moves / items / abilities の各 JSON を書き出す。出力先ディレクトリは無ければ作成する。</remarks>
+    /// <param name="showdownPokedexPath">Showdown ポケデックスキャッシュのパス。</param>
+    /// <param name="showdownMovesPath">Showdown 技キャッシュのパス。</param>
+    /// <param name="showdownItemsPath">Showdown アイテムキャッシュのパス。</param>
+    /// <param name="showdownAbilitiesPath">Showdown 特性キャッシュのパス。</param>
+    /// <param name="translationsPath">PokéAPI 由来の翻訳辞書のパス。</param>
+    /// <param name="movesPowerPatchPath">威力不定技を補完する moves-power-patch のパス。</param>
+    /// <param name="itemsModifiersPath">アイテム修正子定義のパス。</param>
+    /// <param name="abilitiesModifiersPath">特性修正子定義のパス。</param>
+    /// <param name="pokemonNamePatchPath">ポケモン日本語名の上書きパッチのパス。</param>
+    /// <param name="itemNamePatchPath">アイテム日本語名の上書きパッチのパス。</param>
+    /// <param name="dataDir">成果物 JSON の出力先ディレクトリ。</param>
     internal static void Convert(
         string showdownPokedexPath,
         string showdownMovesPath,
@@ -87,9 +97,13 @@ internal static class MergeConverter
             JsonHelpers.ToIndentedJson(ConvertAbilities(abilitiesModifiers, abilityNames)));
     }
 
-    /// <summary>
-    /// Showdown ポケデックスに日本語名（翻訳＋ name-patch 上書き）と日本語特性名を当て、成果物形式に変換する。
-    /// </summary>
+    /// <summary>Showdown ポケデックスに日本語名（翻訳＋ name-patch 上書き）と日本語特性名を当て、成果物形式に変換する。</summary>
+    /// <remarks>翻訳が無いエントリは出力から除外する。name-patch は翻訳由来の名前を上書きする。</remarks>
+    /// <param name="showdownPokedex">Showdown のポケデックス。</param>
+    /// <param name="pokemonNames">ポケモンの日本語名辞書（翻訳）。</param>
+    /// <param name="abilityNames">特性の日本語名辞書（翻訳）。</param>
+    /// <param name="pokemonNamePatch">ポケモン日本語名の上書きパッチ。</param>
+    /// <returns>日本語名・特性を当てた成果物形式のポケデックス。</returns>
     internal static JsonObject ConvertPokedex(
         JsonObject showdownPokedex,
         JsonObject pokemonNames,
@@ -156,10 +170,12 @@ internal static class MergeConverter
         return result;
     }
 
-    /// <summary>
-    /// Showdown の技を成果物形式に変換する。威力（連続技・威力不定技のパッチ込み）・命中・タグを計算し、
-    /// 日本語名をキーにする。
-    /// </summary>
+    /// <summary>Showdown の技を成果物形式に変換する。</summary>
+    /// <remarks>威力（連続技は最大ヒット数で乗算、威力不定技は moves-power-patch で補完）・命中・タグを計算し、日本語名をキーにする。翻訳が無い技は除外する。</remarks>
+    /// <param name="showdownMoves">Showdown の技データ。</param>
+    /// <param name="moveNames">技の日本語名辞書（翻訳）。</param>
+    /// <param name="movesPowerPatch">威力不定技を補完するパッチ。</param>
+    /// <returns>日本語名をキーとする成果物形式の技辞書。</returns>
     internal static JsonObject ConvertMoves(
         JsonObject showdownMoves,
         JsonObject moveNames,
@@ -271,9 +287,12 @@ internal static class MergeConverter
         return result;
     }
 
-    /// <summary>
-    /// アイテム修正子に日本語名（item-name-patch 優先、無ければ翻訳）を当てて成果物形式に変換する。
-    /// </summary>
+    /// <summary>アイテム修正子に日本語名（item-name-patch 優先、無ければ翻訳）を当てて成果物形式に変換する。</summary>
+    /// <remarks>日本語名が解決できないアイテムは出力から除外する。</remarks>
+    /// <param name="itemsModifiers">アイテム修正子定義。</param>
+    /// <param name="itemNames">アイテムの日本語名辞書（翻訳）。</param>
+    /// <param name="itemNamePatch">アイテム日本語名の上書きパッチ。</param>
+    /// <returns>日本語名をキーとする成果物形式のアイテム辞書。</returns>
     internal static JsonObject ConvertItems(
         JsonObject itemsModifiers,
         JsonObject itemNames,
@@ -306,9 +325,11 @@ internal static class MergeConverter
         return result;
     }
 
-    /// <summary>
-    /// 特性修正子に日本語名（翻訳）を当てて成果物形式に変換する。
-    /// </summary>
+    /// <summary>特性修正子に日本語名（翻訳）を当てて成果物形式に変換する。</summary>
+    /// <remarks>日本語名が解決できない特性は出力から除外する。</remarks>
+    /// <param name="abilitiesModifiers">特性修正子定義。</param>
+    /// <param name="abilityNames">特性の日本語名辞書（翻訳）。</param>
+    /// <returns>日本語名をキーとする成果物形式の特性辞書。</returns>
     internal static JsonObject ConvertAbilities(
         JsonObject abilitiesModifiers,
         JsonObject abilityNames)
