@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-public static class MergeConverter
+internal static class MergeConverter
 {
     // Map of Showdown flag keys → JSON tag names (exceptions first, then generic rule)
     private static readonly Dictionary<string, string> FlagExceptions = new()

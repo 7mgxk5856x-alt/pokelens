@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-public class PokeAPIFetcher
+internal class PokeAPIFetcher
 {
     private readonly HttpClient _http;
     private static readonly JsonSerializerOptions WriteOptions =

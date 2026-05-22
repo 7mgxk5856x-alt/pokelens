@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace PokelensTools;
 
-public class ShowdownFetcher
+internal class ShowdownFetcher
 {
     private readonly HttpClient _http;
 

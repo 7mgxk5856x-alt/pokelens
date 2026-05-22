@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace PokelensTools;
 
-public static class IncrementalRunner
+internal static class IncrementalRunner
 {
     public record Steps(bool NeedsStep2, bool NeedsStep3, bool NeedsStep4);
 

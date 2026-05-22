@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
-public static class PatchApplicator
+internal static class PatchApplicator
 {
     public static void Apply(
         string showdownPokedexPath,
