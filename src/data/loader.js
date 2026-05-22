@@ -4,7 +4,9 @@ const REQUIRED_PARTY_FIELDS = ['species', 'nature', 'abilityPoints', 'moves'];
 
 async function fetchJson(url, errorMessage) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(errorMessage);
+  if (!res.ok) {
+    throw new Error(errorMessage);
+  }
   try {
     return await res.json();
   } catch {
@@ -42,7 +44,9 @@ export class DataLoader {
     ]);
 
     const partyRes = await fetch('./data/party.json');
-    if (!partyRes.ok) throw new Error('party.json が見つかりません');
+    if (!partyRes.ok) {
+      throw new Error('party.json が見つかりません');
+    }
     let userParty;
     try {
       userParty = await partyRes.json();
@@ -73,12 +77,16 @@ export class DataLoader {
   }
 
   getPokemonByName(name) {
-    if (!this.#pokedex) return null;
+    if (!this.#pokedex) {
+      return null;
+    }
     return Object.values(this.#pokedex).find((e) => e.name === name) ?? null;
   }
 
   searchByName(query) {
-    if (!this.#pokedex) return [];
+    if (!this.#pokedex) {
+      return [];
+    }
     return searchByNameImpl(query, Object.values(this.#pokedex));
   }
 

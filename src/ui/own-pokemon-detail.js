@@ -19,7 +19,9 @@ export class OwnPokemonDetail {
 
   update(entry) {
     const pokemonData = this.#loader.getPokemonByName(entry.species);
-    if (!pokemonData) return;
+    if (!pokemonData) {
+      return;
+    }
 
     const natureModifiers = this.#loader.getNatureModifiers(entry.nature);
     const actualStats = calcActualStats(
@@ -57,13 +59,18 @@ export class OwnPokemonDetail {
   }
 
   #buildNatureRow(nature, natureModifiers) {
-    if (!nature) return el('div', 'detail-row', `性格: ${DASH}`);
+    if (!nature) {
+      return el('div', 'detail-row', `性格: ${DASH}`);
+    }
     const up = [];
     const down = [];
     for (const [key, label] of STAT_LABELS) {
       const mod = natureModifiers[key];
-      if (mod > 1) up.push(label);
-      else if (mod < 1) down.push(label);
+      if (mod > 1) {
+        up.push(label);
+      } else if (mod < 1) {
+        down.push(label);
+      }
     }
     const upText = up.map((s) => `${s}↑`).join(' ');
     const downText = down.map((s) => `${s}↓`).join(' ');
@@ -88,7 +95,9 @@ export class OwnPokemonDetail {
 
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
-    for (const col of MOVE_COLUMNS) headRow.appendChild(el('th', null, col));
+    for (const col of MOVE_COLUMNS) {
+      headRow.appendChild(el('th', null, col));
+    }
     thead.appendChild(headRow);
     table.appendChild(thead);
 

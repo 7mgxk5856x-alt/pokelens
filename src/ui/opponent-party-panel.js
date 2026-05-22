@@ -57,7 +57,9 @@ export class OpponentPartyPanel {
     card.appendChild(clearButton);
 
     card.addEventListener('click', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target === clearButton) return;
+      if (e.target.tagName === 'INPUT' || e.target === clearButton) {
+        return;
+      }
       if (this.#slots[index].species) {
         this.#selectSlot(index);
       }
@@ -120,7 +122,9 @@ export class OpponentPartyPanel {
   }
 
   #selectSlot(index) {
-    for (const slot of this.#slots) slot.card.classList.remove('selected');
+    for (const slot of this.#slots) {
+      slot.card.classList.remove('selected');
+    }
     this.#slots[index].card.classList.add('selected');
     this.#selectedIndex = index;
     this.#onSelect(this.#slots[index].species);

@@ -12,14 +12,20 @@ const TAG_CONDITIONS = new Set([
 const DEFAULT_STAB = 2.0;
 
 function pickStatMultiplier(modifier, move) {
-  if (move.category === 'Physical') return modifier.atk ?? 1.0;
-  if (move.category === 'Special') return modifier.spa ?? 1.0;
+  if (move.category === 'Physical') {
+    return modifier.atk ?? 1.0;
+  }
+  if (move.category === 'Special') {
+    return modifier.spa ?? 1.0;
+  }
   // Status 技は calcPowerIndex 側で null 判定済みのため 1.0 フォールバックで問題ない
   return 1.0;
 }
 
 export function resolveModifier(modifier, move, pokemonTypes, kind) {
-  if (!modifier) return { multiplier: 1.0, typesForCalc: pokemonTypes };
+  if (!modifier) {
+    return { multiplier: 1.0, typesForCalc: pokemonTypes };
+  }
 
   const condition = modifier.condition ?? null;
   const stabMatch = pokemonTypes.includes(move.type);
