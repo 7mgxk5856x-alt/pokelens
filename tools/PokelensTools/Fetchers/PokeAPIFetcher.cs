@@ -158,7 +158,7 @@ internal class PokeAPIFetcher
     private async Task<string?> GetSpeciesJaNameAsync(int num)
     {
         JsonNode? node = await GetSpeciesNodeAsync(num);
-        return node == null ? null : ExtractJaName(node, "names");
+        return node == null ? null : ExtractJaName(node, PokeApiKey.Names);
     }
 
     private Task<JsonNode?> GetSpeciesNodeAsync(int num)
@@ -179,7 +179,7 @@ internal class PokeAPIFetcher
         JsonNode? node = await FetchFormNodeAsync(slug);
         if (node != null)
         {
-            string? ja = ExtractJaName(node, "form_names");
+            string? ja = ExtractJaName(node, PokeApiKey.FormNames);
             if (!string.IsNullOrEmpty(ja))
             {
                 return ja;
@@ -204,7 +204,7 @@ internal class PokeAPIFetcher
             return null;
         }
 
-        return ExtractJaName(fallback, "form_names");
+        return ExtractJaName(fallback, PokeApiKey.FormNames);
     }
 
     private async Task<JsonNode?> FetchFormNodeAsync(string slug)
@@ -220,7 +220,7 @@ internal class PokeAPIFetcher
     /// <returns>一致した variety 名。無ければ null。</returns>
     internal static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
     {
-        JsonArray? varieties = speciesNode["varieties"]?.AsArray();
+        JsonArray? varieties = speciesNode[PokeApiKey.Species.Varieties]?.AsArray();
         if (varieties == null)
         {
             return null;
@@ -230,7 +230,7 @@ internal class PokeAPIFetcher
         int bestLen = -1;
         foreach (var v in varieties)
         {
-            string? name = v?["pokemon"]?["name"]?.GetValue<string>();
+            string? name = v?[PokeApiKey.Species.Pokemon]?[PokeApiKey.Name]?.GetValue<string>();
             if (string.IsNullOrEmpty(name))
             {
                 continue;
@@ -438,7 +438,7 @@ internal class PokeAPIFetcher
             return null;
         }
 
-        return ExtractJaName(node, "names");
+        return ExtractJaName(node, PokeApiKey.Names);
     }
 
     private async Task<string?> FetchTextOrNullAsync(string url)
@@ -502,8 +502,8 @@ internal class PokeAPIFetcher
         string? jaHrkt = null;
         foreach (var entry in arr)
         {
-            string? lang = entry?["language"]?["name"]?.GetValue<string>();
-            string? name = entry?["name"]?.GetValue<string>();
+            string? lang = entry?[PokeApiKey.Language]?[PokeApiKey.Name]?.GetValue<string>();
+            string? name = entry?[PokeApiKey.Name]?.GetValue<string>();
             if (string.IsNullOrEmpty(name))
             {
                 continue;
