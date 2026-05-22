@@ -33,7 +33,7 @@ internal class ShowdownFetcher
 
     internal async Task FetchPokedexAsync(string cacheDir)
     {
-        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/pokedex.js");
+        string js = await FetchTextAsync(Endpoints.Showdown.Pokedex);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
@@ -96,7 +96,7 @@ internal class ShowdownFetcher
 
     internal async Task FetchMovesAsync(string cacheDir)
     {
-        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/moves.js");
+        string js = await FetchTextAsync(Endpoints.Showdown.Moves);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
@@ -167,7 +167,7 @@ internal class ShowdownFetcher
 
     internal async Task FetchItemsAsync(string cacheDir)
     {
-        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/items.js");
+        string js = await FetchTextAsync(Endpoints.Showdown.Items);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
@@ -211,7 +211,7 @@ internal class ShowdownFetcher
 
     internal async Task FetchAbilitiesAsync(string cacheDir)
     {
-        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/abilities.js");
+        string js = await FetchTextAsync(Endpoints.Showdown.Abilities);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();

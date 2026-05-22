@@ -54,13 +54,13 @@ internal class PokeAPIFetcher
         Console.WriteLine("  Fetching move names from PokéAPI...");
         JsonObject moves = await FetchCategoryAsync(
             showdownMovesPath,
-            id => $"https://pokeapi.co/api/v2/move/{id}/",
+            Endpoints.PokeApi.Move,
             "moves");
 
         Console.WriteLine("  Fetching ability names from PokéAPI...");
         JsonObject abilities = await FetchCategoryAsync(
             showdownAbilitiesPath,
-            id => $"https://pokeapi.co/api/v2/ability/{id}/",
+            Endpoints.PokeApi.Ability,
             "abilities");
 
         Console.WriteLine("  Fetching item names from PokéAPI...");
@@ -165,7 +165,7 @@ internal class PokeAPIFetcher
     {
         return _speciesCache.GetOrAdd(num, async n =>
         {
-            string? body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-species/{n}/");
+            string? body = await FetchTextOrNullAsync(Endpoints.PokeApi.PokemonSpecies(n));
             return body == null ? null : JsonNode.Parse(body);
         });
     }
@@ -209,7 +209,7 @@ internal class PokeAPIFetcher
 
     private async Task<JsonNode?> FetchFormNodeAsync(string slug)
     {
-        string? body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-form/{slug}/");
+        string? body = await FetchTextOrNullAsync(Endpoints.PokeApi.PokemonForm(slug));
         return body == null ? null : JsonNode.Parse(body);
     }
 
@@ -309,7 +309,7 @@ internal class PokeAPIFetcher
         return await RunParallelAsync(targets, async t =>
         {
             string slug = DeriveItemSlug(t.Name);
-            string? ja = await FetchJapaneseNameAsync($"https://pokeapi.co/api/v2/item/{slug}/");
+            string? ja = await FetchJapaneseNameAsync(Endpoints.PokeApi.Item(slug));
             if (ja == null)
             {
                 Console.WriteLine($"    Warning: no Japanese name for items/{t.Key} (slug={slug})");

@@ -208,7 +208,8 @@ tools/
 │   │   └── ChecksumSet.cs          # チェックサムの型
 │   ├── Common/
 │   │   ├── JsonHelpers.cs          # JSON出力ヘルパー
-│   │   └── CacheFileName.cs        # cache/ 中間ファイル名の共有定数
+│   │   ├── CacheFileName.cs        # cache/ 中間ファイル名の共有定数
+│   │   └── Endpoints.cs            # 外部HTTPエンドポイント（Showdown / PokéAPI）
 │   └── Patches/                    # 手動管理データ（git管理対象）
 │       ├── champions-patch.json    # Champions差分パッチ
 │       ├── moves-power-patch.json  # 威力不定技の最大威力定義
