@@ -6,6 +6,7 @@ const NAVIGATE_DELTA = {
   ArrowUp: () => -1,
 };
 
+/** ポケモン名のインクリメンタル検索入力。サジェスト表示・キーボード操作・確定を扱う。 */
 export class SearchInput {
   #loader;
   #onCommit;
@@ -75,7 +76,9 @@ export class SearchInput {
     this.#currentResults.forEach((entry, index) => {
       const li = document.createElement('li');
       li.className = 'suggest-item';
-      if (index === this.#hoverIndex) li.classList.add('is-hover');
+      if (index === this.#hoverIndex) {
+        li.classList.add('is-hover');
+      }
       li.textContent = entry.name;
       li.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -108,9 +111,13 @@ export class SearchInput {
 
   #handleKeydown(e) {
     if (NAVIGATE_DELTA[e.key]) {
-      if (this.#list.hidden) return;
+      if (this.#list.hidden) {
+        return;
+      }
       e.preventDefault();
-      if (this.#notFound || this.#currentResults.length === 0) return;
+      if (this.#notFound || this.#currentResults.length === 0) {
+        return;
+      }
       const n = this.#currentResults.length;
       const delta = NAVIGATE_DELTA[e.key](e);
       // #renderResults 経由でリスト表示時は #hoverIndex = 0 が保証されるが、防御的に null フォールバックを置く
@@ -120,15 +127,21 @@ export class SearchInput {
     }
 
     if (e.key === 'Enter') {
-      if (this.#list.hidden || this.#notFound) return;
-      if (this.#hoverIndex == null) return;
+      if (this.#list.hidden || this.#notFound) {
+        return;
+      }
+      if (this.#hoverIndex == null) {
+        return;
+      }
       e.preventDefault();
       this.#commit(this.#currentResults[this.#hoverIndex]);
       return;
     }
 
     if (e.key === 'Escape') {
-      if (this.#list.hidden) return;
+      if (this.#list.hidden) {
+        return;
+      }
       e.preventDefault();
       // Escape はサジェストのみを閉じ、入力テキストは保持する（再入力しやすくするため）
       this.#hideSuggestions();
@@ -149,7 +162,9 @@ export class SearchInput {
   }
 
   clear() {
-    if (!this.#input) return;
+    if (!this.#input) {
+      return;
+    }
     this.#input.value = '';
     this.#hideSuggestions();
   }

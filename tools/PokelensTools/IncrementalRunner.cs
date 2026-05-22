@@ -3,9 +3,19 @@ using System.Text.Json;
 
 namespace PokelensTools;
 
-public static class IncrementalRunner
+/// <summary>入力ファイルのチェックサムを前回値と比較し、パイプラインのどのステップを再実行すべきかを判定する。</summary>
+/// <remarks>
+/// 変化のない入力に対する不要な再取得・再生成を避けるための差分実行機構。チェックサムは
+/// <see cref="SaveChecksums"/> で永続化し、次回起動時に <see cref="LoadChecksums"/> で読み戻して比較する。
+/// </remarks>
+internal static class IncrementalRunner
 {
-    public record Steps(bool NeedsStep2, bool NeedsStep3, bool NeedsStep4);
+    /// <summary>差分判定の結果。再実行が必要なステップの集合を表す。</summary>
+    /// <remarks>各フラグは Step2（PokéAPI 取得）/ Step3（パッチ適用）/ Step4（成果物生成）の要否に対応する。</remarks>
+    /// <param name="NeedsStep2">Step2（PokéAPI 翻訳取得）の再実行が必要か。</param>
+    /// <param name="NeedsStep3">Step3（champions-patch 適用）の再実行が必要か。</param>
+    /// <param name="NeedsStep4">Step4（成果物 JSON 生成）の再実行が必要か。</param>
+    internal record Steps(bool NeedsStep2, bool NeedsStep3, bool NeedsStep4);
 
     private static readonly string[] ShowdownKeys =
         ["showdown-pokedex", "showdown-moves", "showdown-items", "showdown-abilities"];
@@ -13,28 +23,54 @@ public static class IncrementalRunner
     private static readonly string[] Step4OnlyKeys =
         ["moves-power-patch", "items-modifiers", "abilities-modifiers", "pokemon-name-patch", "item-name-patch"];
 
-    public static Dictionary<string, string> LoadChecksums(string path)
+    /// <summary>保存済みチェックサム JSON を読み込む。</summary>
+    /// <remarks>ファイルが存在しない（＝初回実行）場合は空の辞書を返し、例外にはしない。</remarks>
+    /// <param name="path">チェックサム JSON のパス。</param>
+    /// <returns>キー→ハッシュの辞書。ファイルが無ければ空の辞書。</returns>
+    internal static Dictionary<string, string> LoadChecksums(string path)
     {
-        if (!File.Exists(path)) return [];
-        var json = File.ReadAllText(path);
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        string json = File.ReadAllText(path);
         return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
     }
 
-    public static string ComputeHash(string filePath)
+    /// <summary>ファイルの SHA-256 ハッシュを小文字 16 進文字列で返す。</summary>
+    /// <remarks>差分検知に用いる。ファイルが存在しない場合は空文字列を返し、例外にはしない。</remarks>
+    /// <param name="filePath">ハッシュ対象のファイルパス。</param>
+    /// <returns>小文字 16 進のハッシュ文字列。ファイルが無ければ空文字列。</returns>
+    internal static string ComputeHash(string filePath)
     {
-        if (!File.Exists(filePath)) return string.Empty;
+        if (!File.Exists(filePath))
+        {
+            return string.Empty;
+        }
+
         using var sha = SHA256.Create();
-        using var stream = File.OpenRead(filePath);
+        using FileStream stream = File.OpenRead(filePath);
         byte[] hash = sha.ComputeHash(stream);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    public static Steps DetermineSteps(
+    /// <summary>前回と今回のチェックサムを比較し、再実行すべきステップを判定する。</summary>
+    /// <remarks>
+    /// 初回（<paramref name="old"/> が空）は全ステップを実行する。Step3 以前が再実行される場合は
+    /// 必ず Step4（マージ）にも波及させる。pokeapi 翻訳や Step4 専用パッチのみの変化は Step4 だけ再実行する。
+    /// </remarks>
+    /// <param name="old">前回保存したチェックサム。</param>
+    /// <param name="current">今回計算したチェックサム。</param>
+    /// <returns>各ステップの要否を表す <see cref="Steps"/>。</returns>
+    internal static Steps DetermineSteps(
         Dictionary<string, string> old,
         Dictionary<string, string> current)
     {
         if (old.Count == 0)
+        {
             return new Steps(true, true, true);
+        }
 
         bool showdownChanged = ShowdownKeys.Any(k =>
             old.GetValueOrDefault(k) != current.GetValueOrDefault(k));
@@ -54,10 +90,18 @@ public static class IncrementalRunner
         return new Steps(needsStep2, needsStep3, needsStep4);
     }
 
-    public static void SaveChecksums(Dictionary<string, string> checksums, string path)
+    /// <summary>チェックサム辞書を整形 JSON として保存する。</summary>
+    /// <remarks>出力先ディレクトリが無ければ作成する。Step2〜Step4 が例外で中断した場合は呼ばれず、次回同ステップから再実行される。</remarks>
+    /// <param name="checksums">保存するキー→ハッシュの辞書。</param>
+    /// <param name="path">保存先パス。</param>
+    internal static void SaveChecksums(Dictionary<string, string> checksums, string path)
     {
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        string? dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
         File.WriteAllText(path, JsonSerializer.Serialize(checksums,
             new JsonSerializerOptions(JsonSerializerDefaults.General) { WriteIndented = true }));
     }

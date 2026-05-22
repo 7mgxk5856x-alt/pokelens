@@ -93,7 +93,23 @@ const basePower = move.power ?? move.maxPower;
 **ドキュメンテーションコメント**: 公開 API には、その言語の標準的なドキュメンテーションコメントを付ける。
 
 - **JavaScript**: `export` する関数・モジュールの公開インターフェースに **JSDoc**（`/** ... */`、`@param` / `@returns` 等）を付ける（例: `src/data/loader.js` のエクスポート関数）。
-- **C#**: `public` / `internal` で外部（他クラス・テスト）から使う型・メンバーに **XML Documentation Comments**（`/// <summary>` / `/// <param>` / `/// <returns>` 等）を付ける。
+- **C#**: `public` / `internal` で外部（他クラス・テスト）から使う型・メンバーに **XML Documentation Comments** を付ける。含めるタグは以下に従う。
+
+  | タグ | 要否 |
+  |------|------|
+  | `<summary>` | 必須 |
+  | `<remarks>` | 必須 |
+  | `<param>` | 引数が存在すれば必須（各引数に 1 つ）。引数がなければ記載不要 |
+  | `<returns>` | 戻り値が存在すれば（`void` / コンストラクタ以外）必須。なければ記載不要 |
+  | `<exception>` | 例外を送出しうる場合は必須（送出する例外型ごとに記載）。それ以外は記載不要 |
+
+  ```csharp
+  /// <summary>ファイルの SHA-256 ハッシュを小文字 16 進文字列で返す。</summary>
+  /// <remarks>差分検知に用いる。ファイルが存在しない場合は空文字列を返し、例外にはしない。</remarks>
+  /// <param name="filePath">ハッシュ対象のファイルパス。</param>
+  /// <returns>小文字 16 進のハッシュ文字列。ファイルが無ければ空文字列。</returns>
+  internal static string ComputeHash(string filePath)
+  ```
 
 非 export のヘルパーや `private` メンバー、関数名と引数名だけで意図が伝わる単純なロジック関数には不要。WHAT の繰り返しになる冗長なドキュメンテーションコメントは書かない。
 

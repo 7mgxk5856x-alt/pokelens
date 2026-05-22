@@ -14,6 +14,11 @@ export default [
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': 'warn',
+      // var は使わず const 既定・必要時 let（development-guidelines「変数宣言」）
+      'no-var': 'error',
+      'prefer-const': 'error',
+      // 制御構文の本体は一行でも必ず波括弧で囲む（development-guidelines「制御構文のブロック」）
+      curly: ['error', 'all'],
     },
   },
   {

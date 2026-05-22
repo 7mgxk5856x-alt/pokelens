@@ -7,6 +7,7 @@ function formatBaseStats(baseStats) {
   return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
 }
 
+/** 相手パーティの選出枠（6 体）を描画し、ポケモン名の入力・選択・クリアを扱うパネル。 */
 export class OpponentPartyPanel {
   #loader;
   #onSelect;
@@ -57,7 +58,9 @@ export class OpponentPartyPanel {
     card.appendChild(clearButton);
 
     card.addEventListener('click', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target === clearButton) return;
+      if (e.target.tagName === 'INPUT' || e.target === clearButton) {
+        return;
+      }
       if (this.#slots[index].species) {
         this.#selectSlot(index);
       }
@@ -120,7 +123,9 @@ export class OpponentPartyPanel {
   }
 
   #selectSlot(index) {
-    for (const slot of this.#slots) slot.card.classList.remove('selected');
+    for (const slot of this.#slots) {
+      slot.card.classList.remove('selected');
+    }
     this.#slots[index].card.classList.add('selected');
     this.#selectedIndex = index;
     this.#onSelect(this.#slots[index].species);
