@@ -56,13 +56,13 @@ internal class ShowdownFetcher
     /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildPokedexEntry(JsonObject entry)
     {
-        int num = entry["num"]?.GetValue<int>() ?? 0;
+        int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
         if (num <= 0)
         {
             return null;
         }
 
-        JsonObject? baseStats = entry["baseStats"]?.AsObject();
+        JsonObject? baseStats = entry[ShowdownKey.Pokedex.BaseStats]?.AsObject();
         if (baseStats == null)
         {
             return null;
@@ -70,25 +70,25 @@ internal class ShowdownFetcher
 
         var pokedexEntry = new JsonObject
         {
-            ["num"] = num,
-            ["name"] = entry["name"]?.GetValue<string>(),
-            ["types"] = entry["types"]?.DeepClone(),
-            ["baseStats"] = new JsonObject
+            [ShowdownKey.Num] = num,
+            [ShowdownKey.Name] = entry[ShowdownKey.Name]?.GetValue<string>(),
+            [ShowdownKey.Pokedex.Types] = entry[ShowdownKey.Pokedex.Types]?.DeepClone(),
+            [ShowdownKey.Pokedex.BaseStats] = new JsonObject
             {
-                ["hp"] = baseStats["hp"]?.GetValue<int>(),
-                ["atk"] = baseStats["atk"]?.GetValue<int>(),
-                ["def"] = baseStats["def"]?.GetValue<int>(),
-                ["spa"] = baseStats["spa"]?.GetValue<int>(),
-                ["spd"] = baseStats["spd"]?.GetValue<int>(),
-                ["spe"] = baseStats["spe"]?.GetValue<int>(),
+                [ShowdownKey.Stat.Hp] = baseStats[ShowdownKey.Stat.Hp]?.GetValue<int>(),
+                [ShowdownKey.Stat.Atk] = baseStats[ShowdownKey.Stat.Atk]?.GetValue<int>(),
+                [ShowdownKey.Stat.Def] = baseStats[ShowdownKey.Stat.Def]?.GetValue<int>(),
+                [ShowdownKey.Stat.Spa] = baseStats[ShowdownKey.Stat.Spa]?.GetValue<int>(),
+                [ShowdownKey.Stat.Spd] = baseStats[ShowdownKey.Stat.Spd]?.GetValue<int>(),
+                [ShowdownKey.Stat.Spe] = baseStats[ShowdownKey.Stat.Spe]?.GetValue<int>(),
             },
-            ["abilities"] = entry["abilities"]?.DeepClone(),
+            [ShowdownKey.Pokedex.Abilities] = entry[ShowdownKey.Pokedex.Abilities]?.DeepClone(),
         };
 
-        string? forme = entry["forme"]?.GetValue<string>();
+        string? forme = entry[ShowdownKey.Pokedex.Forme]?.GetValue<string>();
         if (!string.IsNullOrEmpty(forme))
         {
-            pokedexEntry["forme"] = forme;
+            pokedexEntry[ShowdownKey.Pokedex.Forme] = forme;
         }
 
         return pokedexEntry;
@@ -119,47 +119,47 @@ internal class ShowdownFetcher
     /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildMoveEntry(JsonObject entry)
     {
-        int num = entry["num"]?.GetValue<int>() ?? 0;
+        int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
         if (num <= 0)
         {
             return null;
         }
         // Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で
         // 使用不可のためここで除外する。functional-design.md 「除外フィルタ」参照。
-        if (entry["isZ"] != null || entry["isMax"] != null)
+        if (entry[ShowdownKey.Move.IsZ] != null || entry[ShowdownKey.Move.IsMax] != null)
         {
             return null;
         }
 
         var moveEntry = new JsonObject
         {
-            ["num"] = num,
-            ["name"] = entry["name"]?.GetValue<string>(),
-            ["type"] = entry["type"]?.GetValue<string>(),
-            ["category"] = entry["category"]?.GetValue<string>(),
-            ["basePower"] = entry["basePower"]?.GetValue<int>() ?? 0,
-            ["accuracy"] = entry["accuracy"]?.DeepClone(),
-            ["flags"] = entry["flags"]?.DeepClone() ?? new JsonObject(),
+            [ShowdownKey.Num] = num,
+            [ShowdownKey.Name] = entry[ShowdownKey.Name]?.GetValue<string>(),
+            [ShowdownKey.Move.Type] = entry[ShowdownKey.Move.Type]?.GetValue<string>(),
+            [ShowdownKey.Move.Category] = entry[ShowdownKey.Move.Category]?.GetValue<string>(),
+            [ShowdownKey.Move.BasePower] = entry[ShowdownKey.Move.BasePower]?.GetValue<int>() ?? 0,
+            [ShowdownKey.Move.Accuracy] = entry[ShowdownKey.Move.Accuracy]?.DeepClone(),
+            [ShowdownKey.Move.Flags] = entry[ShowdownKey.Move.Flags]?.DeepClone() ?? new JsonObject(),
         };
 
-        if (entry["multihit"] is { } multihit)
+        if (entry[ShowdownKey.Move.Multihit] is { } multihit)
         {
-            moveEntry["multihit"] = multihit.DeepClone();
+            moveEntry[ShowdownKey.Move.Multihit] = multihit.DeepClone();
         }
 
-        if (entry["recoil"] != null)
+        if (entry[ShowdownKey.Move.Recoil] != null)
         {
-            moveEntry["recoil"] = JsonValue.Create(true);
+            moveEntry[ShowdownKey.Move.Recoil] = JsonValue.Create(true);
         }
 
-        if (entry["secondary"] is JsonObject secondary)
+        if (entry[ShowdownKey.Move.Secondary] is JsonObject secondary)
         {
-            moveEntry["secondary"] = secondary.DeepClone();
+            moveEntry[ShowdownKey.Move.Secondary] = secondary.DeepClone();
         }
 
-        if (entry["secondaries"] is JsonArray secondaries)
+        if (entry[ShowdownKey.Move.Secondaries] is JsonArray secondaries)
         {
-            moveEntry["secondaries"] = secondaries.DeepClone();
+            moveEntry[ShowdownKey.Move.Secondaries] = secondaries.DeepClone();
         }
 
         return moveEntry;
@@ -190,22 +190,22 @@ internal class ShowdownFetcher
     /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildItemEntry(JsonObject entry)
     {
-        int num = entry["num"]?.GetValue<int>() ?? 0;
+        int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
         if (num <= 0)
         {
             return null;
         }
         // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来のアイテムは現代対戦の対象外。
         // functional-design.md 「除外フィルタ」参照。
-        if (entry["isNonstandard"] != null)
+        if (entry[ShowdownKey.IsNonstandard] != null)
         {
             return null;
         }
 
         return new JsonObject
         {
-            ["num"] = num,
-            ["name"] = entry["name"]?.GetValue<string>(),
+            [ShowdownKey.Num] = num,
+            [ShowdownKey.Name] = entry[ShowdownKey.Name]?.GetValue<string>(),
         };
     }
 
@@ -234,19 +234,19 @@ internal class ShowdownFetcher
     /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildAbilityEntry(JsonObject entry)
     {
-        int num = entry["num"]?.GetValue<int>() ?? 0;
+        int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
         if (num <= 0)
         {
             return null;
         }
         // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来の特性は現代対戦の対象外。
         // functional-design.md 「除外フィルタ」参照。
-        if (entry["isNonstandard"] != null)
+        if (entry[ShowdownKey.IsNonstandard] != null)
         {
             return null;
         }
 
-        return new JsonObject { ["num"] = num };
+        return new JsonObject { [ShowdownKey.Num] = num };
     }
 
     private async Task<string> FetchTextAsync(string url)
