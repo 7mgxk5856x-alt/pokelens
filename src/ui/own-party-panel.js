@@ -11,6 +11,7 @@ function formatBaseStats(baseStats) {
   return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
 }
 
+/** 自分パーティ（6 体）の一覧を描画し、ポケモン選択を扱うパネル。 */
 export class OwnPartyPanel {
   #loader;
   #onSelect;

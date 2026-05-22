@@ -2,14 +2,19 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
+/// <summary>
+/// Showdown のキャッシュと PokéAPI 翻訳・各種パッチをマージし、フロントエンド用の
+/// 成果物 JSON（pokedex / moves / items / abilities）を data/ に生成する。
+/// </summary>
 internal static class MergeConverter
 {
-    // Map of Showdown flag keys → JSON tag names (exceptions first, then generic rule)
+    // Showdown の flag キー → JSON タグ名の対応表（例外を先に引き、無ければ汎用ルール）
     private static readonly Dictionary<string, string> FlagExceptions = new()
     {
         ["slicing"] = "isSlice",
     };
 
+    /// <summary>Showdown の flag キーを成果物のタグ名（例: "isSlice"）に変換する。</summary>
     public static string FlagToTag(string flag)
     {
         if (FlagExceptions.TryGetValue(flag, out string? exception))
@@ -20,6 +25,10 @@ internal static class MergeConverter
         return "is" + char.ToUpperInvariant(flag[0]) + flag[1..];
     }
 
+    /// <summary>
+    /// 全入力（Showdown キャッシュ・翻訳・パッチ・修正子）を読み込んでマージし、
+    /// data/ 配下に pokedex / moves / items / abilities の各 JSON を書き出す。
+    /// </summary>
     public static void Convert(
         string showdownPokedexPath,
         string showdownMovesPath,
@@ -78,6 +87,9 @@ internal static class MergeConverter
             JsonHelpers.ToIndentedJson(ConvertAbilities(abilitiesModifiers, abilityNames)));
     }
 
+    /// <summary>
+    /// Showdown ポケデックスに日本語名（翻訳＋ name-patch 上書き）と日本語特性名を当て、成果物形式に変換する。
+    /// </summary>
     public static JsonObject ConvertPokedex(
         JsonObject showdownPokedex,
         JsonObject pokemonNames,
@@ -144,6 +156,10 @@ internal static class MergeConverter
         return result;
     }
 
+    /// <summary>
+    /// Showdown の技を成果物形式に変換する。威力（連続技・威力不定技のパッチ込み）・命中・タグを計算し、
+    /// 日本語名をキーにする。
+    /// </summary>
     public static JsonObject ConvertMoves(
         JsonObject showdownMoves,
         JsonObject moveNames,
@@ -175,7 +191,7 @@ internal static class MergeConverter
             JsonNode? multihit = entry["multihit"];
             bool hasRecoil = entry["recoil"]?.GetValue<bool>() == true;
 
-            // Compute power
+            // 威力を計算する
             int? power = basePower == 0 ? null : basePower;
             if (power != null && multihit != null)
             {
@@ -185,7 +201,7 @@ internal static class MergeConverter
                 power = basePower * maxHits;
             }
 
-            // Apply moves-power-patch for null power moves
+            // 威力が null の技には moves-power-patch を適用する
             if (power == null && movesPowerPatch.TryGetPropertyValue(key, out JsonNode? patchEntry))
             {
                 int? patchPower = patchEntry?["power"]?.GetValue<int>();
@@ -195,7 +211,7 @@ internal static class MergeConverter
                 }
             }
 
-            // Compute accuracy (true → null)
+            // 命中を計算する（true → null）
             int? accuracy = null;
             if (accuracyNode is JsonValue accVal)
             {
@@ -203,10 +219,10 @@ internal static class MergeConverter
                 {
                     accuracy = accInt;
                 }
-                // accuracy: true → null (must-hit)
+                // accuracy: true → null（必中）
             }
 
-            // Compute tags from flags + recoil + secondary
+            // flags + recoil + secondary からタグを計算する
             var tags = new List<string>();
             if (flags != null)
             {
@@ -255,6 +271,9 @@ internal static class MergeConverter
         return result;
     }
 
+    /// <summary>
+    /// アイテム修正子に日本語名（item-name-patch 優先、無ければ翻訳）を当てて成果物形式に変換する。
+    /// </summary>
     public static JsonObject ConvertItems(
         JsonObject itemsModifiers,
         JsonObject itemNames,
@@ -287,6 +306,9 @@ internal static class MergeConverter
         return result;
     }
 
+    /// <summary>
+    /// 特性修正子に日本語名（翻訳）を当てて成果物形式に変換する。
+    /// </summary>
     public static JsonObject ConvertAbilities(
         JsonObject abilitiesModifiers,
         JsonObject abilityNames)

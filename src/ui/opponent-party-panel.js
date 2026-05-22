@@ -7,6 +7,7 @@ function formatBaseStats(baseStats) {
   return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
 }
 
+/** 相手パーティの選出枠（6 体）を描画し、ポケモン名の入力・選択・クリアを扱うパネル。 */
 export class OpponentPartyPanel {
   #loader;
   #onSelect;

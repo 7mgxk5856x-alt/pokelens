@@ -149,6 +149,11 @@ function romajiToKatakana(input) {
   return result;
 }
 
+/**
+ * 検索クエリを比較用に正規化する。ローマ字をカタカナへ変換し、ひらがな・半角カナを全角カタカナに揃える。
+ * @param {string} query 入力文字列
+ * @returns {string} 正規化後の文字列
+ */
 export function normalizeQuery(query) {
   if (query === '') {
     return '';
@@ -189,6 +194,12 @@ export function normalizeQuery(query) {
   return result;
 }
 
+/**
+ * 正規化したクエリでエントリ名を前方一致検索する。図鑑番号順にソートし、最大件数で打ち切る。
+ * @param {string} query 検索クエリ
+ * @param {Array<{name: string, num: number}>} entries 検索対象エントリ
+ * @returns {Array} 一致したエントリ（図鑑番号昇順、最大 MAX_RESULTS 件）
+ */
 export function searchByName(query, entries) {
   if (query === '') {
     return [];

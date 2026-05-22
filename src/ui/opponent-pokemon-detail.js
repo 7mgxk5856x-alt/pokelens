@@ -13,6 +13,7 @@ const SPEED_PATTERN_LABELS = [
 
 const DASH = '−';
 
+/** 相手の選択ポケモンの詳細（種族値・素早さ 6 パターンなど）を描画するビュー。 */
 export class OpponentPokemonDetail {
   #container;
   #loader;

@@ -4,6 +4,10 @@ using System.Text.RegularExpressions;
 
 namespace PokelensTools;
 
+/// <summary>
+/// Pokémon Showdown のデータ JS（pokedex / moves / items / abilities）を取得し、
+/// 現代対戦で必要なフィールドだけを抽出して cache/ に保存する。
+/// </summary>
 internal class ShowdownFetcher
 {
     private readonly HttpClient _http;
@@ -13,6 +17,7 @@ internal class ShowdownFetcher
         _http = http;
     }
 
+    /// <summary>4 種のデータ（pokedex / moves / items / abilities）を並行取得して cache/ に書き出す。</summary>
     public async Task FetchAllAsync(string cacheDir)
     {
         Directory.CreateDirectory(cacheDir);
@@ -43,6 +48,9 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
+    /// <summary>
+    /// Showdown のポケモンエントリを成果物用に整形する。num が 0 以下、または baseStats が無い場合は対象外として null を返す。
+    /// </summary>
     public static JsonObject? BuildPokedexEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -102,6 +110,9 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
+    /// <summary>
+    /// Showdown の技エントリを成果物用に整形する。num が 0 以下、または Z ワザ・(キョダイ)ダイマックスワザは対象外として null を返す。
+    /// </summary>
     public static JsonObject? BuildMoveEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -169,6 +180,9 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
+    /// <summary>
+    /// Showdown のアイテムエントリを成果物用に整形する。num が 0 以下、または非標準（Past / Future / CAP）は対象外として null を返す。
+    /// </summary>
     public static JsonObject? BuildItemEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -209,6 +223,9 @@ internal class ShowdownFetcher
             JsonHelpers.ToIndentedJson(filtered));
     }
 
+    /// <summary>
+    /// Showdown の特性エントリを成果物用に整形する。num が 0 以下、または非標準（Past / Future / CAP）は対象外として null を返す。
+    /// </summary>
     public static JsonObject? BuildAbilityEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
@@ -240,8 +257,10 @@ internal class ShowdownFetcher
         return await response.Content.ReadAsStringAsync();
     }
 
-    // Converts Showdown JS object literal to JSON.
-    // Handles unquoted property keys and trailing commas.
+    /// <summary>
+    /// Showdown の JS オブジェクトリテラルを JSON に変換する。クオートなしのプロパティキーと
+    /// 末尾カンマ（trailing comma）に対応する。
+    /// </summary>
     public static string JsToJson(string js)
     {
         int start = js.IndexOf('{');
@@ -253,17 +272,17 @@ internal class ShowdownFetcher
 
         string obj = js[start..(end + 1)];
         obj = QuoteUnquotedKeys(obj);
-        // Remove trailing commas before } or ]
+        // } または ] の直前の末尾カンマ（trailing comma）を除去する
         obj = Regex.Replace(obj, @",(\s*[}\]])", "$1");
         return obj;
     }
 
-    // State-machine that quotes unquoted JS object keys.
-    // Tracks object vs array context to avoid quoting array values.
+    // クオートなしの JS オブジェクトキーをクオートで囲むステートマシン。
+    // 配列の値を誤ってクオートしないよう、オブジェクト／配列のコンテキストを追跡する。
     private static string QuoteUnquotedKeys(string input)
     {
         var sb = new StringBuilder(input.Length + 4096);
-        var context = new Stack<char>(); // '{' = object, '[' = array
+        var context = new Stack<char>(); // '{' = オブジェクト, '[' = 配列
         int i = 0;
 
         while (i < input.Length)

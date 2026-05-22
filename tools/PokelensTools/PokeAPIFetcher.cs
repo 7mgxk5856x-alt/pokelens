@@ -5,6 +5,9 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
+/// <summary>
+/// PokéAPI からポケモン・技・特性・アイテムの日本語名を取得し、cache/ に翻訳辞書として保存する。
+/// </summary>
 internal class PokeAPIFetcher
 {
     private readonly HttpClient _http;
@@ -12,16 +15,14 @@ internal class PokeAPIFetcher
         new() { WriteIndented = true };
     private const int ConcurrencyLimit = 8;
 
-    // Per-num cache that dedupes pokemon-species fetches across variants of the same dex number
-    // (e.g., Rotom and Rotom-Wash both resolve via species num=479 → single HTTP call).
+    // 同一図鑑番号の各フォルム間で pokemon-species の取得を重複排除する num 単位キャッシュ
+    // （例: ロトムとウォッシュロトムはどちらも species num=479 経由で解決 → HTTP 呼び出しは 1 回）。
     //
-    // Lifetime contract: FetchTranslationsAsync is expected to be called at most once per
-    // PokeAPIFetcher instance (Program.cs creates a new instance per CLI invocation). The
-    // Clear() at the top of FetchTranslationsAsync defends against accidental re-use, but if
-    // the contract is violated while a previous call's tasks are still in flight, the cache
-    // can be cleared mid-flight and partial results may be observed. If concurrent or repeated
-    // translation runs ever become a requirement, drop this field and pass a local
-    // ConcurrentDictionary down the call chain instead.
+    // ライフタイム契約: FetchTranslationsAsync は PokeAPIFetcher インスタンスごとに最大 1 回の呼び出しを
+    // 想定する（Program.cs は CLI 実行ごとに新しいインスタンスを生成する）。FetchTranslationsAsync 冒頭の
+    // Clear() は誤った再利用に対する防御だが、前回呼び出しのタスクが進行中に契約が破られると、キャッシュが
+    // 途中でクリアされ部分的な結果が観測されうる。並行・反復的な翻訳実行が要件になった場合は、このフィールドを
+    // やめてローカルの ConcurrentDictionary を呼び出しチェーンに引き回す方式へ変更すること。
     private readonly ConcurrentDictionary<int, Task<JsonNode?>> _speciesCache = new();
 
     public PokeAPIFetcher(HttpClient http)
@@ -29,7 +30,9 @@ internal class PokeAPIFetcher
         _http = http;
     }
 
-    // Fetches Japanese name translations for all Pokémon, moves, abilities, and items.
+    /// <summary>
+    /// ポケモン・技・特性・アイテムすべての日本語名を取得し、pokeapi-translations.json として cache/ に保存する。
+    /// </summary>
     public async Task FetchTranslationsAsync(
         string cacheDir,
         string showdownPokedexPath,
@@ -71,11 +74,11 @@ internal class PokeAPIFetcher
             translations.ToJsonString(WriteOptions));
     }
 
-    // Pokémon-specific fetcher that resolves forme-level Japanese names.
-    // - Base entries (no forme) → species name (e.g., "ロトム").
-    // - Variant entries → pokemon-form's form_names. PokéAPI sometimes returns just
-    //   the form qualifier (e.g., "けんのおう" for Zacian-Crowned), so when the form
-    //   name doesn't contain the species name, combine as "species (form)".
+    // フォルム単位の日本語名を解決するポケモン専用 fetcher。
+    // - 基本エントリ（forme なし）→ species 名（例: "ロトム"）。
+    // - フォルム違いのエントリ → pokemon-form の form_names。PokéAPI はフォルム修飾語だけを返すことがある
+    //   （例: ザシアン-キング型の "けんのおう"）ため、フォルム名に species 名が含まれない場合は
+    //   "species (form)" の形で結合する。
     private async Task<JsonObject> FetchPokemonNamesAsync(string showdownPokedexPath)
     {
         JsonObject showdownData = JsonNode.Parse(File.ReadAllText(showdownPokedexPath))!.AsObject();
@@ -161,9 +164,9 @@ internal class PokeAPIFetcher
         });
     }
 
-    // Try the Showdown-derived slug; if that misses, walk pokemon-species varieties to
-    // find a matching slug (e.g., Showdown "ogerponwellspring" → "Ogerpon-Wellspring" →
-    // slug "ogerpon-wellspring" → PokéAPI variety "ogerpon-wellspring-mask").
+    // まず Showdown 由来の slug を試し、外れたら pokemon-species の varieties を走査して
+    // 一致する slug を探す（例: Showdown "ogerponwellspring" → "Ogerpon-Wellspring" →
+    // slug "ogerpon-wellspring" → PokéAPI variety "ogerpon-wellspring-mask"）。
     private async Task<string?> GetFormJaNameAsync(string showdownName, int num)
     {
         string slug = DerivePokemonFormSlug(showdownName);
@@ -204,6 +207,9 @@ internal class PokeAPIFetcher
         return body == null ? null : JsonNode.Parse(body);
     }
 
+    /// <summary>
+    /// species の varieties から targetSlug と前方一致（双方向）し、かつ最も長い variety 名を返す。無ければ null。
+    /// </summary>
     public static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
     {
         JsonArray? varieties = speciesNode["varieties"]?.AsArray();
@@ -232,7 +238,9 @@ internal class PokeAPIFetcher
         return best;
     }
 
-    // Showdown's item `name` (e.g., "Choice Scarf", "Wellspring Mask") → PokéAPI item slug.
+    /// <summary>
+    /// Showdown のアイテム名（例: "Choice Scarf", "Wellspring Mask"）を PokéAPI のアイテム slug に変換する。
+    /// </summary>
     public static string DeriveItemSlug(string showdownName)
     {
         string lower = showdownName.ToLowerInvariant();
@@ -260,8 +268,8 @@ internal class PokeAPIFetcher
         return sb.ToString();
     }
 
-    // Slug-based item name fetcher. Showdown's numeric IDs diverge from PokéAPI's,
-    // so we resolve by hyphenated lowercase name instead.
+    // slug ベースのアイテム名 fetcher。Showdown の数値 ID は PokéAPI のものと食い違うため、
+    // ハイフン区切りの小文字名で解決する。
     private async Task<JsonObject> FetchItemNamesAsync(string showdownItemsPath)
     {
         JsonObject showdownData = JsonNode.Parse(File.ReadAllText(showdownItemsPath))!.AsObject();
@@ -302,7 +310,9 @@ internal class PokeAPIFetcher
         });
     }
 
-    // Showdown's `name` (e.g., "Rotom-Wash", "Mr. Mime", "Flabébé") → PokéAPI form slug.
+    /// <summary>
+    /// Showdown のポケモン名（例: "Rotom-Wash", "Mr. Mime", "Flabébé"）を PokéAPI のフォルム slug に変換する。
+    /// </summary>
     public static string DerivePokemonFormSlug(string showdownName)
     {
         string lower = showdownName.ToLowerInvariant();
@@ -366,9 +376,9 @@ internal class PokeAPIFetcher
         });
     }
 
-    // Run a resolver across targets with bounded parallelism and collect non-null results
-    // into a JsonObject keyed by the resolver's Key. Centralizes the SemaphoreSlim gating
-    // and result aggregation shared by the three FetchXxxAsync methods.
+    // 並列数を制限しつつ resolver を全ターゲットに適用し、非 null の結果を resolver の Key を
+    // キーとする JsonObject に集約する。3 つの FetchXxxAsync で共通する SemaphoreSlim による
+    // 同時実行制御と結果集約を一元化する。
     private async Task<JsonObject> RunParallelAsync<T>(
         IReadOnlyList<T> targets,
         Func<T, Task<(string Key, string? JaName)>> resolver)
@@ -400,6 +410,7 @@ internal class PokeAPIFetcher
         return result;
     }
 
+    /// <summary>指定した PokéAPI リソース URL を取得し、その names 配列から日本語名を返す。取得失敗時は null。</summary>
     public async Task<string?> FetchJapaneseNameAsync(string url)
     {
         string? body = await FetchTextOrNullAsync(url);
@@ -426,8 +437,8 @@ internal class PokeAPIFetcher
         }
         catch (TaskCanceledException)
         {
-            // HttpClient surfaces request timeouts as TaskCanceledException.
-            // No CancellationToken is passed, so external cancellation is not a possibility here.
+            // HttpClient はリクエストのタイムアウトを TaskCanceledException として通知する。
+            // CancellationToken は渡していないため、ここで外部からのキャンセルは発生しない。
             Console.WriteLine($"    Warning: HTTP timeout for {url}");
             return null;
         }
@@ -458,6 +469,9 @@ internal class PokeAPIFetcher
         return await response.Content.ReadAsStringAsync();
     }
 
+    /// <summary>
+    /// 指定キー（names / form_names）の配列から日本語名を取り出す。"ja" を優先し、無ければ "ja-Hrkt" にフォールバックする。
+    /// </summary>
     public static string? ExtractJaName(JsonNode root, string arrayKey)
     {
         JsonArray? arr = root[arrayKey]?.AsArray();

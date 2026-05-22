@@ -7,6 +7,13 @@ const NATURE_NEUTRAL = 1.0;
 const NATURE_DOWN = 0.9;
 const SCARF_MULTIPLIER = 1.5;
 
+/**
+ * 素早さ種族値から代表 6 パターンの実数値を計算する。
+ * @param {number} baseSpe 素早さ種族値（正の整数）
+ * @returns {{fastestScarf: number, fastScarf: number, fastest: number, fast: number, neutral: number, slowest: number}}
+ *   スカーフ最速・スカーフ準速・最速・準速・無振り中立・最遅
+ * @throws {RangeError} baseSpe が正の整数でない場合
+ */
 export function calcSpeedPatterns(baseSpe) {
   if (!Number.isInteger(baseSpe) || baseSpe <= 0) {
     throw new RangeError(

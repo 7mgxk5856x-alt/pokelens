@@ -2,8 +2,16 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
+/// <summary>
+/// champions-patch.json（Pokémon Champions 独自データ）を Showdown キャッシュにマージし、
+/// ポケデックス・技のキャッシュを上書きする。
+/// </summary>
 internal static class PatchApplicator
 {
+    /// <summary>
+    /// champions-patch.json を読み込み、pokedex / moves セクションをそれぞれのキャッシュへ適用する。
+    /// パッチが見つからない・パースできない場合は例外を投げる。
+    /// </summary>
     public static void Apply(
         string showdownPokedexPath,
         string showdownMovesPath,
@@ -27,6 +35,9 @@ internal static class PatchApplicator
         ApplyMovesPatch(showdownMovesPath, patch["moves"]?.AsObject());
     }
 
+    /// <summary>
+    /// パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。patchSection が null なら何もしない。
+    /// </summary>
     public static void ApplyPokedexPatch(string pokedexPath, JsonObject? patchSection)
     {
         if (patchSection == null)
@@ -107,6 +118,9 @@ internal static class PatchApplicator
         }
     }
 
+    /// <summary>
+    /// パッチの moves セクションを当該キャッシュにマージする（basePower / accuracy / category を上書き）。patchSection が null なら何もしない。
+    /// </summary>
     public static void ApplyMovesPatch(string movesPath, JsonObject? patchSection)
     {
         if (patchSection == null)

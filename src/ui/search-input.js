@@ -6,6 +6,7 @@ const NAVIGATE_DELTA = {
   ArrowUp: () => -1,
 };
 
+/** ポケモン名のインクリメンタル検索入力。サジェスト表示・キーボード操作・確定を扱う。 */
 export class SearchInput {
   #loader;
   #onCommit;

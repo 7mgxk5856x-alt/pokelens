@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace PokelensTools;
 
+/// <summary>JSON 出力に関する共通ヘルパー。</summary>
 internal static class JsonHelpers
 {
     private static readonly JsonWriterOptions IndentedWriterOptions = new()
@@ -14,6 +15,7 @@ internal static class JsonHelpers
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
+    /// <summary>JsonNode をインデント付き JSON 文字列に変換する。非 ASCII 文字はエスケープせずそのまま出力する。</summary>
     public static string ToIndentedJson(JsonNode node)
     {
         ArgumentNullException.ThrowIfNull(node);

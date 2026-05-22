@@ -14,6 +14,10 @@ async function fetchJson(url, errorMessage) {
   }
 }
 
+/**
+ * 全マスターデータ（pokedex / moves / items / abilities / 各種マスタ）とユーザーパーティを
+ * data/ から読み込み、名前引き・修正子取得などの参照 API を提供する。
+ */
 export class DataLoader {
   #pokedex = null;
   #moves = null;
@@ -23,6 +27,11 @@ export class DataLoader {
   #moveCategories = null;
   #natures = null;
 
+  /**
+   * 全データファイルを読み込み、検証して内部に保持する。
+   * @returns {Promise<object>} 読み込んだ全データ（pokedex, moves, items, abilities, typeNames, moveCategories, natures, userParty）
+   * @throws {Error} データファイルが見つからない、または party.json の形式が不正な場合
+   */
   async load() {
     const masterError = 'データファイルが見つかりません。C# ツールを実行してください';
 
@@ -76,6 +85,11 @@ export class DataLoader {
     return { pokedex, moves, items, abilities, typeNames, moveCategories, natures, userParty };
   }
 
+  /**
+   * 日本語名でポケモンを引く。
+   * @param {string} name ポケモンの日本語名
+   * @returns {object|null} 一致するポケモン。無ければ null
+   */
   getPokemonByName(name) {
     if (!this.#pokedex) {
       return null;
@@ -83,6 +97,11 @@ export class DataLoader {
     return Object.values(this.#pokedex).find((e) => e.name === name) ?? null;
   }
 
+  /**
+   * 名前の前方一致でポケモンを検索する。
+   * @param {string} query 検索クエリ
+   * @returns {Array} 一致したポケモンエントリ（図鑑番号昇順）
+   */
   searchByName(query) {
     if (!this.#pokedex) {
       return [];
