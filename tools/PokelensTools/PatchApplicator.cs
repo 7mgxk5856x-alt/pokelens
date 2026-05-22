@@ -12,7 +12,7 @@ internal static class PatchApplicator
     /// champions-patch.json を読み込み、pokedex / moves セクションをそれぞれのキャッシュへ適用する。
     /// パッチが見つからない・パースできない場合は例外を投げる。
     /// </summary>
-    public static void Apply(
+    internal static void Apply(
         string showdownPokedexPath,
         string showdownMovesPath,
         string championsPatchPath)
@@ -38,7 +38,7 @@ internal static class PatchApplicator
     /// <summary>
     /// パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。patchSection が null なら何もしない。
     /// </summary>
-    public static void ApplyPokedexPatch(string pokedexPath, JsonObject? patchSection)
+    internal static void ApplyPokedexPatch(string pokedexPath, JsonObject? patchSection)
     {
         if (patchSection == null)
         {
@@ -121,7 +121,7 @@ internal static class PatchApplicator
     /// <summary>
     /// パッチの moves セクションを当該キャッシュにマージする（basePower / accuracy / category を上書き）。patchSection が null なら何もしない。
     /// </summary>
-    public static void ApplyMovesPatch(string movesPath, JsonObject? patchSection)
+    internal static void ApplyMovesPatch(string movesPath, JsonObject? patchSection)
     {
         if (patchSection == null)
         {

@@ -15,7 +15,7 @@ internal static class MergeConverter
     };
 
     /// <summary>Showdown の flag キーを成果物のタグ名（例: "isSlice"）に変換する。</summary>
-    public static string FlagToTag(string flag)
+    internal static string FlagToTag(string flag)
     {
         if (FlagExceptions.TryGetValue(flag, out string? exception))
         {
@@ -29,7 +29,7 @@ internal static class MergeConverter
     /// 全入力（Showdown キャッシュ・翻訳・パッチ・修正子）を読み込んでマージし、
     /// data/ 配下に pokedex / moves / items / abilities の各 JSON を書き出す。
     /// </summary>
-    public static void Convert(
+    internal static void Convert(
         string showdownPokedexPath,
         string showdownMovesPath,
         string showdownItemsPath,
@@ -90,7 +90,7 @@ internal static class MergeConverter
     /// <summary>
     /// Showdown ポケデックスに日本語名（翻訳＋ name-patch 上書き）と日本語特性名を当て、成果物形式に変換する。
     /// </summary>
-    public static JsonObject ConvertPokedex(
+    internal static JsonObject ConvertPokedex(
         JsonObject showdownPokedex,
         JsonObject pokemonNames,
         JsonObject abilityNames,
@@ -160,7 +160,7 @@ internal static class MergeConverter
     /// Showdown の技を成果物形式に変換する。威力（連続技・威力不定技のパッチ込み）・命中・タグを計算し、
     /// 日本語名をキーにする。
     /// </summary>
-    public static JsonObject ConvertMoves(
+    internal static JsonObject ConvertMoves(
         JsonObject showdownMoves,
         JsonObject moveNames,
         JsonObject movesPowerPatch)
@@ -274,7 +274,7 @@ internal static class MergeConverter
     /// <summary>
     /// アイテム修正子に日本語名（item-name-patch 優先、無ければ翻訳）を当てて成果物形式に変換する。
     /// </summary>
-    public static JsonObject ConvertItems(
+    internal static JsonObject ConvertItems(
         JsonObject itemsModifiers,
         JsonObject itemNames,
         JsonObject itemNamePatch)
@@ -309,7 +309,7 @@ internal static class MergeConverter
     /// <summary>
     /// 特性修正子に日本語名（翻訳）を当てて成果物形式に変換する。
     /// </summary>
-    public static JsonObject ConvertAbilities(
+    internal static JsonObject ConvertAbilities(
         JsonObject abilitiesModifiers,
         JsonObject abilityNames)
     {

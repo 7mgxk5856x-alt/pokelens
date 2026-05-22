@@ -16,7 +16,7 @@ internal static class JsonHelpers
     };
 
     /// <summary>JsonNode をインデント付き JSON 文字列に変換する。非 ASCII 文字はエスケープせずそのまま出力する。</summary>
-    public static string ToIndentedJson(JsonNode node)
+    internal static string ToIndentedJson(JsonNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
         using var ms = new MemoryStream();

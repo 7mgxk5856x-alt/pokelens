@@ -25,7 +25,7 @@ internal class PokeAPIFetcher
     // やめてローカルの ConcurrentDictionary を呼び出しチェーンに引き回す方式へ変更すること。
     private readonly ConcurrentDictionary<int, Task<JsonNode?>> _speciesCache = new();
 
-    public PokeAPIFetcher(HttpClient http)
+    internal PokeAPIFetcher(HttpClient http)
     {
         _http = http;
     }
@@ -33,7 +33,7 @@ internal class PokeAPIFetcher
     /// <summary>
     /// ポケモン・技・特性・アイテムすべての日本語名を取得し、pokeapi-translations.json として cache/ に保存する。
     /// </summary>
-    public async Task FetchTranslationsAsync(
+    internal async Task FetchTranslationsAsync(
         string cacheDir,
         string showdownPokedexPath,
         string showdownMovesPath,
@@ -210,7 +210,7 @@ internal class PokeAPIFetcher
     /// <summary>
     /// species の varieties から targetSlug と前方一致（双方向）し、かつ最も長い variety 名を返す。無ければ null。
     /// </summary>
-    public static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
+    internal static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
     {
         JsonArray? varieties = speciesNode["varieties"]?.AsArray();
         if (varieties == null)
@@ -241,7 +241,7 @@ internal class PokeAPIFetcher
     /// <summary>
     /// Showdown のアイテム名（例: "Choice Scarf", "Wellspring Mask"）を PokéAPI のアイテム slug に変換する。
     /// </summary>
-    public static string DeriveItemSlug(string showdownName)
+    internal static string DeriveItemSlug(string showdownName)
     {
         string lower = showdownName.ToLowerInvariant();
         var sb = new StringBuilder(lower.Length);
@@ -313,7 +313,7 @@ internal class PokeAPIFetcher
     /// <summary>
     /// Showdown のポケモン名（例: "Rotom-Wash", "Mr. Mime", "Flabébé"）を PokéAPI のフォルム slug に変換する。
     /// </summary>
-    public static string DerivePokemonFormSlug(string showdownName)
+    internal static string DerivePokemonFormSlug(string showdownName)
     {
         string lower = showdownName.ToLowerInvariant();
         var sb = new StringBuilder(lower.Length);
@@ -411,7 +411,7 @@ internal class PokeAPIFetcher
     }
 
     /// <summary>指定した PokéAPI リソース URL を取得し、その names 配列から日本語名を返す。取得失敗時は null。</summary>
-    public async Task<string?> FetchJapaneseNameAsync(string url)
+    internal async Task<string?> FetchJapaneseNameAsync(string url)
     {
         string? body = await FetchTextOrNullAsync(url);
         if (body == null)
@@ -472,7 +472,7 @@ internal class PokeAPIFetcher
     /// <summary>
     /// 指定キー（names / form_names）の配列から日本語名を取り出す。"ja" を優先し、無ければ "ja-Hrkt" にフォールバックする。
     /// </summary>
-    public static string? ExtractJaName(JsonNode root, string arrayKey)
+    internal static string? ExtractJaName(JsonNode root, string arrayKey)
     {
         JsonArray? arr = root[arrayKey]?.AsArray();
         if (arr == null)

@@ -12,13 +12,13 @@ internal class ShowdownFetcher
 {
     private readonly HttpClient _http;
 
-    public ShowdownFetcher(HttpClient http)
+    internal ShowdownFetcher(HttpClient http)
     {
         _http = http;
     }
 
     /// <summary>4 種のデータ（pokedex / moves / items / abilities）を並行取得して cache/ に書き出す。</summary>
-    public async Task FetchAllAsync(string cacheDir)
+    internal async Task FetchAllAsync(string cacheDir)
     {
         Directory.CreateDirectory(cacheDir);
         await Task.WhenAll(
@@ -29,7 +29,7 @@ internal class ShowdownFetcher
         );
     }
 
-    public async Task FetchPokedexAsync(string cacheDir)
+    internal async Task FetchPokedexAsync(string cacheDir)
     {
         string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/pokedex.js");
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -51,7 +51,7 @@ internal class ShowdownFetcher
     /// <summary>
     /// Showdown のポケモンエントリを成果物用に整形する。num が 0 以下、または baseStats が無い場合は対象外として null を返す。
     /// </summary>
-    public static JsonObject? BuildPokedexEntry(JsonObject entry)
+    internal static JsonObject? BuildPokedexEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
         if (num <= 0)
@@ -91,7 +91,7 @@ internal class ShowdownFetcher
         return pokedexEntry;
     }
 
-    public async Task FetchMovesAsync(string cacheDir)
+    internal async Task FetchMovesAsync(string cacheDir)
     {
         string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/moves.js");
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -113,7 +113,7 @@ internal class ShowdownFetcher
     /// <summary>
     /// Showdown の技エントリを成果物用に整形する。num が 0 以下、または Z ワザ・(キョダイ)ダイマックスワザは対象外として null を返す。
     /// </summary>
-    public static JsonObject? BuildMoveEntry(JsonObject entry)
+    internal static JsonObject? BuildMoveEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
         if (num <= 0)
@@ -161,7 +161,7 @@ internal class ShowdownFetcher
         return moveEntry;
     }
 
-    public async Task FetchItemsAsync(string cacheDir)
+    internal async Task FetchItemsAsync(string cacheDir)
     {
         string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/items.js");
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -183,7 +183,7 @@ internal class ShowdownFetcher
     /// <summary>
     /// Showdown のアイテムエントリを成果物用に整形する。num が 0 以下、または非標準（Past / Future / CAP）は対象外として null を返す。
     /// </summary>
-    public static JsonObject? BuildItemEntry(JsonObject entry)
+    internal static JsonObject? BuildItemEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
         if (num <= 0)
@@ -204,7 +204,7 @@ internal class ShowdownFetcher
         };
     }
 
-    public async Task FetchAbilitiesAsync(string cacheDir)
+    internal async Task FetchAbilitiesAsync(string cacheDir)
     {
         string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/abilities.js");
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -226,7 +226,7 @@ internal class ShowdownFetcher
     /// <summary>
     /// Showdown の特性エントリを成果物用に整形する。num が 0 以下、または非標準（Past / Future / CAP）は対象外として null を返す。
     /// </summary>
-    public static JsonObject? BuildAbilityEntry(JsonObject entry)
+    internal static JsonObject? BuildAbilityEntry(JsonObject entry)
     {
         int num = entry["num"]?.GetValue<int>() ?? 0;
         if (num <= 0)
@@ -261,7 +261,7 @@ internal class ShowdownFetcher
     /// Showdown の JS オブジェクトリテラルを JSON に変換する。クオートなしのプロパティキーと
     /// 末尾カンマ（trailing comma）に対応する。
     /// </summary>
-    public static string JsToJson(string js)
+    internal static string JsToJson(string js)
     {
         int start = js.IndexOf('{');
         int end = js.LastIndexOf('}');
