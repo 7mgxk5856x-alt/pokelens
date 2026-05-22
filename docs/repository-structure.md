@@ -18,16 +18,12 @@ pokelens/
 ├── tools/ †                        # C# データ準備ツール
 │   ├── PokelensTools/ †
 │   │   ├── PokelensTools.csproj †
-│   │   ├── Program.cs †
-│   │   ├── ShowdownFetcher.cs †
-│   │   ├── PokeAPIFetcher.cs †
-│   │   ├── MergeConverter.cs †
-│   │   ├── champions-patch.json †
-│   │   ├── moves-power-patch.json †
-│   │   ├── items-modifiers.json †
-│   │   ├── abilities-modifiers.json †
-│   │   ├── pokemon-name-patch.json †
-│   │   └── item-name-patch.json †
+│   │   ├── Program.cs †            # エントリーポイント
+│   │   ├── Fetchers/ †             # HTTP取得（Showdown / PokéAPI）
+│   │   ├── Pipeline/ †             # 増分判定・パッチ適用・マージ変換
+│   │   ├── Models/ †               # データ型（ChecksumSet 等）
+│   │   ├── Common/ †               # 共通ヘルパー
+│   │   └── Patches/ †              # 手動管理データ（JSON）
 │   └── PokelensTools.Tests/ †      # xUnit テストプロジェクト
 │       └── PokelensTools.Tests.csproj †
 ├── cache/ †                        # C# ツールの中間データ（gitignore対象）
@@ -200,15 +196,25 @@ tools/
 ├── PokelensTools/
 │   ├── PokelensTools.csproj
 │   ├── Program.cs                  # エントリーポイント・増分実行制御
-│   ├── ShowdownFetcher.cs          # Showdown HTTP取得
-│   ├── PokeAPIFetcher.cs           # PokéAPI HTTP取得
-│   ├── MergeConverter.cs           # JSON変換・マージ・正規化
-│   ├── champions-patch.json        # 手動管理: Champions差分パッチ（git管理対象）
-│   ├── moves-power-patch.json      # 手動管理: 威力不定技の最大威力定義（git管理対象）
-│   ├── items-modifiers.json        # 手動管理: 持ち物補正値定義（git管理対象）
-│   ├── abilities-modifiers.json    # 手動管理: 特性補正値定義（git管理対象）
-│   ├── pokemon-name-patch.json     # 手動管理: ポケモン日本語名の上書き（フォルム一意化用、git管理対象）
-│   └── item-name-patch.json        # 手動管理: 持ち物日本語名の上書き（PokéAPI欠落補完用、git管理対象）
+│   ├── AssemblyInfo.cs             # InternalsVisibleTo（テストへ internal 公開）
+│   ├── Fetchers/
+│   │   ├── ShowdownFetcher.cs      # Showdown HTTP取得
+│   │   └── PokeAPIFetcher.cs       # PokéAPI HTTP取得
+│   ├── Pipeline/
+│   │   ├── IncrementalRunner.cs    # 増分実行判定（チェックサム比較）
+│   │   ├── PatchApplicator.cs      # champions-patch 適用
+│   │   └── MergeConverter.cs       # JSON変換・マージ・正規化
+│   ├── Models/
+│   │   └── ChecksumSet.cs          # チェックサムの型
+│   ├── Common/
+│   │   └── JsonHelpers.cs          # JSON出力ヘルパー
+│   └── Patches/                    # 手動管理データ（git管理対象）
+│       ├── champions-patch.json    # Champions差分パッチ
+│       ├── moves-power-patch.json  # 威力不定技の最大威力定義
+│       ├── items-modifiers.json    # 持ち物補正値定義
+│       ├── abilities-modifiers.json # 特性補正値定義
+│       ├── pokemon-name-patch.json # ポケモン日本語名の上書き（フォルム一意化用）
+│       └── item-name-patch.json    # 持ち物日本語名の上書き（PokéAPI欠落補完用）
 └── PokelensTools.Tests/            # xUnit テストプロジェクト
     └── PokelensTools.Tests.csproj
 ```

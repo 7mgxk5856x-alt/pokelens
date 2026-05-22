@@ -21,12 +21,13 @@ string itemsCachePath      = Path.Combine(cacheDir, "showdown-items.json");
 string abilitiesCachePath  = Path.Combine(cacheDir, "showdown-abilities.json");
 string translationsPath    = Path.Combine(cacheDir, "pokeapi-translations.json");
 
-string championsPatchPath    = Path.Combine(toolsDir, "champions-patch.json");
-string movesPowerPatchPath   = Path.Combine(toolsDir, "moves-power-patch.json");
-string itemsModifiersPath    = Path.Combine(toolsDir, "items-modifiers.json");
-string abilitiesModifiersPath = Path.Combine(toolsDir, "abilities-modifiers.json");
-string pokemonNamePatchPath  = Path.Combine(toolsDir, "pokemon-name-patch.json");
-string itemNamePatchPath     = Path.Combine(toolsDir, "item-name-patch.json");
+string patchesDir = Path.Combine(toolsDir, "Patches");
+string championsPatchPath    = Path.Combine(patchesDir, "champions-patch.json");
+string movesPowerPatchPath   = Path.Combine(patchesDir, "moves-power-patch.json");
+string itemsModifiersPath    = Path.Combine(patchesDir, "items-modifiers.json");
+string abilitiesModifiersPath = Path.Combine(patchesDir, "abilities-modifiers.json");
+string pokemonNamePatchPath  = Path.Combine(patchesDir, "pokemon-name-patch.json");
+string itemNamePatchPath     = Path.Combine(patchesDir, "item-name-patch.json");
 
 // HttpClient を両 fetcher に注入して共有する（各 fetcher が独自の static インスタンスを
 // 持たないようにするため）。ライフタイムは Program.cs に束ね、終了時に dispose する。
