@@ -207,7 +207,8 @@ tools/
 │   ├── Models/
 │   │   └── ChecksumSet.cs          # チェックサムの型
 │   ├── Common/
-│   │   └── JsonHelpers.cs          # JSON出力ヘルパー
+│   │   ├── JsonHelpers.cs          # JSON出力ヘルパー
+│   │   └── CacheFileName.cs        # cache/ 中間ファイル名の共有定数
 │   └── Patches/                    # 手動管理データ（git管理対象）
 │       ├── champions-patch.json    # Champions差分パッチ
 │       ├── moves-power-patch.json  # 威力不定技の最大威力定義

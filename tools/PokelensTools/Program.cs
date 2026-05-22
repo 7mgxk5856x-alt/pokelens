@@ -15,11 +15,11 @@ string dataDir = Path.Combine(repoRoot, "data");
 string toolsDir = Path.Combine(repoRoot, "tools", "PokelensTools");
 
 string checksumsPath       = Path.Combine(cacheDir, "checksums.json");
-string pokedexCachePath    = Path.Combine(cacheDir, "showdown-pokedex.json");
-string movesCachePath      = Path.Combine(cacheDir, "showdown-moves.json");
-string itemsCachePath      = Path.Combine(cacheDir, "showdown-items.json");
-string abilitiesCachePath  = Path.Combine(cacheDir, "showdown-abilities.json");
-string translationsPath    = Path.Combine(cacheDir, "pokeapi-translations.json");
+string pokedexCachePath    = Path.Combine(cacheDir, CacheFileName.ShowdownPokedex);
+string movesCachePath      = Path.Combine(cacheDir, CacheFileName.ShowdownMoves);
+string itemsCachePath      = Path.Combine(cacheDir, CacheFileName.ShowdownItems);
+string abilitiesCachePath  = Path.Combine(cacheDir, CacheFileName.ShowdownAbilities);
+string translationsPath    = Path.Combine(cacheDir, CacheFileName.PokeApiTranslations);
 
 string patchesDir = Path.Combine(toolsDir, "Patches");
 string championsPatchPath    = Path.Combine(patchesDir, "champions-patch.json");

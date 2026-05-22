@@ -46,7 +46,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, "showdown-pokedex.json"),
+            Path.Combine(cacheDir, CacheFileName.ShowdownPokedex),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -109,7 +109,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, "showdown-moves.json"),
+            Path.Combine(cacheDir, CacheFileName.ShowdownMoves),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -180,7 +180,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, "showdown-items.json"),
+            Path.Combine(cacheDir, CacheFileName.ShowdownItems),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -224,7 +224,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, "showdown-abilities.json"),
+            Path.Combine(cacheDir, CacheFileName.ShowdownAbilities),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
