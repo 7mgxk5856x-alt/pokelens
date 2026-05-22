@@ -489,6 +489,10 @@ internal class PokeAPIFetcher
     /// <returns>日本語名。見つからなければ null。</returns>
     internal static string? ExtractJaName(JsonNode root, string arrayKey)
     {
+        const string LangJa = "ja";                  // 日本語
+        const string LangJaHrkt = "ja-Hrkt";         // ふりがな（PokéAPI 標準表記）
+        const string LangJaHrktLower = "ja-hrkt";    // ふりがな（小文字表記の揺れに対応）
+
         JsonArray? arr = root[arrayKey]?.AsArray();
         if (arr == null)
         {
@@ -505,12 +509,12 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            if (lang == "ja")
+            if (lang == LangJa)
             {
                 return name;
             }
 
-            if (lang == "ja-Hrkt" || lang == "ja-hrkt")
+            if (lang == LangJaHrkt || lang == LangJaHrktLower)
             {
                 jaHrkt = name;
             }
