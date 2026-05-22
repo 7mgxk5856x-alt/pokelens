@@ -288,7 +288,9 @@ internal class ShowdownFetcher
     // 配列の値を誤ってクオートしないよう、オブジェクト／配列のコンテキストを追跡する。
     private static string QuoteUnquotedKeys(string input)
     {
-        var sb = new StringBuilder(input.Length + 4096);
+        // 入力長に加える初期容量の余裕。キー追加分の再確保を減らすためのヒント
+        const int CapacityHeadroom = 4096;
+        var sb = new StringBuilder(input.Length + CapacityHeadroom);
         var context = new Stack<char>(); // '{' = オブジェクト, '[' = 配列
         int i = 0;
 

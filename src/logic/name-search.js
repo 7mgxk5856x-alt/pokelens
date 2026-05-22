@@ -35,6 +35,12 @@ const HIRAGANA_TO_KATAKANA_OFFSET = 0x60;
 const HALF_DAKUTEN = 'ﾞ';
 const HALF_HANDAKUTEN = 'ﾟ';
 
+// ASCII 英字の文字コード境界（A–Z / a–z）。ローマ字判定に使う
+const ASCII_UPPER_A = 'A'.charCodeAt(0);
+const ASCII_UPPER_Z = 'Z'.charCodeAt(0);
+const ASCII_LOWER_A = 'a'.charCodeAt(0);
+const ASCII_LOWER_Z = 'z'.charCodeAt(0);
+
 const VOWELS = new Set(['a', 'i', 'u', 'e', 'o']);
 
 const ROMAJI_TABLE = {
@@ -80,7 +86,10 @@ const ROMAJI_TABLE = {
 
 function isAsciiAlpha(ch) {
   const c = ch.charCodeAt(0);
-  return (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a);
+  return (
+    (c >= ASCII_UPPER_A && c <= ASCII_UPPER_Z) ||
+    (c >= ASCII_LOWER_A && c <= ASCII_LOWER_Z)
+  );
 }
 
 function romajiToKatakana(input) {
