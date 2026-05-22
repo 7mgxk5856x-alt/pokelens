@@ -40,23 +40,21 @@ await showdownFetcher.FetchAllAsync(cacheDir);
 Console.WriteLine("  Done.");
 
 // 差分実行の判定用に現在のチェックサムを計算する
-var current = new Dictionary<string, string>
-{
-    ["showdown-pokedex"]   = IncrementalRunner.ComputeHash(pokedexCachePath),
-    ["showdown-moves"]     = IncrementalRunner.ComputeHash(movesCachePath),
-    ["showdown-items"]     = IncrementalRunner.ComputeHash(itemsCachePath),
-    ["showdown-abilities"] = IncrementalRunner.ComputeHash(abilitiesCachePath),
-    ["pokeapi-translations"] = IncrementalRunner.ComputeHash(translationsPath),
-    ["champions-patch"]    = IncrementalRunner.ComputeHash(championsPatchPath),
-    ["moves-power-patch"]  = IncrementalRunner.ComputeHash(movesPowerPatchPath),
-    ["items-modifiers"]    = IncrementalRunner.ComputeHash(itemsModifiersPath),
-    ["abilities-modifiers"] = IncrementalRunner.ComputeHash(abilitiesModifiersPath),
-    ["pokemon-name-patch"] = IncrementalRunner.ComputeHash(pokemonNamePatchPath),
-    ["item-name-patch"]    = IncrementalRunner.ComputeHash(itemNamePatchPath),
-};
+var currentChecksums = new ChecksumSet(
+    ShowdownPokedex: IncrementalRunner.ComputeHash(pokedexCachePath),
+    ShowdownMoves: IncrementalRunner.ComputeHash(movesCachePath),
+    ShowdownItems: IncrementalRunner.ComputeHash(itemsCachePath),
+    ShowdownAbilities: IncrementalRunner.ComputeHash(abilitiesCachePath),
+    PokeApiTranslations: IncrementalRunner.ComputeHash(translationsPath),
+    ChampionsPatch: IncrementalRunner.ComputeHash(championsPatchPath),
+    MovesPowerPatch: IncrementalRunner.ComputeHash(movesPowerPatchPath),
+    ItemsModifiers: IncrementalRunner.ComputeHash(itemsModifiersPath),
+    AbilitiesModifiers: IncrementalRunner.ComputeHash(abilitiesModifiersPath),
+    PokemonNamePatch: IncrementalRunner.ComputeHash(pokemonNamePatchPath),
+    ItemNamePatch: IncrementalRunner.ComputeHash(itemNamePatchPath));
 
-Dictionary<string, string> old = IncrementalRunner.LoadChecksums(checksumsPath);
-IncrementalRunner.Steps steps = IncrementalRunner.DetermineSteps(old, current);
+ChecksumSet? previousChecksums = IncrementalRunner.LoadChecksums(checksumsPath);
+IncrementalRunner.Steps steps = IncrementalRunner.DetermineSteps(previousChecksums, currentChecksums);
 
 if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 {
@@ -76,8 +74,11 @@ if (steps.NeedsStep2)
         abilitiesCachePath);
     Console.WriteLine("  Done.");
 
-    // 取得後に pokeapi-translations のハッシュを更新する
-    current["pokeapi-translations"] = IncrementalRunner.ComputeHash(translationsPath);
+    // 取得後に PokéAPI 翻訳のハッシュを更新する
+    currentChecksums = currentChecksums with
+    {
+        PokeApiTranslations = IncrementalRunner.ComputeHash(translationsPath),
+    };
 }
 
 // Step 3: champions-patch.json を適用する（必要な場合のみ）
@@ -110,5 +111,5 @@ if (steps.NeedsStep4)
 // チェックサムを更新する
 // Step2〜Step4 が例外で終了した場合は SaveChecksums に到達しないため、
 // 次回起動で同ステップから再実行される（部分失敗の回復性を担保するための意図的設計）。
-IncrementalRunner.SaveChecksums(current, checksumsPath);
+IncrementalRunner.SaveChecksums(currentChecksums, checksumsPath);
 Console.WriteLine("Completed successfully.");

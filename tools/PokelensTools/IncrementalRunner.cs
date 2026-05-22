@@ -17,25 +17,24 @@ internal static class IncrementalRunner
     /// <param name="NeedsStep4">Step4（成果物 JSON 生成）の再実行が必要か。</param>
     internal record Steps(bool NeedsStep2, bool NeedsStep3, bool NeedsStep4);
 
-    private static readonly string[] ShowdownKeys =
-        ["showdown-pokedex", "showdown-moves", "showdown-items", "showdown-abilities"];
-
-    private static readonly string[] Step4OnlyKeys =
-        ["moves-power-patch", "items-modifiers", "abilities-modifiers", "pokemon-name-patch", "item-name-patch"];
+    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     /// <summary>保存済みチェックサム JSON を読み込む。</summary>
-    /// <remarks>ファイルが存在しない（＝初回実行）場合は空の辞書を返し、例外にはしない。</remarks>
+    /// <remarks>
+    /// ファイルが存在しない（＝初回実行）場合と、内容が JSON の null リテラルの場合に null を返す。
+    /// 破損・想定外の形式では例外が伝播しうるが、checksums.json は <see cref="SaveChecksums"/> のみが書き込むキャッシュのため実用上は起きない。
+    /// </remarks>
     /// <param name="path">チェックサム JSON のパス。</param>
-    /// <returns>キー→ハッシュの辞書。ファイルが無ければ空の辞書。</returns>
-    internal static Dictionary<string, string> LoadChecksums(string path)
+    /// <returns>読み込んだ <see cref="ChecksumSet"/>。ファイルが無い・読めない場合は null。</returns>
+    internal static ChecksumSet? LoadChecksums(string path)
     {
         if (!File.Exists(path))
         {
-            return [];
+            return null;
         }
 
         string json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
+        return JsonSerializer.Deserialize<ChecksumSet>(json);
     }
 
     /// <summary>ファイルの SHA-256 ハッシュを小文字 16 進文字列で返す。</summary>
@@ -57,29 +56,32 @@ internal static class IncrementalRunner
 
     /// <summary>前回と今回のチェックサムを比較し、再実行すべきステップを判定する。</summary>
     /// <remarks>
-    /// 初回（<paramref name="old"/> が空）は全ステップを実行する。Step3 以前が再実行される場合は
+    /// <paramref name="previous"/> が null（初回実行）なら全ステップを実行する。Step3 以前が再実行される場合は
     /// 必ず Step4（マージ）にも波及させる。pokeapi 翻訳や Step4 専用パッチのみの変化は Step4 だけ再実行する。
     /// </remarks>
-    /// <param name="old">前回保存したチェックサム。</param>
+    /// <param name="previous">前回保存したチェックサム。初回は null。</param>
     /// <param name="current">今回計算したチェックサム。</param>
     /// <returns>各ステップの要否を表す <see cref="Steps"/>。</returns>
-    internal static Steps DetermineSteps(
-        Dictionary<string, string> old,
-        Dictionary<string, string> current)
+    internal static Steps DetermineSteps(ChecksumSet? previous, ChecksumSet current)
     {
-        if (old.Count == 0)
+        if (previous is null)
         {
             return new Steps(true, true, true);
         }
 
-        bool showdownChanged = ShowdownKeys.Any(k =>
-            old.GetValueOrDefault(k) != current.GetValueOrDefault(k));
-        bool championsPatchChanged =
-            old.GetValueOrDefault("champions-patch") != current.GetValueOrDefault("champions-patch");
-        bool pokeapiChanged =
-            old.GetValueOrDefault("pokeapi-translations") != current.GetValueOrDefault("pokeapi-translations");
-        bool step4OnlyChanged = Step4OnlyKeys.Any(k =>
-            old.GetValueOrDefault(k) != current.GetValueOrDefault(k));
+        bool showdownChanged =
+            previous.ShowdownPokedex != current.ShowdownPokedex
+            || previous.ShowdownMoves != current.ShowdownMoves
+            || previous.ShowdownItems != current.ShowdownItems
+            || previous.ShowdownAbilities != current.ShowdownAbilities;
+        bool championsPatchChanged = previous.ChampionsPatch != current.ChampionsPatch;
+        bool pokeapiChanged = previous.PokeApiTranslations != current.PokeApiTranslations;
+        bool step4OnlyChanged =
+            previous.MovesPowerPatch != current.MovesPowerPatch
+            || previous.ItemsModifiers != current.ItemsModifiers
+            || previous.AbilitiesModifiers != current.AbilitiesModifiers
+            || previous.PokemonNamePatch != current.PokemonNamePatch
+            || previous.ItemNamePatch != current.ItemNamePatch;
 
         bool needsStep2 = showdownChanged;
         bool needsStep3 = showdownChanged || championsPatchChanged;
@@ -90,11 +92,11 @@ internal static class IncrementalRunner
         return new Steps(needsStep2, needsStep3, needsStep4);
     }
 
-    /// <summary>チェックサム辞書を整形 JSON として保存する。</summary>
+    /// <summary>チェックサムを整形 JSON として保存する。</summary>
     /// <remarks>出力先ディレクトリが無ければ作成する。Step2〜Step4 が例外で中断した場合は呼ばれず、次回同ステップから再実行される。</remarks>
-    /// <param name="checksums">保存するキー→ハッシュの辞書。</param>
+    /// <param name="checksums">保存するチェックサム。</param>
     /// <param name="path">保存先パス。</param>
-    internal static void SaveChecksums(Dictionary<string, string> checksums, string path)
+    internal static void SaveChecksums(ChecksumSet checksums, string path)
     {
         string? dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir))
@@ -102,7 +104,6 @@ internal static class IncrementalRunner
             Directory.CreateDirectory(dir);
         }
 
-        File.WriteAllText(path, JsonSerializer.Serialize(checksums,
-            new JsonSerializerOptions(JsonSerializerDefaults.General) { WriteIndented = true }));
+        File.WriteAllText(path, JsonSerializer.Serialize(checksums, SerializerOptions));
     }
 }

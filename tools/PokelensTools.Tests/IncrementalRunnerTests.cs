@@ -8,10 +8,10 @@ public class IncrementalRunnerTests
     [Fact]
     public void DetermineSteps_FirstRun_AllStepsRequired()
     {
-        var old = new Dictionary<string, string>();
+        ChecksumSet? previous = null;
         var current = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
 
-        var steps = IncrementalRunner.DetermineSteps(old, current);
+        var steps = IncrementalRunner.DetermineSteps(previous, current);
 
         Assert.True(steps.NeedsStep2);
         Assert.True(steps.NeedsStep3);
@@ -135,11 +135,11 @@ public class IncrementalRunnerTests
     }
 
     [Fact]
-    public void LoadChecksums_NonExistentFile_ReturnsEmptyDictionary()
+    public void LoadChecksums_NonExistentFile_ReturnsNull()
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".json");
         var result = IncrementalRunner.LoadChecksums(path);
-        Assert.Empty(result);
+        Assert.Null(result);
     }
 
     [Fact]
@@ -162,24 +162,22 @@ public class IncrementalRunnerTests
         File.Delete(path);
     }
 
-    private static Dictionary<string, string> MakeChecksums(
+    private static ChecksumSet MakeChecksums(
         string pokedex, string moves, string items, string abilities,
         string pokeapi, string champions, string movesPower, string itemsMod, string abilitiesMod,
         string pokemonNamePatch, string itemNamePatch)
     {
-        return new Dictionary<string, string>
-        {
-            ["showdown-pokedex"]     = pokedex,
-            ["showdown-moves"]       = moves,
-            ["showdown-items"]       = items,
-            ["showdown-abilities"]   = abilities,
-            ["pokeapi-translations"] = pokeapi,
-            ["champions-patch"]      = champions,
-            ["moves-power-patch"]    = movesPower,
-            ["items-modifiers"]      = itemsMod,
-            ["abilities-modifiers"]  = abilitiesMod,
-            ["pokemon-name-patch"]   = pokemonNamePatch,
-            ["item-name-patch"]      = itemNamePatch,
-        };
+        return new ChecksumSet(
+            ShowdownPokedex: pokedex,
+            ShowdownMoves: moves,
+            ShowdownItems: items,
+            ShowdownAbilities: abilities,
+            PokeApiTranslations: pokeapi,
+            ChampionsPatch: champions,
+            MovesPowerPatch: movesPower,
+            ItemsModifiers: itemsMod,
+            AbilitiesModifiers: abilitiesMod,
+            PokemonNamePatch: pokemonNamePatch,
+            ItemNamePatch: itemNamePatch);
     }
 }
