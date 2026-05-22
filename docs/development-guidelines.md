@@ -255,7 +255,7 @@ element.innerHTML = pokemonName;
 - **テストのために可視性を広げない**。private / internal な処理を「テストしたいから」という理由だけで `public` 化・`export` 化しない。代わりに:
   - **公開 API を通してテストする**（内部の挙動も多くは公開面から観測できる）。
   - 単独でテストする価値があるほど複雑なら、**独立した単位（クラス・関数・モジュール）に切り出す**。それは「テスト用の公開」ではなく正当な API になる。
-- **C#**: 既定は `internal`（このリポジトリの `tools/` はライブラリ公開しない実行アプリのため `public` にする必要はない）。テストアセンブリから内部型を検証したい場合は、`public` 化せず `[assembly: InternalsVisibleTo("PokelensTools.Tests")]` で見せる。
+- **C#**: 既定は `internal`（このリポジトリの `tools/` はライブラリ公開しない実行アプリのため `public` にする必要はない）。**純粋ロジック（文字列・JSON 変換など副作用のない計算）は、テストのために `internal` 公開する前に責務を持つ協力クラスへ切り出す**ことを優先する（切り出した型を単体テストすれば、可視性はテスト都合ではなく役割で正当化される。例: `PokeAPIFetcher` の slug 変換・名前抽出を `PokeApiSlug` / `PokeApiName` へ抽出）。`[assembly: InternalsVisibleTo("PokelensTools.Tests")]` で内部型を見せるのは、**抽出が適さないケース**――HTTP など副作用を持つオーケストレーションを依存注入（偽 `HttpClient` 等）でふるまいテストする場合や、型ごと内部に閉じたまま検証したい場合――に限る。いずれも `public` 化はしない。
 - **JavaScript**: `export` した時点でモジュールの公開 API。`src/logic/` の純粋関数のように「テスト対象の単位そのもの」を export するのは正当。内部ヘルパーをテストのためだけに export しない。
 
 ---
