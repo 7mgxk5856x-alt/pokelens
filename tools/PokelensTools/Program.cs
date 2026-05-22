@@ -2,30 +2,30 @@ using PokelensTools;
 
 // Resolve repo root: when run via "dotnet run --project tools/PokelensTools" from repo root,
 // the working directory IS the repo root.
-var repoRoot = Directory.GetCurrentDirectory();
+string repoRoot = Directory.GetCurrentDirectory();
 if (!Directory.Exists(Path.Combine(repoRoot, "tools", "PokelensTools")))
 {
     throw new DirectoryNotFoundException(
         $"リポジトリルートが特定できません。CLAUDE.md の指示通り、リポジトリルートから " +
         $"'dotnet run --project tools/PokelensTools' で実行してください。(CWD: {repoRoot})");
 }
-var cacheDir = Path.Combine(repoRoot, "cache");
-var dataDir = Path.Combine(repoRoot, "data");
-var toolsDir = Path.Combine(repoRoot, "tools", "PokelensTools");
+string cacheDir = Path.Combine(repoRoot, "cache");
+string dataDir = Path.Combine(repoRoot, "data");
+string toolsDir = Path.Combine(repoRoot, "tools", "PokelensTools");
 
-var checksumsPath       = Path.Combine(cacheDir, "checksums.json");
-var pokedexCachePath    = Path.Combine(cacheDir, "showdown-pokedex.json");
-var movesCachePath      = Path.Combine(cacheDir, "showdown-moves.json");
-var itemsCachePath      = Path.Combine(cacheDir, "showdown-items.json");
-var abilitiesCachePath  = Path.Combine(cacheDir, "showdown-abilities.json");
-var translationsPath    = Path.Combine(cacheDir, "pokeapi-translations.json");
+string checksumsPath       = Path.Combine(cacheDir, "checksums.json");
+string pokedexCachePath    = Path.Combine(cacheDir, "showdown-pokedex.json");
+string movesCachePath      = Path.Combine(cacheDir, "showdown-moves.json");
+string itemsCachePath      = Path.Combine(cacheDir, "showdown-items.json");
+string abilitiesCachePath  = Path.Combine(cacheDir, "showdown-abilities.json");
+string translationsPath    = Path.Combine(cacheDir, "pokeapi-translations.json");
 
-var championsPatchPath    = Path.Combine(toolsDir, "champions-patch.json");
-var movesPowerPatchPath   = Path.Combine(toolsDir, "moves-power-patch.json");
-var itemsModifiersPath    = Path.Combine(toolsDir, "items-modifiers.json");
-var abilitiesModifiersPath = Path.Combine(toolsDir, "abilities-modifiers.json");
-var pokemonNamePatchPath  = Path.Combine(toolsDir, "pokemon-name-patch.json");
-var itemNamePatchPath     = Path.Combine(toolsDir, "item-name-patch.json");
+string championsPatchPath    = Path.Combine(toolsDir, "champions-patch.json");
+string movesPowerPatchPath   = Path.Combine(toolsDir, "moves-power-patch.json");
+string itemsModifiersPath    = Path.Combine(toolsDir, "items-modifiers.json");
+string abilitiesModifiersPath = Path.Combine(toolsDir, "abilities-modifiers.json");
+string pokemonNamePatchPath  = Path.Combine(toolsDir, "pokemon-name-patch.json");
+string itemNamePatchPath     = Path.Combine(toolsDir, "item-name-patch.json");
 
 // Shared HttpClient: injected into both fetchers so they no longer hold their own
 // static instances. Lifetime is bound to Program.cs and the instance is disposed on exit.
@@ -54,8 +54,8 @@ var current = new Dictionary<string, string>
     ["item-name-patch"]    = IncrementalRunner.ComputeHash(itemNamePatchPath),
 };
 
-var old = IncrementalRunner.LoadChecksums(checksumsPath);
-var steps = IncrementalRunner.DetermineSteps(old, current);
+Dictionary<string, string> old = IncrementalRunner.LoadChecksums(checksumsPath);
+IncrementalRunner.Steps steps = IncrementalRunner.DetermineSteps(old, current);
 
 if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 {

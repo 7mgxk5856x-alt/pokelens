@@ -15,16 +15,24 @@ internal static class IncrementalRunner
 
     public static Dictionary<string, string> LoadChecksums(string path)
     {
-        if (!File.Exists(path)) return [];
-        var json = File.ReadAllText(path);
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        string json = File.ReadAllText(path);
         return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
     }
 
     public static string ComputeHash(string filePath)
     {
-        if (!File.Exists(filePath)) return string.Empty;
+        if (!File.Exists(filePath))
+        {
+            return string.Empty;
+        }
+
         using var sha = SHA256.Create();
-        using var stream = File.OpenRead(filePath);
+        using FileStream stream = File.OpenRead(filePath);
         byte[] hash = sha.ComputeHash(stream);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
@@ -34,7 +42,9 @@ internal static class IncrementalRunner
         Dictionary<string, string> current)
     {
         if (old.Count == 0)
+        {
             return new Steps(true, true, true);
+        }
 
         bool showdownChanged = ShowdownKeys.Any(k =>
             old.GetValueOrDefault(k) != current.GetValueOrDefault(k));
@@ -56,8 +66,12 @@ internal static class IncrementalRunner
 
     public static void SaveChecksums(Dictionary<string, string> checksums, string path)
     {
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        string? dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
         File.WriteAllText(path, JsonSerializer.Serialize(checksums,
             new JsonSerializerOptions(JsonSerializerDefaults.General) { WriteIndented = true }));
     }

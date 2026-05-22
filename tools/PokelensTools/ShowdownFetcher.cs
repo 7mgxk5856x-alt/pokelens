@@ -26,14 +26,16 @@ internal class ShowdownFetcher
 
     public async Task FetchPokedexAsync(string cacheDir)
     {
-        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/pokedex.js");
-        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
+        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/pokedex.js");
+        JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
             if (val is JsonObject entry && BuildPokedexEntry(entry) is { } pokedexEntry)
+            {
                 filtered[key] = pokedexEntry;
+            }
         }
 
         await File.WriteAllTextAsync(
@@ -43,11 +45,17 @@ internal class ShowdownFetcher
 
     public static JsonObject? BuildPokedexEntry(JsonObject entry)
     {
-        var num = entry["num"]?.GetValue<int>() ?? 0;
-        if (num <= 0) return null;
+        int num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0)
+        {
+            return null;
+        }
 
-        var baseStats = entry["baseStats"]?.AsObject();
-        if (baseStats == null) return null;
+        JsonObject? baseStats = entry["baseStats"]?.AsObject();
+        if (baseStats == null)
+        {
+            return null;
+        }
 
         var pokedexEntry = new JsonObject
         {
@@ -66,22 +74,27 @@ internal class ShowdownFetcher
             ["abilities"] = entry["abilities"]?.DeepClone(),
         };
 
-        var forme = entry["forme"]?.GetValue<string>();
-        if (!string.IsNullOrEmpty(forme)) pokedexEntry["forme"] = forme;
+        string? forme = entry["forme"]?.GetValue<string>();
+        if (!string.IsNullOrEmpty(forme))
+        {
+            pokedexEntry["forme"] = forme;
+        }
 
         return pokedexEntry;
     }
 
     public async Task FetchMovesAsync(string cacheDir)
     {
-        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/moves.js");
-        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
+        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/moves.js");
+        JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
             if (val is JsonObject entry && BuildMoveEntry(entry) is { } moveEntry)
+            {
                 filtered[key] = moveEntry;
+            }
         }
 
         await File.WriteAllTextAsync(
@@ -91,11 +104,17 @@ internal class ShowdownFetcher
 
     public static JsonObject? BuildMoveEntry(JsonObject entry)
     {
-        var num = entry["num"]?.GetValue<int>() ?? 0;
-        if (num <= 0) return null;
+        int num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0)
+        {
+            return null;
+        }
         // Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で
         // 使用不可のためここで除外する。functional-design.md 「除外フィルタ」参照。
-        if (entry["isZ"] != null || entry["isMax"] != null) return null;
+        if (entry["isZ"] != null || entry["isMax"] != null)
+        {
+            return null;
+        }
 
         var moveEntry = new JsonObject
         {
@@ -108,24 +127,41 @@ internal class ShowdownFetcher
             ["flags"] = entry["flags"]?.DeepClone() ?? new JsonObject(),
         };
 
-        if (entry["multihit"] is { } multihit) moveEntry["multihit"] = multihit.DeepClone();
-        if (entry["recoil"] != null) moveEntry["recoil"] = JsonValue.Create(true);
-        if (entry["secondary"] is JsonObject secondary) moveEntry["secondary"] = secondary.DeepClone();
-        if (entry["secondaries"] is JsonArray secondaries) moveEntry["secondaries"] = secondaries.DeepClone();
+        if (entry["multihit"] is { } multihit)
+        {
+            moveEntry["multihit"] = multihit.DeepClone();
+        }
+
+        if (entry["recoil"] != null)
+        {
+            moveEntry["recoil"] = JsonValue.Create(true);
+        }
+
+        if (entry["secondary"] is JsonObject secondary)
+        {
+            moveEntry["secondary"] = secondary.DeepClone();
+        }
+
+        if (entry["secondaries"] is JsonArray secondaries)
+        {
+            moveEntry["secondaries"] = secondaries.DeepClone();
+        }
 
         return moveEntry;
     }
 
     public async Task FetchItemsAsync(string cacheDir)
     {
-        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/items.js");
-        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
+        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/items.js");
+        JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
             if (val is JsonObject entry && BuildItemEntry(entry) is { } itemEntry)
+            {
                 filtered[key] = itemEntry;
+            }
         }
 
         await File.WriteAllTextAsync(
@@ -135,11 +171,17 @@ internal class ShowdownFetcher
 
     public static JsonObject? BuildItemEntry(JsonObject entry)
     {
-        var num = entry["num"]?.GetValue<int>() ?? 0;
-        if (num <= 0) return null;
+        int num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0)
+        {
+            return null;
+        }
         // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来のアイテムは現代対戦の対象外。
         // functional-design.md 「除外フィルタ」参照。
-        if (entry["isNonstandard"] != null) return null;
+        if (entry["isNonstandard"] != null)
+        {
+            return null;
+        }
 
         return new JsonObject
         {
@@ -150,14 +192,16 @@ internal class ShowdownFetcher
 
     public async Task FetchAbilitiesAsync(string cacheDir)
     {
-        var js = await FetchTextAsync("https://play.pokemonshowdown.com/data/abilities.js");
-        var root = JsonNode.Parse(JsToJson(js))!.AsObject();
+        string js = await FetchTextAsync("https://play.pokemonshowdown.com/data/abilities.js");
+        JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
 
         var filtered = new JsonObject();
         foreach (var (key, val) in root)
         {
             if (val is JsonObject entry && BuildAbilityEntry(entry) is { } abilityEntry)
+            {
                 filtered[key] = abilityEntry;
+            }
         }
 
         await File.WriteAllTextAsync(
@@ -167,23 +211,32 @@ internal class ShowdownFetcher
 
     public static JsonObject? BuildAbilityEntry(JsonObject entry)
     {
-        var num = entry["num"]?.GetValue<int>() ?? 0;
-        if (num <= 0) return null;
+        int num = entry["num"]?.GetValue<int>() ?? 0;
+        if (num <= 0)
+        {
+            return null;
+        }
         // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来の特性は現代対戦の対象外。
         // functional-design.md 「除外フィルタ」参照。
-        if (entry["isNonstandard"] != null) return null;
+        if (entry["isNonstandard"] != null)
+        {
+            return null;
+        }
 
         return new JsonObject { ["num"] = num };
     }
 
     private async Task<string> FetchTextAsync(string url)
     {
-        var response = await _http.GetAsync(url);
+        HttpResponseMessage response = await _http.GetAsync(url);
         if (!response.IsSuccessStatusCode)
+        {
             throw new HttpRequestException(
                 $"Failed to fetch {url}: {(int)response.StatusCode} {response.StatusCode}",
                 inner: null,
                 statusCode: response.StatusCode);
+        }
+
         return await response.Content.ReadAsStringAsync();
     }
 
@@ -194,7 +247,9 @@ internal class ShowdownFetcher
         int start = js.IndexOf('{');
         int end = js.LastIndexOf('}');
         if (start < 0 || end < 0)
+        {
             throw new FormatException("Invalid Showdown JS: no top-level object found");
+        }
 
         string obj = js[start..(end + 1)];
         obj = QuoteUnquotedKeys(obj);
@@ -225,7 +280,10 @@ internal class ShowdownFetcher
                     sb.Append(s);
                     i++;
                     if (s == '\\') { if (i < input.Length) { sb.Append(input[i]); i++; } }
-                    else if (s == '"') break;
+                    else if (s == '"')
+                    {
+                        break;
+                    }
                 }
             }
             else if (c == '{')
@@ -243,13 +301,21 @@ internal class ShowdownFetcher
             }
             else if (c == '}')
             {
-                if (context.Count > 0 && context.Peek() == '{') context.Pop();
+                if (context.Count > 0 && context.Peek() == '{')
+                {
+                    context.Pop();
+                }
+
                 sb.Append(c);
                 i++;
             }
             else if (c == ']')
             {
-                if (context.Count > 0 && context.Peek() == '[') context.Pop();
+                if (context.Count > 0 && context.Peek() == '[')
+                {
+                    context.Pop();
+                }
+
                 sb.Append(c);
                 i++;
             }
@@ -258,7 +324,9 @@ internal class ShowdownFetcher
                 sb.Append(c);
                 i++;
                 if (context.Count > 0 && context.Peek() == '{')
+                {
                     AppendWhitespaceAndMaybeQuoteKey(input, sb, ref i);
+                }
             }
             else
             {
@@ -279,8 +347,15 @@ internal class ShowdownFetcher
             i++;
         }
 
-        if (i >= input.Length || input[i] == '"') return;
-        if (!char.IsLetter(input[i]) && !char.IsDigit(input[i]) && input[i] != '_') return;
+        if (i >= input.Length || input[i] == '"')
+        {
+            return;
+        }
+
+        if (!char.IsLetter(input[i]) && !char.IsDigit(input[i]) && input[i] != '_')
+        {
+            return;
+        }
 
         sb.Append('"');
         while (i < input.Length && (char.IsLetterOrDigit(input[i]) || input[i] == '_'))

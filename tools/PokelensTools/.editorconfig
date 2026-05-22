@@ -1,0 +1,7 @@
+root = true
+
+[*.cs]
+# 制御構文の本体は一行でも必ず波括弧で囲む（development-guidelines「制御構文のブロック」）。
+# JavaScript 側の ESLint `curly` に対応する C# の機械的強制。
+csharp_prefer_braces = true:warning
+dotnet_diagnostic.IDE0011.severity = warning

@@ -40,22 +40,22 @@ internal class PokeAPIFetcher
         _speciesCache.Clear();
 
         Console.WriteLine("  Fetching Pokémon names from PokéAPI...");
-        var pokemon = await FetchPokemonNamesAsync(showdownPokedexPath);
+        JsonObject pokemon = await FetchPokemonNamesAsync(showdownPokedexPath);
 
         Console.WriteLine("  Fetching move names from PokéAPI...");
-        var moves = await FetchCategoryAsync(
+        JsonObject moves = await FetchCategoryAsync(
             showdownMovesPath,
             id => $"https://pokeapi.co/api/v2/move/{id}/",
             "moves");
 
         Console.WriteLine("  Fetching ability names from PokéAPI...");
-        var abilities = await FetchCategoryAsync(
+        JsonObject abilities = await FetchCategoryAsync(
             showdownAbilitiesPath,
             id => $"https://pokeapi.co/api/v2/ability/{id}/",
             "abilities");
 
         Console.WriteLine("  Fetching item names from PokéAPI...");
-        var items = await FetchItemNamesAsync(showdownItemsPath);
+        JsonObject items = await FetchItemNamesAsync(showdownItemsPath);
 
         var translations = new JsonObject
         {
@@ -78,26 +78,38 @@ internal class PokeAPIFetcher
     //   name doesn't contain the species name, combine as "species (form)".
     private async Task<JsonObject> FetchPokemonNamesAsync(string showdownPokedexPath)
     {
-        var showdownData = JsonNode.Parse(File.ReadAllText(showdownPokedexPath))!.AsObject();
+        JsonObject showdownData = JsonNode.Parse(File.ReadAllText(showdownPokedexPath))!.AsObject();
 
         var targets = new List<(string Key, int Num, string Name, string? Forme)>();
         foreach (var (key, val) in showdownData)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
-            var englishName = entry["name"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(englishName)) continue;
-            var forme = entry["forme"]?.GetValue<string>();
+            if (val is not JsonObject entry)
+            {
+                continue;
+            }
+
+            int num = entry["num"]?.GetValue<int>() ?? 0;
+            if (num <= 0)
+            {
+                continue;
+            }
+
+            string? englishName = entry["name"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(englishName))
+            {
+                continue;
+            }
+
+            string? forme = entry["forme"]?.GetValue<string>();
             targets.Add((key, num, englishName, forme));
         }
 
         return await RunParallelAsync(targets, async t =>
         {
-            var ja = await ResolvePokemonJapaneseNameAsync(t.Name, t.Num, t.Forme);
+            string? ja = await ResolvePokemonJapaneseNameAsync(t.Name, t.Num, t.Forme);
             if (ja == null)
             {
-                var slug = DerivePokemonFormSlug(t.Name);
+                string slug = DerivePokemonFormSlug(t.Name);
                 Console.WriteLine(
                     $"    Warning: no Japanese name for pokemon/{t.Key} (id={t.Num}, slug={slug})");
             }
@@ -108,25 +120,35 @@ internal class PokeAPIFetcher
     private async Task<string?> ResolvePokemonJapaneseNameAsync(
         string showdownName, int num, string? forme)
     {
-        var speciesName = await GetSpeciesJaNameAsync(num);
+        string? speciesName = await GetSpeciesJaNameAsync(num);
 
         if (string.IsNullOrEmpty(forme))
+        {
             return speciesName;
+        }
 
-        var formName = await GetFormJaNameAsync(showdownName, num);
+        string? formName = await GetFormJaNameAsync(showdownName, num);
         if (string.IsNullOrEmpty(formName))
+        {
             return speciesName;
+        }
 
         if (!string.IsNullOrEmpty(speciesName) && formName.Contains(speciesName))
+        {
             return formName;
+        }
+
         if (!string.IsNullOrEmpty(speciesName))
+        {
             return $"{speciesName} ({formName})";
+        }
+
         return formName;
     }
 
     private async Task<string?> GetSpeciesJaNameAsync(int num)
     {
-        var node = await GetSpeciesNodeAsync(num);
+        JsonNode? node = await GetSpeciesNodeAsync(num);
         return node == null ? null : ExtractJaName(node, "names");
     }
 
@@ -134,7 +156,7 @@ internal class PokeAPIFetcher
     {
         return _speciesCache.GetOrAdd(num, async n =>
         {
-            var body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-species/{n}/");
+            string? body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-species/{n}/");
             return body == null ? null : JsonNode.Parse(body);
         });
     }
@@ -144,40 +166,62 @@ internal class PokeAPIFetcher
     // slug "ogerpon-wellspring" → PokéAPI variety "ogerpon-wellspring-mask").
     private async Task<string?> GetFormJaNameAsync(string showdownName, int num)
     {
-        var slug = DerivePokemonFormSlug(showdownName);
-        var node = await FetchFormNodeAsync(slug);
+        string slug = DerivePokemonFormSlug(showdownName);
+        JsonNode? node = await FetchFormNodeAsync(slug);
         if (node != null)
         {
-            var ja = ExtractJaName(node, "form_names");
-            if (!string.IsNullOrEmpty(ja)) return ja;
+            string? ja = ExtractJaName(node, "form_names");
+            if (!string.IsNullOrEmpty(ja))
+            {
+                return ja;
+            }
         }
 
-        var species = await GetSpeciesNodeAsync(num);
-        if (species == null) return null;
-        var matched = FindMatchingVariety(species, slug);
-        if (matched == null || matched == slug) return null;
+        JsonNode? species = await GetSpeciesNodeAsync(num);
+        if (species == null)
+        {
+            return null;
+        }
 
-        var fallback = await FetchFormNodeAsync(matched);
-        if (fallback == null) return null;
+        string? matched = FindMatchingVariety(species, slug);
+        if (matched == null || matched == slug)
+        {
+            return null;
+        }
+
+        JsonNode? fallback = await FetchFormNodeAsync(matched);
+        if (fallback == null)
+        {
+            return null;
+        }
+
         return ExtractJaName(fallback, "form_names");
     }
 
     private async Task<JsonNode?> FetchFormNodeAsync(string slug)
     {
-        var body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-form/{slug}/");
+        string? body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-form/{slug}/");
         return body == null ? null : JsonNode.Parse(body);
     }
 
     public static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
     {
-        var varieties = speciesNode["varieties"]?.AsArray();
-        if (varieties == null) return null;
+        JsonArray? varieties = speciesNode["varieties"]?.AsArray();
+        if (varieties == null)
+        {
+            return null;
+        }
+
         string? best = null;
         int bestLen = -1;
         foreach (var v in varieties)
         {
-            var name = v?["pokemon"]?["name"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(name)) continue;
+            string? name = v?["pokemon"]?["name"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(name))
+            {
+                continue;
+            }
+
             if ((name.StartsWith(targetSlug) || targetSlug.StartsWith(name))
                 && name.Length > bestLen)
             {
@@ -191,14 +235,27 @@ internal class PokeAPIFetcher
     // Showdown's item `name` (e.g., "Choice Scarf", "Wellspring Mask") → PokéAPI item slug.
     public static string DeriveItemSlug(string showdownName)
     {
-        var lower = showdownName.ToLowerInvariant();
+        string lower = showdownName.ToLowerInvariant();
         var sb = new StringBuilder(lower.Length);
         foreach (var c in lower)
         {
-            if (c == '\'' || c == '’' || c == '.' || c == ':' || c == ',') continue;
-            if (c == ' ' || c == '_') sb.Append('-');
-            else if (c == 'é' || c == 'è' || c == 'ê' || c == 'ë') sb.Append('e');
-            else sb.Append(c);
+            if (c == '\'' || c == '’' || c == '.' || c == ':' || c == ',')
+            {
+                continue;
+            }
+
+            if (c == ' ' || c == '_')
+            {
+                sb.Append('-');
+            }
+            else if (c == 'é' || c == 'è' || c == 'ê' || c == 'ë')
+            {
+                sb.Append('e');
+            }
+            else
+            {
+                sb.Append(c);
+            }
         }
         return sb.ToString();
     }
@@ -207,25 +264,40 @@ internal class PokeAPIFetcher
     // so we resolve by hyphenated lowercase name instead.
     private async Task<JsonObject> FetchItemNamesAsync(string showdownItemsPath)
     {
-        var showdownData = JsonNode.Parse(File.ReadAllText(showdownItemsPath))!.AsObject();
+        JsonObject showdownData = JsonNode.Parse(File.ReadAllText(showdownItemsPath))!.AsObject();
 
         var targets = new List<(string Key, string Name)>();
         foreach (var (key, val) in showdownData)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
-            var name = entry["name"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(name)) continue;
+            if (val is not JsonObject entry)
+            {
+                continue;
+            }
+
+            int num = entry["num"]?.GetValue<int>() ?? 0;
+            if (num <= 0)
+            {
+                continue;
+            }
+
+            string? name = entry["name"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(name))
+            {
+                continue;
+            }
+
             targets.Add((key, name));
         }
 
         return await RunParallelAsync(targets, async t =>
         {
-            var slug = DeriveItemSlug(t.Name);
-            var ja = await FetchJapaneseNameAsync($"https://pokeapi.co/api/v2/item/{slug}/");
+            string slug = DeriveItemSlug(t.Name);
+            string? ja = await FetchJapaneseNameAsync($"https://pokeapi.co/api/v2/item/{slug}/");
             if (ja == null)
+            {
                 Console.WriteLine($"    Warning: no Japanese name for items/{t.Key} (slug={slug})");
+            }
+
             return (t.Key, ja);
         });
     }
@@ -233,14 +305,27 @@ internal class PokeAPIFetcher
     // Showdown's `name` (e.g., "Rotom-Wash", "Mr. Mime", "Flabébé") → PokéAPI form slug.
     public static string DerivePokemonFormSlug(string showdownName)
     {
-        var lower = showdownName.ToLowerInvariant();
+        string lower = showdownName.ToLowerInvariant();
         var sb = new StringBuilder(lower.Length);
         foreach (var c in lower)
         {
-            if (c == '\'' || c == '’' || c == '.' || c == ':' || c == ',' || c == '%') continue;
-            if (c == ' ' || c == '_') sb.Append('-');
-            else if (c == 'é' || c == 'è' || c == 'ê' || c == 'ë') sb.Append('e');
-            else sb.Append(c);
+            if (c == '\'' || c == '’' || c == '.' || c == ':' || c == ',' || c == '%')
+            {
+                continue;
+            }
+
+            if (c == ' ' || c == '_')
+            {
+                sb.Append('-');
+            }
+            else if (c == 'é' || c == 'è' || c == 'ê' || c == 'ë')
+            {
+                sb.Append('e');
+            }
+            else
+            {
+                sb.Append(c);
+            }
         }
         return sb.ToString();
     }
@@ -250,22 +335,33 @@ internal class PokeAPIFetcher
         Func<int, string> urlBuilder,
         string categoryName)
     {
-        var showdownData = JsonNode.Parse(File.ReadAllText(showdownCachePath))!.AsObject();
+        JsonObject showdownData = JsonNode.Parse(File.ReadAllText(showdownCachePath))!.AsObject();
 
         var targets = new List<(string Key, int Num)>();
         foreach (var (key, val) in showdownData)
         {
-            if (val is not JsonObject entry) continue;
-            var num = entry["num"]?.GetValue<int>() ?? 0;
-            if (num <= 0) continue;
+            if (val is not JsonObject entry)
+            {
+                continue;
+            }
+
+            int num = entry["num"]?.GetValue<int>() ?? 0;
+            if (num <= 0)
+            {
+                continue;
+            }
+
             targets.Add((key, num));
         }
 
         return await RunParallelAsync(targets, async t =>
         {
-            var ja = await FetchJapaneseNameAsync(urlBuilder(t.Num));
+            string? ja = await FetchJapaneseNameAsync(urlBuilder(t.Num));
             if (ja == null)
+            {
                 Console.WriteLine($"    Warning: no Japanese name for {categoryName}/{t.Key} (id={t.Num})");
+            }
+
             return (t.Key, ja);
         });
     }
@@ -282,8 +378,8 @@ internal class PokeAPIFetcher
         var tasks = new Task[targets.Count];
         for (int i = 0; i < targets.Count; i++)
         {
-            var idx = i;
-            var t = targets[idx];
+            int idx = i;
+            T t = targets[idx];
             tasks[idx] = Task.Run(async () =>
             {
                 await gate.WaitAsync();
@@ -296,17 +392,28 @@ internal class PokeAPIFetcher
         var result = new JsonObject();
         foreach (var (key, ja) in resolved)
         {
-            if (ja != null) result[key] = ja;
+            if (ja != null)
+            {
+                result[key] = ja;
+            }
         }
         return result;
     }
 
     public async Task<string?> FetchJapaneseNameAsync(string url)
     {
-        var body = await FetchTextOrNullAsync(url);
-        if (body == null) return null;
+        string? body = await FetchTextOrNullAsync(url);
+        if (body == null)
+        {
+            return null;
+        }
+
         var node = JsonNode.Parse(body);
-        if (node == null) return null;
+        if (node == null)
+        {
+            return null;
+        }
+
         return ExtractJaName(node, "names");
     }
 
@@ -332,7 +439,11 @@ internal class PokeAPIFetcher
 
         // 404 はリソース不在で正常な fallback ケースなので無言で null。
         // 400 は slug 形式の不備など呼び出し側のバグを示すので Warning を残す。
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
         if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
             Console.WriteLine($"    Warning: 400 Bad Request for {url} — slug 形式に問題がある可能性");
@@ -349,17 +460,31 @@ internal class PokeAPIFetcher
 
     public static string? ExtractJaName(JsonNode root, string arrayKey)
     {
-        var arr = root[arrayKey]?.AsArray();
-        if (arr == null) return null;
+        JsonArray? arr = root[arrayKey]?.AsArray();
+        if (arr == null)
+        {
+            return null;
+        }
 
         string? jaHrkt = null;
         foreach (var entry in arr)
         {
-            var lang = entry?["language"]?["name"]?.GetValue<string>();
-            var name = entry?["name"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(name)) continue;
-            if (lang == "ja") return name;
-            if (lang == "ja-Hrkt" || lang == "ja-hrkt") jaHrkt = name;
+            string? lang = entry?["language"]?["name"]?.GetValue<string>();
+            string? name = entry?["name"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(name))
+            {
+                continue;
+            }
+
+            if (lang == "ja")
+            {
+                return name;
+            }
+
+            if (lang == "ja-Hrkt" || lang == "ja-hrkt")
+            {
+                jaHrkt = name;
+            }
         }
         return jaHrkt;
     }
