@@ -9,7 +9,7 @@ internal static class MergeConverter
     // Showdown の flag キー → JSON タグ名の対応表（例外を先に引き、無ければ汎用ルール）
     private static readonly Dictionary<string, string> FlagExceptions = new()
     {
-        ["slicing"] = "isSlice",
+        ["slicing"] = MasterTag.IsSlice,
     };
 
     /// <summary>Showdown の flag キーを成果物のタグ名（例: "isSlice"）に変換する。</summary>
@@ -81,19 +81,19 @@ internal static class MergeConverter
         JsonObject itemNames = translations[TranslationKey.Items]?.AsObject() ?? new JsonObject();
 
         File.WriteAllText(
-            Path.Combine(dataDir, "pokedex.json"),
+            Path.Combine(dataDir, MasterDataFile.Pokedex),
             JsonHelpers.ToIndentedJson(ConvertPokedex(pokedex, pokemonNames, abilityNames, pokemonNamePatch)));
 
         File.WriteAllText(
-            Path.Combine(dataDir, "moves.json"),
+            Path.Combine(dataDir, MasterDataFile.Moves),
             JsonHelpers.ToIndentedJson(ConvertMoves(moves, moveNames, movesPowerPatch)));
 
         File.WriteAllText(
-            Path.Combine(dataDir, "items.json"),
+            Path.Combine(dataDir, MasterDataFile.Items),
             JsonHelpers.ToIndentedJson(ConvertItems(itemsModifiers, itemNames, itemNamePatch)));
 
         File.WriteAllText(
-            Path.Combine(dataDir, "abilities.json"),
+            Path.Combine(dataDir, MasterDataFile.Abilities),
             JsonHelpers.ToIndentedJson(ConvertAbilities(abilitiesModifiers, abilityNames)));
     }
 
@@ -159,11 +159,11 @@ internal static class MergeConverter
 
             result[key] = new JsonObject
             {
-                ["num"] = entry[ShowdownKey.Num]?.GetValue<int>(),
-                ["name"] = jaName,
-                ["types"] = entry[ShowdownKey.Pokedex.Types]?.DeepClone(),
-                ["baseStats"] = entry[ShowdownKey.Pokedex.BaseStats]?.DeepClone(),
-                ["abilities"] = abilitiesList,
+                [MasterKey.Pokedex.Num] = entry[ShowdownKey.Num]?.GetValue<int>(),
+                [MasterKey.Pokedex.Name] = jaName,
+                [MasterKey.Pokedex.Types] = entry[ShowdownKey.Pokedex.Types]?.DeepClone(),
+                [MasterKey.Pokedex.BaseStats] = entry[ShowdownKey.Pokedex.BaseStats]?.DeepClone(),
+                [MasterKey.Pokedex.Abilities] = abilitiesList,
             };
         }
 
@@ -249,7 +249,7 @@ internal static class MergeConverter
             }
             if (hasRecoil)
             {
-                tags.Add("isRecoil");
+                tags.Add(MasterTag.IsRecoil);
             }
 
             // Showdownの secondary（オブジェクト）/ secondaries（配列）が存在すれば追加効果あり
@@ -259,15 +259,15 @@ internal static class MergeConverter
                 || (secondaries is JsonArray sArr && sArr.Count > 0);
             if (hasSecondary)
             {
-                tags.Add("hasSecondary");
+                tags.Add(MasterTag.HasSecondary);
             }
 
             var moveEntry = new JsonObject
             {
-                ["type"] = entry[ShowdownKey.Move.Type]?.GetValue<string>(),
-                ["category"] = entry[ShowdownKey.Move.Category]?.GetValue<string>(),
-                ["power"] = power,
-                ["accuracy"] = accuracy,
+                [MasterKey.Move.Type] = entry[ShowdownKey.Move.Type]?.GetValue<string>(),
+                [MasterKey.Move.Category] = entry[ShowdownKey.Move.Category]?.GetValue<string>(),
+                [MasterKey.Move.Power] = power,
+                [MasterKey.Move.Accuracy] = accuracy,
             };
 
             if (tags.Count > 0)
@@ -278,7 +278,7 @@ internal static class MergeConverter
                     tagsArray.Add(tag);
                 }
 
-                moveEntry["tags"] = tagsArray;
+                moveEntry[MasterKey.Move.Tags] = tagsArray;
             }
 
             result[jaName] = moveEntry;
