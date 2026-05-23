@@ -22,7 +22,7 @@ export default [
     },
   },
   {
-    files: ['tests/**/*.js'],
+    files: ['tests/**/*.js', '*.config.js'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -30,6 +30,6 @@ export default [
     },
   },
   {
-    ignores: ['node_modules/', 'dist/', 'coverage/'],
+    ignores: ['node_modules/', 'dist/', 'coverage/', 'playwright-report/', 'test-results/'],
   },
 ];

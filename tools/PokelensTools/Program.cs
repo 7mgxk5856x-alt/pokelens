@@ -1,32 +1,17 @@
-using PokelensTools;
+using PokelensTools.Common;
+using PokelensTools.Fetchers;
+using PokelensTools.Models;
+using PokelensTools.Pipeline;
 
 // リポジトリルートを特定する。CLAUDE.md の指示通り
 // "dotnet run --project tools/PokelensTools" でリポジトリルートから実行した場合、
 // カレントディレクトリがそのままリポジトリルートになる。
-string repoRoot = Directory.GetCurrentDirectory();
-if (!Directory.Exists(Path.Combine(repoRoot, "tools", "PokelensTools")))
+if (!Directory.Exists(DataPaths.ToolsDir))
 {
     throw new DirectoryNotFoundException(
         $"リポジトリルートが特定できません。CLAUDE.md の指示通り、リポジトリルートから " +
-        $"'dotnet run --project tools/PokelensTools' で実行してください。(CWD: {repoRoot})");
+        $"'dotnet run --project tools/PokelensTools' で実行してください。(CWD: {DataPaths.RepoRoot})");
 }
-string cacheDir = Path.Combine(repoRoot, "cache");
-string dataDir = Path.Combine(repoRoot, "data");
-string toolsDir = Path.Combine(repoRoot, "tools", "PokelensTools");
-
-string checksumsPath       = Path.Combine(cacheDir, "checksums.json");
-string pokedexCachePath    = Path.Combine(cacheDir, "showdown-pokedex.json");
-string movesCachePath      = Path.Combine(cacheDir, "showdown-moves.json");
-string itemsCachePath      = Path.Combine(cacheDir, "showdown-items.json");
-string abilitiesCachePath  = Path.Combine(cacheDir, "showdown-abilities.json");
-string translationsPath    = Path.Combine(cacheDir, "pokeapi-translations.json");
-
-string championsPatchPath    = Path.Combine(toolsDir, "champions-patch.json");
-string movesPowerPatchPath   = Path.Combine(toolsDir, "moves-power-patch.json");
-string itemsModifiersPath    = Path.Combine(toolsDir, "items-modifiers.json");
-string abilitiesModifiersPath = Path.Combine(toolsDir, "abilities-modifiers.json");
-string pokemonNamePatchPath  = Path.Combine(toolsDir, "pokemon-name-patch.json");
-string itemNamePatchPath     = Path.Combine(toolsDir, "item-name-patch.json");
 
 // HttpClient を両 fetcher に注入して共有する（各 fetcher が独自の static インスタンスを
 // 持たないようにするため）。ライフタイムは Program.cs に束ね、終了時に dispose する。
@@ -36,27 +21,13 @@ var pokeApiFetcher = new PokeAPIFetcher(http);
 
 // Step 1: Showdown データは常に取得する
 Console.WriteLine("[Step 1] Fetching Showdown data...");
-await showdownFetcher.FetchAllAsync(cacheDir);
+await showdownFetcher.FetchAllAsync();
 Console.WriteLine("  Done.");
 
 // 差分実行の判定用に現在のチェックサムを計算する
-var current = new Dictionary<string, string>
-{
-    ["showdown-pokedex"]   = IncrementalRunner.ComputeHash(pokedexCachePath),
-    ["showdown-moves"]     = IncrementalRunner.ComputeHash(movesCachePath),
-    ["showdown-items"]     = IncrementalRunner.ComputeHash(itemsCachePath),
-    ["showdown-abilities"] = IncrementalRunner.ComputeHash(abilitiesCachePath),
-    ["pokeapi-translations"] = IncrementalRunner.ComputeHash(translationsPath),
-    ["champions-patch"]    = IncrementalRunner.ComputeHash(championsPatchPath),
-    ["moves-power-patch"]  = IncrementalRunner.ComputeHash(movesPowerPatchPath),
-    ["items-modifiers"]    = IncrementalRunner.ComputeHash(itemsModifiersPath),
-    ["abilities-modifiers"] = IncrementalRunner.ComputeHash(abilitiesModifiersPath),
-    ["pokemon-name-patch"] = IncrementalRunner.ComputeHash(pokemonNamePatchPath),
-    ["item-name-patch"]    = IncrementalRunner.ComputeHash(itemNamePatchPath),
-};
-
-Dictionary<string, string> old = IncrementalRunner.LoadChecksums(checksumsPath);
-IncrementalRunner.Steps steps = IncrementalRunner.DetermineSteps(old, current);
+var currentChecksums = IncrementalRunner.ComputeCurrentChecksums();
+ChecksumSet? previousChecksums = IncrementalRunner.LoadChecksums();
+IncrementalRunner.Steps steps = IncrementalRunner.DetermineSteps(previousChecksums, currentChecksums);
 
 if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 {
@@ -68,23 +39,21 @@ if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 if (steps.NeedsStep2)
 {
     Console.WriteLine("[Step 2] Fetching PokéAPI translations...");
-    await pokeApiFetcher.FetchTranslationsAsync(
-        cacheDir,
-        pokedexCachePath,
-        movesCachePath,
-        itemsCachePath,
-        abilitiesCachePath);
+    await pokeApiFetcher.FetchTranslationsAsync();
     Console.WriteLine("  Done.");
 
-    // 取得後に pokeapi-translations のハッシュを更新する
-    current["pokeapi-translations"] = IncrementalRunner.ComputeHash(translationsPath);
+    // 取得後に PokéAPI 翻訳のハッシュを更新する
+    currentChecksums = currentChecksums with
+    {
+        PokeApiTranslations = IncrementalRunner.ComputeHash(DataPaths.Cache.PokeApiTranslations()),
+    };
 }
 
 // Step 3: champions-patch.json を適用する（必要な場合のみ）
 if (steps.NeedsStep3)
 {
     Console.WriteLine("[Step 3] Applying champions-patch.json...");
-    PatchApplicator.Apply(pokedexCachePath, movesCachePath, championsPatchPath);
+    PatchApplicator.Apply();
     Console.WriteLine("  Done.");
 }
 
@@ -92,23 +61,12 @@ if (steps.NeedsStep3)
 if (steps.NeedsStep4)
 {
     Console.WriteLine("[Step 4] Generating data/*.json...");
-    MergeConverter.Convert(
-        pokedexCachePath,
-        movesCachePath,
-        itemsCachePath,
-        abilitiesCachePath,
-        translationsPath,
-        movesPowerPatchPath,
-        itemsModifiersPath,
-        abilitiesModifiersPath,
-        pokemonNamePatchPath,
-        itemNamePatchPath,
-        dataDir);
+    MergeConverter.Convert();
     Console.WriteLine("  Done.");
 }
 
 // チェックサムを更新する
 // Step2〜Step4 が例外で終了した場合は SaveChecksums に到達しないため、
 // 次回起動で同ステップから再実行される（部分失敗の回復性を担保するための意図的設計）。
-IncrementalRunner.SaveChecksums(current, checksumsPath);
+IncrementalRunner.SaveChecksums(currentChecksums);
 Console.WriteLine("Completed successfully.");

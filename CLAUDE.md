@@ -13,9 +13,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev           # Vite開発サーバー起動（必ずこれ経由で開く。file://不可）
 npm run lint          # ESLint
 npm run format        # Prettier
-npm test              # テスト実行（vitest）
+npm test              # 単体・統合テスト実行（vitest）
 npm run test:watch    # vitestウォッチモード
 npm run test:coverage
+npm run test:e2e      # E2E テスト実行（Playwright、Chromium）
+npm run test:e2e:ui   # Playwright UI モード（インタラクティブ実行）
+npm run test:e2e:headed # ヘッド付きブラウザで実行（デバッグ用）
 
 # C# データ準備ツール
 dotnet run --project tools/PokelensTools      # マスターデータ生成
@@ -23,6 +26,8 @@ dotnet test tools/PokelensTools.Tests         # C# テスト実行
 ```
 
 単一ファイルのテスト実行: `npx vitest run tests/unit/speed-calc.test.js`
+
+E2E 初回セットアップ: `npx playwright install chromium`（〜100MB のブラウザバイナリを取得）
 
 lint / format はコミットフックでは走らない。必要に応じて `npm run lint` / `npm run format` を手動で実行する。
 
@@ -63,6 +68,8 @@ lint / format はコミットフックでは走らない。必要に応じて `n
 
 - **フロントエンド:** JavaScript（ESモジュール、`"type": "module"`）
 - **バックグラウンド処理:** C#（ポケモンデータの取得・変換などCLI/データ処理）
-- **テスト:** Vitest（フロントエンド）
+- **テスト:** Vitest（JS 単体・`tests/unit/`）／ Playwright Chromium（E2E・`tests/e2e/`、`page.route` で `data/party.json` を mock 注入）／ xUnit（C# 単体・統合・`tools/PokelensTools.Tests/`）
 - **フロントエンドフレームワーク:** Vanilla JS（フレームワークなし）
+- **データパッチ:** `tools/PokelensTools/Patches/` 配下に手動管理 JSON（`champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` / `pokemon-name-patch.json` / `item-name-patch.json`）
 - 初期要件・アイデアは `docs/ideas/` に格納。サンプルファイル（`docs/ideas/initial-requirements-sample.md`）はgitignore済み。
+- 自分パーティ定義 `data/party.json` は開発者ごとのローカル専用（gitignore 済み）。

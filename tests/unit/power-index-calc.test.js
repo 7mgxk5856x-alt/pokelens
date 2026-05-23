@@ -45,6 +45,26 @@ describe('calcPowerIndex()', () => {
     );
   });
 
+  it('特殊技でも STAB × ability × item の三重補正が乗る (spa 参照)', () => {
+    expect(calcPowerIndex(special({ type: 'Fire' }), STATS, ['Fire'], 1.3, 1.2)).toBeCloseTo(
+      90 * 90 * 1.5 * 1.3 * 1.2
+    );
+  });
+
+  it('multihit 最大総威力 (basePower×multihit[1]) の値で火力指数を計算する', () => {
+    // doubleslap 等の連続技は MergeConverter が power=basePower×maxHits を格納する。
+    // calcPowerIndex は受け取った power をそのまま使うので、ここでは power=75（15×5 相当）で検証する。
+    const move = { type: 'Water', category: 'Physical', power: 75, accuracy: 100 };
+    expect(calcPowerIndex(move, STATS, ['Water'], 1.0, 1.0)).toBeCloseTo(75 * 200 * 1.5);
+  });
+
+  it('威力不定技パッチ適用後の power 値で火力指数を計算する', () => {
+    // メトロノーム等の威力不定技は moves-power-patch で補完された値が power に入る。
+    // calcPowerIndex はパッチか multihit かを区別せず受け取った power で計算する。
+    const move = { type: 'Normal', category: 'Physical', power: 120, accuracy: null };
+    expect(calcPowerIndex(move, STATS, ['Normal'], 1.0, 1.0)).toBeCloseTo(120 * 200 * 1.5);
+  });
+
   it('引数オブジェクトを変更しない', () => {
     const move = physical();
     const stats = { ...STATS };

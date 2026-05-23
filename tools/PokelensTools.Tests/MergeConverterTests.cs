@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using PokelensTools;
+using PokelensTools.Pipeline;
 using Xunit;
 
 namespace PokelensTools.Tests;
@@ -288,6 +288,9 @@ public class MergeConverterTests
         var result = MergeConverter.ConvertMoves(MakeMoves(), MakeMoveNames(), new JsonObject());
         var tags = result["10まんボルト"]!["tags"]!.AsArray()
             .Select(t => t!.GetValue<string>()).ToList();
+        // 肯定側: flags={protect, mirror} は正しくタグへ変換されている
+        Assert.Contains("isProtect", tags);
+        // 否定側: secondary が無いので hasSecondary は付与されない
         Assert.DoesNotContain("hasSecondary", tags);
     }
 

@@ -2,20 +2,29 @@ import { describe, it, expect } from 'vitest';
 import { calcActualStats, calcHp, calcStat } from '../../src/logic/calc-actual-stats.js';
 
 describe('calcHp()', () => {
-  it('Champions計算式: base + ap + 75', () => {
+  it('能力ポイント最大値 (ap=32) で Champions 計算式 base + ap + 75', () => {
     expect(calcHp(108, 32)).toBe(215);
+  });
+
+  it('能力ポイント最小値 (ap=0、境界値) でも計算が成立する', () => {
     expect(calcHp(108, 0)).toBe(183);
   });
 });
 
 describe('calcStat()', () => {
-  it('Champions計算式: floor((base + ap + 20) × nature)', () => {
+  it('上昇補正 (nature=1.1) で floor((base + ap + 20) × 1.1)', () => {
     expect(calcStat(130, 32, 1.1)).toBe(200);
+  });
+
+  it('等倍補正 (nature=1.0) で base + ap + 20 そのまま', () => {
     expect(calcStat(102, 0, 1.0)).toBe(122);
+  });
+
+  it('下降補正 (nature=0.9) で floor((base + ap + 20) × 0.9)', () => {
     expect(calcStat(80, 0, 0.9)).toBe(90);
   });
 
-  it('性格補正なし(1.0)でも動作する', () => {
+  it('等倍補正 (nature=1.0) かつ能力ポイント最大値 (ap=32) で計算できる', () => {
     expect(calcStat(100, 32, 1.0)).toBe(152);
   });
 

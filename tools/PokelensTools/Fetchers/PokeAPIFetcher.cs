@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PokelensTools.Common;
 
-namespace PokelensTools;
+namespace PokelensTools.Fetchers;
 
 /// <summary>PokéAPI からポケモン・技・特性・アイテムの日本語名を取得し、cache/ に翻訳辞書として保存する。</summary>
 /// <remarks>
@@ -33,50 +33,43 @@ internal class PokeAPIFetcher
     }
 
     /// <summary>ポケモン・技・特性・アイテムすべての日本語名を取得し、pokeapi-translations.json として cache/ に保存する。</summary>
-    /// <remarks>PokeAPIFetcher インスタンスごとに最大 1 回の呼び出しを想定する（冒頭で内部キャッシュを Clear する）。出力先ディレクトリは無ければ作成する。</remarks>
-    /// <param name="cacheDir">翻訳辞書の保存先ディレクトリ。</param>
-    /// <param name="showdownPokedexPath">対象ポケモンを列挙する Showdown ポケデックスキャッシュのパス。</param>
-    /// <param name="showdownMovesPath">対象技を列挙する Showdown 技キャッシュのパス。</param>
-    /// <param name="showdownItemsPath">対象アイテムを列挙する Showdown アイテムキャッシュのパス。</param>
-    /// <param name="showdownAbilitiesPath">対象特性を列挙する Showdown 特性キャッシュのパス。</param>
-    internal async Task FetchTranslationsAsync(
-        string cacheDir,
-        string showdownPokedexPath,
-        string showdownMovesPath,
-        string showdownItemsPath,
-        string showdownAbilitiesPath)
+    /// <remarks>
+    /// PokeAPIFetcher インスタンスごとに最大 1 回の呼び出しを想定する（冒頭で内部キャッシュを Clear する）。
+    /// 入出力先は <see cref="DataPaths.Cache"/> 配下の本番固定パス。出力先ディレクトリは無ければ作成する。
+    /// </remarks>
+    internal async Task FetchTranslationsAsync()
     {
         _speciesCache.Clear();
 
         Console.WriteLine("  Fetching Pokémon names from PokéAPI...");
-        JsonObject pokemon = await FetchPokemonNamesAsync(showdownPokedexPath);
+        JsonObject pokemon = await FetchPokemonNamesAsync(DataPaths.Cache.ShowdownPokedex());
 
         Console.WriteLine("  Fetching move names from PokéAPI...");
         JsonObject moves = await FetchCategoryAsync(
-            showdownMovesPath,
-            id => $"https://pokeapi.co/api/v2/move/{id}/",
+            DataPaths.Cache.ShowdownMoves(),
+            Endpoints.PokeApi.Move,
             "moves");
 
         Console.WriteLine("  Fetching ability names from PokéAPI...");
         JsonObject abilities = await FetchCategoryAsync(
-            showdownAbilitiesPath,
-            id => $"https://pokeapi.co/api/v2/ability/{id}/",
+            DataPaths.Cache.ShowdownAbilities(),
+            Endpoints.PokeApi.Ability,
             "abilities");
 
         Console.WriteLine("  Fetching item names from PokéAPI...");
-        JsonObject items = await FetchItemNamesAsync(showdownItemsPath);
+        JsonObject items = await FetchItemNamesAsync(DataPaths.Cache.ShowdownItems());
 
         var translations = new JsonObject
         {
-            ["pokemon"] = pokemon,
-            ["moves"] = moves,
-            ["abilities"] = abilities,
-            ["items"] = items,
+            [TranslationKey.Pokemon] = pokemon,
+            [TranslationKey.Moves] = moves,
+            [TranslationKey.Abilities] = abilities,
+            [TranslationKey.Items] = items,
         };
 
-        Directory.CreateDirectory(cacheDir);
+        Directory.CreateDirectory(DataPaths.Cache.Dir);
         File.WriteAllText(
-            Path.Combine(cacheDir, "pokeapi-translations.json"),
+            DataPaths.Cache.PokeApiTranslations(),
             translations.ToJsonString(WriteOptions));
     }
 
@@ -97,19 +90,19 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            int num = entry["num"]?.GetValue<int>() ?? 0;
+            int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
             if (num <= 0)
             {
                 continue;
             }
 
-            string? englishName = entry["name"]?.GetValue<string>();
+            string? englishName = entry[ShowdownKey.Name]?.GetValue<string>();
             if (string.IsNullOrEmpty(englishName))
             {
                 continue;
             }
 
-            string? forme = entry["forme"]?.GetValue<string>();
+            string? forme = entry[ShowdownKey.Pokedex.Forme]?.GetValue<string>();
             targets.Add((key, num, englishName, forme));
         }
 
@@ -118,7 +111,7 @@ internal class PokeAPIFetcher
             string? ja = await ResolvePokemonJapaneseNameAsync(t.Name, t.Num, t.Forme);
             if (ja == null)
             {
-                string slug = DerivePokemonFormSlug(t.Name);
+                string slug = PokeApiSlug.PokemonFormSlug(t.Name);
                 Console.WriteLine(
                     $"    Warning: no Japanese name for pokemon/{t.Key} (id={t.Num}, slug={slug})");
             }
@@ -158,14 +151,14 @@ internal class PokeAPIFetcher
     private async Task<string?> GetSpeciesJaNameAsync(int num)
     {
         JsonNode? node = await GetSpeciesNodeAsync(num);
-        return node == null ? null : ExtractJaName(node, "names");
+        return node == null ? null : PokeApiName.ExtractJa(node, PokeApiKey.Names);
     }
 
     private Task<JsonNode?> GetSpeciesNodeAsync(int num)
     {
         return _speciesCache.GetOrAdd(num, async n =>
         {
-            string? body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-species/{n}/");
+            string? body = await FetchTextOrNullAsync(Endpoints.PokeApi.PokemonSpecies(n));
             return body == null ? null : JsonNode.Parse(body);
         });
     }
@@ -175,11 +168,11 @@ internal class PokeAPIFetcher
     // slug "ogerpon-wellspring" → PokéAPI variety "ogerpon-wellspring-mask"）。
     private async Task<string?> GetFormJaNameAsync(string showdownName, int num)
     {
-        string slug = DerivePokemonFormSlug(showdownName);
+        string slug = PokeApiSlug.PokemonFormSlug(showdownName);
         JsonNode? node = await FetchFormNodeAsync(slug);
         if (node != null)
         {
-            string? ja = ExtractJaName(node, "form_names");
+            string? ja = PokeApiName.ExtractJa(node, PokeApiKey.FormNames);
             if (!string.IsNullOrEmpty(ja))
             {
                 return ja;
@@ -192,7 +185,7 @@ internal class PokeAPIFetcher
             return null;
         }
 
-        string? matched = FindMatchingVariety(species, slug);
+        string? matched = PokeApiName.FindMatchingVariety(species, slug);
         if (matched == null || matched == slug)
         {
             return null;
@@ -204,77 +197,13 @@ internal class PokeAPIFetcher
             return null;
         }
 
-        return ExtractJaName(fallback, "form_names");
+        return PokeApiName.ExtractJa(fallback, PokeApiKey.FormNames);
     }
 
     private async Task<JsonNode?> FetchFormNodeAsync(string slug)
     {
-        string? body = await FetchTextOrNullAsync($"https://pokeapi.co/api/v2/pokemon-form/{slug}/");
+        string? body = await FetchTextOrNullAsync(Endpoints.PokeApi.PokemonForm(slug));
         return body == null ? null : JsonNode.Parse(body);
-    }
-
-    /// <summary>species の varieties から targetSlug に一致する variety 名を探す。</summary>
-    /// <remarks>双方向の前方一致（どちらかが他方の接頭辞）で判定し、複数該当する場合は最も長い名前を選ぶ。</remarks>
-    /// <param name="speciesNode">pokemon-species の JSON ノード。</param>
-    /// <param name="targetSlug">照合する Showdown 由来の slug。</param>
-    /// <returns>一致した variety 名。無ければ null。</returns>
-    internal static string? FindMatchingVariety(JsonNode speciesNode, string targetSlug)
-    {
-        JsonArray? varieties = speciesNode["varieties"]?.AsArray();
-        if (varieties == null)
-        {
-            return null;
-        }
-
-        string? best = null;
-        int bestLen = -1;
-        foreach (var v in varieties)
-        {
-            string? name = v?["pokemon"]?["name"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            if ((name.StartsWith(targetSlug) || targetSlug.StartsWith(name))
-                && name.Length > bestLen)
-            {
-                best = name;
-                bestLen = name.Length;
-            }
-        }
-        return best;
-    }
-
-    /// <summary>Showdown のアイテム名（例: "Choice Scarf", "Wellspring Mask"）を PokéAPI のアイテム slug に変換する。</summary>
-    /// <remarks>小文字化し、空白・アンダースコアをハイフンに、アクセント付き e を e に正規化し、約物を除去する。</remarks>
-    /// <param name="showdownName">Showdown のアイテム名。</param>
-    /// <returns>PokéAPI のアイテム slug。</returns>
-    internal static string DeriveItemSlug(string showdownName)
-    {
-        string lower = showdownName.ToLowerInvariant();
-        var sb = new StringBuilder(lower.Length);
-        foreach (var c in lower)
-        {
-            if (c == '\'' || c == '’' || c == '.' || c == ':' || c == ',')
-            {
-                continue;
-            }
-
-            if (c == ' ' || c == '_')
-            {
-                sb.Append('-');
-            }
-            else if (c == 'é' || c == 'è' || c == 'ê' || c == 'ë')
-            {
-                sb.Append('e');
-            }
-            else
-            {
-                sb.Append(c);
-            }
-        }
-        return sb.ToString();
     }
 
     // slug ベースのアイテム名 fetcher。Showdown の数値 ID は PokéAPI のものと食い違うため、
@@ -291,13 +220,13 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            int num = entry["num"]?.GetValue<int>() ?? 0;
+            int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
             if (num <= 0)
             {
                 continue;
             }
 
-            string? name = entry["name"]?.GetValue<string>();
+            string? name = entry[ShowdownKey.Name]?.GetValue<string>();
             if (string.IsNullOrEmpty(name))
             {
                 continue;
@@ -308,8 +237,8 @@ internal class PokeAPIFetcher
 
         return await RunParallelAsync(targets, async t =>
         {
-            string slug = DeriveItemSlug(t.Name);
-            string? ja = await FetchJapaneseNameAsync($"https://pokeapi.co/api/v2/item/{slug}/");
+            string slug = PokeApiSlug.ItemSlug(t.Name);
+            string? ja = await FetchJapaneseNameAsync(Endpoints.PokeApi.Item(slug));
             if (ja == null)
             {
                 Console.WriteLine($"    Warning: no Japanese name for items/{t.Key} (slug={slug})");
@@ -317,37 +246,6 @@ internal class PokeAPIFetcher
 
             return (t.Key, ja);
         });
-    }
-
-    /// <summary>Showdown のポケモン名（例: "Rotom-Wash", "Mr. Mime", "Flabébé"）を PokéAPI のフォルム slug に変換する。</summary>
-    /// <remarks>小文字化し、空白・アンダースコアをハイフンに、アクセント付き e を e に正規化し、約物（%含む）を除去する。</remarks>
-    /// <param name="showdownName">Showdown のポケモン名。</param>
-    /// <returns>PokéAPI のフォルム slug。</returns>
-    internal static string DerivePokemonFormSlug(string showdownName)
-    {
-        string lower = showdownName.ToLowerInvariant();
-        var sb = new StringBuilder(lower.Length);
-        foreach (var c in lower)
-        {
-            if (c == '\'' || c == '’' || c == '.' || c == ':' || c == ',' || c == '%')
-            {
-                continue;
-            }
-
-            if (c == ' ' || c == '_')
-            {
-                sb.Append('-');
-            }
-            else if (c == 'é' || c == 'è' || c == 'ê' || c == 'ë')
-            {
-                sb.Append('e');
-            }
-            else
-            {
-                sb.Append(c);
-            }
-        }
-        return sb.ToString();
     }
 
     private async Task<JsonObject> FetchCategoryAsync(
@@ -365,7 +263,7 @@ internal class PokeAPIFetcher
                 continue;
             }
 
-            int num = entry["num"]?.GetValue<int>() ?? 0;
+            int num = entry[ShowdownKey.Num]?.GetValue<int>() ?? 0;
             if (num <= 0)
             {
                 continue;
@@ -438,7 +336,7 @@ internal class PokeAPIFetcher
             return null;
         }
 
-        return ExtractJaName(node, "names");
+        return PokeApiName.ExtractJa(node, PokeApiKey.Names);
     }
 
     private async Task<string?> FetchTextOrNullAsync(string url)
@@ -482,39 +380,4 @@ internal class PokeAPIFetcher
         return await response.Content.ReadAsStringAsync();
     }
 
-    /// <summary>指定キー（names / form_names）の配列から日本語名を取り出す。</summary>
-    /// <remarks>"ja" を優先し、無ければ "ja-Hrkt"（ふりがな）にフォールバックする。</remarks>
-    /// <param name="root">names / form_names を含む JSON ノード。</param>
-    /// <param name="arrayKey">参照する配列キー（"names" または "form_names"）。</param>
-    /// <returns>日本語名。見つからなければ null。</returns>
-    internal static string? ExtractJaName(JsonNode root, string arrayKey)
-    {
-        JsonArray? arr = root[arrayKey]?.AsArray();
-        if (arr == null)
-        {
-            return null;
-        }
-
-        string? jaHrkt = null;
-        foreach (var entry in arr)
-        {
-            string? lang = entry?["language"]?["name"]?.GetValue<string>();
-            string? name = entry?["name"]?.GetValue<string>();
-            if (string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            if (lang == "ja")
-            {
-                return name;
-            }
-
-            if (lang == "ja-Hrkt" || lang == "ja-hrkt")
-            {
-                jaHrkt = name;
-            }
-        }
-        return jaHrkt;
-    }
 }

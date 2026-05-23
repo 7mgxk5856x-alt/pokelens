@@ -1,4 +1,6 @@
-using PokelensTools;
+using PokelensTools.Common;
+using PokelensTools.Models;
+using PokelensTools.Pipeline;
 using Xunit;
 
 namespace PokelensTools.Tests;
@@ -8,10 +10,10 @@ public class IncrementalRunnerTests
     [Fact]
     public void DetermineSteps_FirstRun_AllStepsRequired()
     {
-        var old = new Dictionary<string, string>();
+        ChecksumSet? previous = null;
         var current = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
 
-        var steps = IncrementalRunner.DetermineSteps(old, current);
+        var steps = IncrementalRunner.DetermineSteps(previous, current);
 
         Assert.True(steps.NeedsStep2);
         Assert.True(steps.NeedsStep3);
@@ -135,16 +137,56 @@ public class IncrementalRunnerTests
     }
 
     [Fact]
-    public void LoadChecksums_NonExistentFile_ReturnsEmptyDictionary()
+    public void DetermineSteps_ShowdownAndChampionsPatch_Step234Required()
     {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".json");
-        var result = IncrementalRunner.LoadChecksums(path);
-        Assert.Empty(result);
+        // showdown-pokedex（Step2 起動点）と champions-patch（Step3 起動点）が同時に変化した場合、
+        // 最も上流の Step2 が必要なため全 Step が再実行される
+        var old = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+        var current = MakeChecksums("X", "b", "c", "d", "e", "Y", "g", "h", "i", "j", "k");
+
+        var steps = IncrementalRunner.DetermineSteps(old, current);
+
+        Assert.True(steps.NeedsStep2);
+        Assert.True(steps.NeedsStep3);
+        Assert.True(steps.NeedsStep4);
+    }
+
+    [Fact]
+    public void DetermineSteps_ChampionsAndMovesPowerPatch_Step34Required()
+    {
+        // champions-patch（Step3 起動点）と moves-power-patch（Step4 専用）が同時に変化した場合、
+        // 最も上流の Step3 が必要となり Step3/4 を再実行する（Step2 は不要）
+        var old = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+        var current = MakeChecksums("a", "b", "c", "d", "e", "X", "Y", "h", "i", "j", "k");
+
+        var steps = IncrementalRunner.DetermineSteps(old, current);
+
+        Assert.False(steps.NeedsStep2);
+        Assert.True(steps.NeedsStep3);
+        Assert.True(steps.NeedsStep4);
+    }
+
+    [Fact]
+    public void LoadChecksums_NonExistentFile_ReturnsNull()
+    {
+        // RepoRoot を空の temp dir に redirect すれば、cache/checksums.json は存在しない状態になる
+        var tmpDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            using var _ = DataPaths.OverrideRepoRoot(tmpDir);
+            Assert.Null(IncrementalRunner.LoadChecksums());
+        }
+        finally
+        {
+            Directory.Delete(tmpDir, recursive: true);
+        }
     }
 
     [Fact]
     public void ComputeHash_NonExistentFile_ReturnsEmptyString()
     {
+        // ComputeHash は任意のファイルパスを受ける汎用ユーティリティ。DataPaths への依存はない。
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Assert.Equal(string.Empty, IncrementalRunner.ComputeHash(path));
     }
@@ -152,34 +194,41 @@ public class IncrementalRunnerTests
     [Fact]
     public void SaveAndLoadChecksums_RoundTrip()
     {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".json");
-        var checksums = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+        // temp dir を RepoRoot として扱い、SaveChecksums → LoadChecksums を同じ場所で round-trip させる
+        var tmpDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            using var _ = DataPaths.OverrideRepoRoot(tmpDir);
+            var checksums = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
 
-        IncrementalRunner.SaveChecksums(checksums, path);
-        var loaded = IncrementalRunner.LoadChecksums(path);
+            IncrementalRunner.SaveChecksums(checksums);
+            var loaded = IncrementalRunner.LoadChecksums();
 
-        Assert.Equal(checksums, loaded);
-        File.Delete(path);
+            Assert.Equal(checksums, loaded);
+        }
+        finally
+        {
+            Directory.Delete(tmpDir, recursive: true);
+        }
     }
 
-    private static Dictionary<string, string> MakeChecksums(
+    private static ChecksumSet MakeChecksums(
         string pokedex, string moves, string items, string abilities,
         string pokeapi, string champions, string movesPower, string itemsMod, string abilitiesMod,
         string pokemonNamePatch, string itemNamePatch)
     {
-        return new Dictionary<string, string>
-        {
-            ["showdown-pokedex"]     = pokedex,
-            ["showdown-moves"]       = moves,
-            ["showdown-items"]       = items,
-            ["showdown-abilities"]   = abilities,
-            ["pokeapi-translations"] = pokeapi,
-            ["champions-patch"]      = champions,
-            ["moves-power-patch"]    = movesPower,
-            ["items-modifiers"]      = itemsMod,
-            ["abilities-modifiers"]  = abilitiesMod,
-            ["pokemon-name-patch"]   = pokemonNamePatch,
-            ["item-name-patch"]      = itemNamePatch,
-        };
+        return new ChecksumSet(
+            ShowdownPokedex: pokedex,
+            ShowdownMoves: moves,
+            ShowdownItems: items,
+            ShowdownAbilities: abilities,
+            PokeApiTranslations: pokeapi,
+            ChampionsPatch: champions,
+            MovesPowerPatch: movesPower,
+            ItemsModifiers: itemsMod,
+            AbilitiesModifiers: abilitiesMod,
+            PokemonNamePatch: pokemonNamePatch,
+            ItemNamePatch: itemNamePatch);
     }
 }

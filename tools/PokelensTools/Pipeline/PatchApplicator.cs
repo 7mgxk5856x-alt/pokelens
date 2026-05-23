@@ -1,6 +1,8 @@
 using System.Text.Json.Nodes;
+using PokelensTools.Common;
+using PokelensTools.Fetchers;
 
-namespace PokelensTools;
+namespace PokelensTools.Pipeline;
 
 /// <summary>champions-patch.json（Pokémon Champions 独自データ）を Showdown キャッシュにマージする。</summary>
 /// <remarks>
@@ -10,17 +12,15 @@ namespace PokelensTools;
 internal static class PatchApplicator
 {
     /// <summary>champions-patch.json を読み込み、pokedex / moves セクションをそれぞれのキャッシュへ適用する。</summary>
-    /// <remarks>不在やパース失敗を握り潰すと Step4 が古いキャッシュで進行してしまうため、明示的に例外を投げる。</remarks>
-    /// <param name="showdownPokedexPath">適用先のポケデックスキャッシュのパス。</param>
-    /// <param name="showdownMovesPath">適用先の技キャッシュのパス。</param>
-    /// <param name="championsPatchPath">読み込む champions-patch.json のパス。</param>
-    /// <exception cref="FileNotFoundException"><paramref name="championsPatchPath"/> のファイルが存在しない場合。</exception>
+    /// <remarks>
+    /// 入出力先は <see cref="DataPaths"/> 配下。不在やパース失敗を握り潰すと Step4 が古いキャッシュで進行してしまうため、明示的に例外を投げる。
+    /// テストは <see cref="DataPaths.OverrideRepoRoot"/> で temp dir に redirect する。
+    /// </remarks>
+    /// <exception cref="FileNotFoundException">champions-patch.json が存在しない場合。</exception>
     /// <exception cref="InvalidDataException">champions-patch.json、またはポケデックス・技キャッシュの JSON パースに失敗した場合。</exception>
-    internal static void Apply(
-        string showdownPokedexPath,
-        string showdownMovesPath,
-        string championsPatchPath)
+    internal static void Apply()
     {
+        string championsPatchPath = DataPaths.Patch.Champions();
         // champions-patch.json はパイプライン構成上、常に存在するべきファイル。
         // 不在やパース失敗をサイレントにスキップすると Step4 が古いキャッシュで進行してしまうため、
         // 明示的に例外として伝播させる。
@@ -35,8 +35,8 @@ internal static class PatchApplicator
             ?? throw new InvalidDataException(
                 $"champions-patch.json のパースに失敗しました: {championsPatchPath}");
 
-        ApplyPokedexPatch(showdownPokedexPath, patch["pokedex"]?.AsObject());
-        ApplyMovesPatch(showdownMovesPath, patch["moves"]?.AsObject());
+        ApplyPokedexPatch(DataPaths.Cache.ShowdownPokedex(), patch[PatchKey.Champions.Pokedex]?.AsObject());
+        ApplyMovesPatch(DataPaths.Cache.ShowdownMoves(), patch[PatchKey.Champions.Moves]?.AsObject());
     }
 
     /// <summary>パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。</summary>
@@ -72,17 +72,17 @@ internal static class PatchApplicator
                 continue;
             }
 
-            if (changes["baseStats"]?.AsObject() is JsonObject patchStats)
+            if (changes[ShowdownKey.Pokedex.BaseStats]?.AsObject() is JsonObject patchStats)
             {
                 MergeBaseStats(entry, patchStats);
             }
 
-            if (changes["types"] is JsonArray patchTypes)
+            if (changes[ShowdownKey.Pokedex.Types] is JsonArray patchTypes)
             {
                 MergeTypes(entry, patchTypes);
             }
 
-            if (changes["abilities"]?.AsObject() is JsonObject patchAbilities)
+            if (changes[ShowdownKey.Pokedex.Abilities]?.AsObject() is JsonObject patchAbilities)
             {
                 MergeAbilities(entry, patchAbilities);
             }
@@ -93,7 +93,7 @@ internal static class PatchApplicator
 
     private static void MergeBaseStats(JsonObject entry, JsonObject patchStats)
     {
-        JsonObject? entryStats = entry["baseStats"]?.AsObject();
+        JsonObject? entryStats = entry[ShowdownKey.Pokedex.BaseStats]?.AsObject();
         if (entryStats == null)
         {
             return;
@@ -107,12 +107,12 @@ internal static class PatchApplicator
 
     private static void MergeTypes(JsonObject entry, JsonArray patchTypes)
     {
-        entry["types"] = patchTypes.DeepClone();
+        entry[ShowdownKey.Pokedex.Types] = patchTypes.DeepClone();
     }
 
     private static void MergeAbilities(JsonObject entry, JsonObject patchAbilities)
     {
-        JsonObject? entryAbilities = entry["abilities"]?.AsObject();
+        JsonObject? entryAbilities = entry[ShowdownKey.Pokedex.Abilities]?.AsObject();
         if (entryAbilities == null)
         {
             return;
@@ -157,19 +157,19 @@ internal static class PatchApplicator
                 continue;
             }
 
-            if (changes["basePower"] is JsonNode basePower)
+            if (changes[ShowdownKey.Move.BasePower] is JsonNode basePower)
             {
-                entry["basePower"] = basePower.DeepClone();
+                entry[ShowdownKey.Move.BasePower] = basePower.DeepClone();
             }
 
-            if (changes["accuracy"] is JsonNode accuracy)
+            if (changes[ShowdownKey.Move.Accuracy] is JsonNode accuracy)
             {
-                entry["accuracy"] = accuracy.DeepClone();
+                entry[ShowdownKey.Move.Accuracy] = accuracy.DeepClone();
             }
 
-            if (changes["category"] is JsonNode category)
+            if (changes[ShowdownKey.Move.Category] is JsonNode category)
             {
-                entry["category"] = category.DeepClone();
+                entry[ShowdownKey.Move.Category] = category.DeepClone();
             }
         }
 

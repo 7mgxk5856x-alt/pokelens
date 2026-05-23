@@ -1,3 +1,5 @@
+import { MOVE_CATEGORY, MODIFIER_KIND } from './constants.js';
+
 const TAG_CONDITIONS = new Set([
   'isPunch',
   'isPulse',
@@ -9,13 +11,28 @@ const TAG_CONDITIONS = new Set([
   'hasSecondary',
 ]);
 
+// 修正子の適用条件（items-modifiers.json / abilities-modifiers.json の condition 値）
+const CONDITION = Object.freeze({
+  STAB: 'isStab',
+  TYPE: 'isType',
+  POWER_MAX_60: 'powerMax60',
+  CONVERT_NORMAL_TO: 'convertNormalTo',
+  CONVERT_ALL_TO: 'convertAllTo',
+});
+
+// convertNormalTo 条件で変換元となる技タイプ
+const NORMAL_TYPE = 'Normal';
+
+// powerMax60 条件が対象とする技の威力上限（この値以下の技に補正がかかる）
+const POWER_MAX_60_THRESHOLD = 60;
+
 const DEFAULT_STAB = 2.0;
 
 function pickStatMultiplier(modifier, move) {
-  if (move.category === 'Physical') {
+  if (move.category === MOVE_CATEGORY.PHYSICAL) {
     return modifier.atk ?? 1.0;
   }
-  if (move.category === 'Special') {
+  if (move.category === MOVE_CATEGORY.SPECIAL) {
     return modifier.spa ?? 1.0;
   }
   // Status 技は calcPowerIndex 側で null 判定済みのため 1.0 フォールバックで問題ない
@@ -40,8 +57,8 @@ export function resolveModifier(modifier, move, pokemonTypes, kind) {
   const condition = modifier.condition ?? null;
   const stabMatch = pokemonTypes.includes(move.type);
 
-  if (condition === 'isStab') {
-    if (kind === 'ability') {
+  if (condition === CONDITION.STAB) {
+    if (kind === MODIFIER_KIND.ABILITY) {
       if (stabMatch) {
         return { multiplier: modifier.stab ?? DEFAULT_STAB, typesForCalc: [] };
       }
@@ -57,7 +74,7 @@ export function resolveModifier(modifier, move, pokemonTypes, kind) {
     return { multiplier: pickStatMultiplier(modifier, move), typesForCalc: pokemonTypes };
   }
 
-  if (condition === 'isType') {
+  if (condition === CONDITION.TYPE) {
     const match = modifier.moveType != null && move.type === modifier.moveType;
     return {
       multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
@@ -73,16 +90,16 @@ export function resolveModifier(modifier, move, pokemonTypes, kind) {
     };
   }
 
-  if (condition === 'powerMax60') {
-    const match = move.power != null && move.power <= 60;
+  if (condition === CONDITION.POWER_MAX_60) {
+    const match = move.power != null && move.power <= POWER_MAX_60_THRESHOLD;
     return {
       multiplier: match ? pickStatMultiplier(modifier, move) : 1.0,
       typesForCalc: pokemonTypes,
     };
   }
 
-  if (condition === 'convertNormalTo') {
-    if (move.type !== 'Normal' || modifier.convertedType == null) {
+  if (condition === CONDITION.CONVERT_NORMAL_TO) {
+    if (move.type !== NORMAL_TYPE || modifier.convertedType == null) {
       return { multiplier: 1.0, typesForCalc: pokemonTypes };
     }
     return {
@@ -92,7 +109,7 @@ export function resolveModifier(modifier, move, pokemonTypes, kind) {
     };
   }
 
-  if (condition === 'convertAllTo') {
+  if (condition === CONDITION.CONVERT_ALL_TO) {
     if (modifier.convertedType == null) {
       return { multiplier: 1.0, typesForCalc: pokemonTypes };
     }

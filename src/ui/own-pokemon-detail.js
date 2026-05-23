@@ -1,6 +1,7 @@
 import { calcActualStats } from '../logic/calc-actual-stats.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
+import { MODIFIER_KIND } from '../logic/constants.js';
 import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
 
@@ -142,7 +143,12 @@ export class OwnPokemonDetail {
     const abilityModifier = this.#loader.getAbilityModifier(partyEntry.ability);
     const itemModifier = this.#loader.getItemModifier(partyEntry.item);
 
-    const abilityResolved = resolveModifier(abilityModifier, move, pokemonData.types, 'ability');
+    const abilityResolved = resolveModifier(
+      abilityModifier,
+      move,
+      pokemonData.types,
+      MODIFIER_KIND.ABILITY
+    );
 
     const effectiveMove = abilityResolved.moveTypeOverride
       ? { ...move, type: abilityResolved.moveTypeOverride }
@@ -152,7 +158,7 @@ export class OwnPokemonDetail {
       itemModifier,
       effectiveMove,
       abilityResolved.typesForCalc,
-      'item'
+      MODIFIER_KIND.ITEM
     );
 
     return calcPowerIndex(

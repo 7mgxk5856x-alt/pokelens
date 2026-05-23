@@ -20,8 +20,16 @@ data/moves.json
 data/items.json
 data/abilities.json
 
+# Local-only sample party (developer-specific, not regenerated)
+data/party.json
+
 # Test coverage
 coverage/
+
+# Playwright E2E test outputs
+playwright-report/
+test-results/
+playwright/.cache/
 
 # .NET build output
 tools/**/bin/
