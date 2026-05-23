@@ -75,10 +75,10 @@ internal static class MergeConverter
             ? JsonNode.Parse(File.ReadAllText(itemNamePatchPath))?.AsObject() ?? new JsonObject()
             : new JsonObject();
 
-        JsonObject pokemonNames = translations["pokemon"]?.AsObject() ?? new JsonObject();
-        JsonObject moveNames = translations["moves"]?.AsObject() ?? new JsonObject();
-        JsonObject abilityNames = translations["abilities"]?.AsObject() ?? new JsonObject();
-        JsonObject itemNames = translations["items"]?.AsObject() ?? new JsonObject();
+        JsonObject pokemonNames = translations[TranslationKey.Pokemon]?.AsObject() ?? new JsonObject();
+        JsonObject moveNames = translations[TranslationKey.Moves]?.AsObject() ?? new JsonObject();
+        JsonObject abilityNames = translations[TranslationKey.Abilities]?.AsObject() ?? new JsonObject();
+        JsonObject itemNames = translations[TranslationKey.Items]?.AsObject() ?? new JsonObject();
 
         File.WriteAllText(
             Path.Combine(dataDir, "pokedex.json"),

@@ -67,10 +67,10 @@ internal class PokeAPIFetcher
 
         var translations = new JsonObject
         {
-            ["pokemon"] = pokemon,
-            ["moves"] = moves,
-            ["abilities"] = abilities,
-            ["items"] = items,
+            [TranslationKey.Pokemon] = pokemon,
+            [TranslationKey.Moves] = moves,
+            [TranslationKey.Abilities] = abilities,
+            [TranslationKey.Items] = items,
         };
 
         Directory.CreateDirectory(cacheDir);
