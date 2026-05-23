@@ -241,6 +241,31 @@ public class PipelineIntegrationTests : IDisposable
     }
 
     [Fact]
+    public void FullPipeline_MultihitMove_OutputsMaxTotalPower()
+    {
+        // 連続技（multihit）の最大総威力 basePower×multihit[1] が最終出力 moves.json の power に反映されることをフルパイプラインで担保
+        WriteFile(Path.Combine(_cacheDir, "showdown-pokedex.json"), "{}");
+        WriteFile(Path.Combine(_cacheDir, "showdown-moves.json"), """
+            {
+              "doubleslap": {
+                "num": 3, "name": "Double Slap", "type": "Normal", "category": "Physical",
+                "basePower": 15, "accuracy": 85, "multihit": [2, 5], "flags": {}
+              }
+            }
+            """);
+        WriteFile(Path.Combine(_cacheDir, "showdown-items.json"), "{}");
+        WriteFile(Path.Combine(_cacheDir, "showdown-abilities.json"), "{}");
+        WriteFile(Path.Combine(_cacheDir, "pokeapi-translations.json"), """
+            {"pokemon":{},"moves":{"doubleslap":"ダブルビンタ"},"abilities":{},"items":{}}
+            """);
+
+        MergeConverter.Convert();
+
+        var moves = JsonNode.Parse(File.ReadAllText(Path.Combine(_tmpDir, "data", "moves.json")))!.AsObject();
+        Assert.Equal(75, moves["ダブルビンタ"]!["power"]!.GetValue<int>());
+    }
+
+    [Fact]
     public void FullPipeline_PokemonWithoutTranslation_IsExcludedFromOutput()
     {
         // pokeapi-translations.json に未登録のポケモンが最終出力 pokedex.json から除外されることを担保
