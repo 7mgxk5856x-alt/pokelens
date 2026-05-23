@@ -1,11 +1,7 @@
 import { SearchInput } from './search-input.js';
-import { STAT_LABELS } from './stat-labels.js';
+import { formatBaseStats } from './stat-labels.js';
 
 const PARTY_SIZE = 6;
-
-function formatBaseStats(baseStats) {
-  return STAT_LABELS.map(([key, label]) => `${label}${baseStats[key]}`).join(' ');
-}
 
 /** 相手パーティの選出枠（6 体）を描画し、ポケモン名の入力・選択・クリアを扱うパネル。 */
 export class OpponentPartyPanel {
