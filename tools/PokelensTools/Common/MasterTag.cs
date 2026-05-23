@@ -1,4 +1,4 @@
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>moves.json の tags 配列に書き込むタグ値（区分値）。</summary>
 /// <remarks>

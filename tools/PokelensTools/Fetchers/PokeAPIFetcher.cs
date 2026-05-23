@@ -1,8 +1,9 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PokelensTools.Common;
 
-namespace PokelensTools;
+namespace PokelensTools.Fetchers;
 
 /// <summary>PokéAPI からポケモン・技・特性・アイテムの日本語名を取得し、cache/ に翻訳辞書として保存する。</summary>
 /// <remarks>

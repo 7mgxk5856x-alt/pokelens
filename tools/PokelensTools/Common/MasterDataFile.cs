@@ -1,4 +1,4 @@
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>data/ 配下に書き出すフロントエンド向け成果物 JSON のファイル名。</summary>
 /// <remarks>

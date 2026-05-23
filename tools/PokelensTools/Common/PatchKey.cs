@@ -1,4 +1,4 @@
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>tools/PokelensTools/Patches/ 配下のパッチ JSON のオブジェクトキー名。</summary>
 /// <remarks>

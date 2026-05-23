@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>JSON 出力に関する共通ヘルパー。</summary>
 /// <remarks>成果物・キャッシュの JSON 書き出しを統一フォーマット（インデント・非エスケープ）で行うために用いる。</remarks>

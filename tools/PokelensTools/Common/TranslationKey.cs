@@ -1,4 +1,4 @@
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>pokeapi-translations.json（翻訳辞書）のトップレベル構造キー名。</summary>
 /// <remarks>

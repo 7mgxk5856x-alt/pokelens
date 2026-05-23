@@ -1,4 +1,4 @@
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>外部から取得する HTTP エンドポイント。アクセス先（サービス）ごとに入れ子クラスで一元管理する。</summary>
 internal static class Endpoints

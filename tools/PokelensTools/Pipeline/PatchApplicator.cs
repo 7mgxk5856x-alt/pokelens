@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
+using PokelensTools.Common;
 
-namespace PokelensTools;
+namespace PokelensTools.Pipeline;
 
 /// <summary>champions-patch.json（Pokémon Champions 独自データ）を Showdown キャッシュにマージする。</summary>
 /// <remarks>

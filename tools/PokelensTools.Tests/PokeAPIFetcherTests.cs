@@ -1,5 +1,5 @@
 using System.Net;
-using PokelensTools;
+using PokelensTools.Fetchers;
 using Xunit;
 
 namespace PokelensTools.Tests;

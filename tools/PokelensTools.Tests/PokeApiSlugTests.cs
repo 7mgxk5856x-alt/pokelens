@@ -1,4 +1,4 @@
-using PokelensTools;
+using PokelensTools.Common;
 using Xunit;
 
 namespace PokelensTools.Tests;

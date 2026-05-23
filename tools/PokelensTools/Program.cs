@@ -1,4 +1,7 @@
-using PokelensTools;
+using PokelensTools.Common;
+using PokelensTools.Fetchers;
+using PokelensTools.Models;
+using PokelensTools.Pipeline;
 
 // リポジトリルートを特定する。CLAUDE.md の指示通り
 // "dotnet run --project tools/PokelensTools" でリポジトリルートから実行した場合、

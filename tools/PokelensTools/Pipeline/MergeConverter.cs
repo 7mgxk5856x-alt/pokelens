@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
+using PokelensTools.Common;
 
-namespace PokelensTools;
+namespace PokelensTools.Pipeline;
 
 /// <summary>Showdown のキャッシュと PokéAPI 翻訳・各種パッチをマージし、フロントエンド用の成果物 JSON を生成する。</summary>
 /// <remarks>pokedex / moves / items / abilities の 4 ファイルを data/ に書き出す、パイプライン Step4 の中核。</remarks>

@@ -1,4 +1,5 @@
-using PokelensTools;
+using PokelensTools.Models;
+using PokelensTools.Pipeline;
 using Xunit;
 
 namespace PokelensTools.Tests;

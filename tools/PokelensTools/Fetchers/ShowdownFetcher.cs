@@ -1,8 +1,9 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using PokelensTools.Common;
 
-namespace PokelensTools;
+namespace PokelensTools.Fetchers;
 
 /// <summary>Pokémon Showdown のデータ JS（pokedex / moves / items / abilities）を取得し、cache/ に保存する。</summary>
 /// <remarks>取得した各エントリは現代対戦（Gen 9 標準）で必要なフィールドだけに絞り込んで保存する。</remarks>

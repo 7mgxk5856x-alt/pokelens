@@ -1,10 +1,10 @@
 using System.Text.Json.Nodes;
 
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>PokéAPI レスポンス JSON から日本語名・一致フォルム名を取り出す純粋ロジック。</summary>
 /// <remarks>
-/// HTTP 取得は <see cref="PokeAPIFetcher"/> 側が担い、ここでは取得済み JSON ノードの解釈だけを行う（副作用なし）。
+/// HTTP 取得は <see cref="PokelensTools.Fetchers.PokeAPIFetcher"/> 側が担い、ここでは取得済み JSON ノードの解釈だけを行う（副作用なし）。
 /// 参照するキーは <see cref="PokeApiKey"/> に集約している。
 /// </remarks>
 internal static class PokeApiName

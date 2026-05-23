@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using PokelensTools;
+using PokelensTools.Common;
 using Xunit;
 
 namespace PokelensTools.Tests;

@@ -1,4 +1,4 @@
-namespace PokelensTools;
+namespace PokelensTools.Common;
 
 /// <summary>cache/ 配下の中間データファイル名。書き込み側（fetcher）と読み込み側（Program）で共有する。</summary>
 /// <remarks>

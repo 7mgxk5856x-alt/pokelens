@@ -1,9 +1,9 @@
-namespace PokelensTools;
+namespace PokelensTools.Models;
 
 /// <summary>パイプラインの各入力ファイルのチェックサム（ハッシュ）を、ソースごとの名前付きプロパティで保持する。</summary>
 /// <remarks>
 /// マジック文字列キーの Dictionary に代えて型で表すことで、前回値と今回値が同じ項目集合を持つことをコンパイル時に保証する。
-/// <see cref="IncrementalRunner.DetermineSteps"/> の差分判定と checksums.json への保存／読み込みに用いる。
+/// <see cref="PokelensTools.Pipeline.IncrementalRunner.DetermineSteps"/> の差分判定と checksums.json への保存／読み込みに用いる。
 /// </remarks>
 /// <param name="ShowdownPokedex">Showdown ポケデックスキャッシュのハッシュ。</param>
 /// <param name="ShowdownMoves">Showdown 技キャッシュのハッシュ。</param>

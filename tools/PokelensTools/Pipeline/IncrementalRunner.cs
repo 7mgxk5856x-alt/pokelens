@@ -1,7 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using PokelensTools.Models;
 
-namespace PokelensTools;
+namespace PokelensTools.Pipeline;
 
 /// <summary>入力ファイルのチェックサムを前回値と比較し、パイプラインのどのステップを再実行すべきかを判定する。</summary>
 /// <remarks>
