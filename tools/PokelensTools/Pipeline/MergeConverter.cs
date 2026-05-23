@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using PokelensTools.Common;
+using PokelensTools.Fetchers;
 
 namespace PokelensTools.Pipeline;
 

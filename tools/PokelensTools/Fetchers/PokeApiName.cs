@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace PokelensTools.Common;
+namespace PokelensTools.Fetchers;
 
 /// <summary>PokéAPI レスポンス JSON から日本語名・一致フォルム名を取り出す純粋ロジック。</summary>
 /// <remarks>

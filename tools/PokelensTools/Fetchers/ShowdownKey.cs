@@ -1,4 +1,4 @@
-namespace PokelensTools.Common;
+namespace PokelensTools.Fetchers;
 
 /// <summary>Pokémon Showdown のデータ JS および成果物 JSON のオブジェクトキー名。</summary>
 /// <remarks>

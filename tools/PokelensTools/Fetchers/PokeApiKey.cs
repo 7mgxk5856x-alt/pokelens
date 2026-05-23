@@ -1,4 +1,4 @@
-namespace PokelensTools.Common;
+namespace PokelensTools.Fetchers;
 
 /// <summary>PokéAPI（pokeapi.co）レスポンス JSON のオブジェクトキー名。</summary>
 /// <remarks>

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace PokelensTools.Common;
+namespace PokelensTools.Fetchers;
 
 /// <summary>Showdown の名前を PokéAPI のリソース slug に変換する。</summary>
 /// <remarks>
