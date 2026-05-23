@@ -2,49 +2,53 @@
 
 ## プロジェクト構造
 
-> このツリーは目標構造を示す。`†` のついたファイル・ディレクトリは未作成（セットアップ時に追加）。
-
 ```
 pokelens/
 ├── README.md                       # プロジェクト概要・セットアップ手順
-├── src/ †                          # JavaScript フロントエンド ソースコード
-│   ├── main.js †                   # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
-│   ├── data/ †                     # データ読み込みレイヤー
-│   ├── logic/ †                    # ロジックレイヤー（純粋関数）
-│   └── ui/ †                       # UIレイヤー（DOM操作）
-├── tests/ †                        # テストコード
-│   ├── unit/ †                     # ユニットテスト
-│   └── integration/ †              # 統合テスト
-├── tools/ †                        # C# データ準備ツール
-│   ├── PokelensTools/ †
-│   │   ├── PokelensTools.csproj †
-│   │   ├── Program.cs †            # エントリーポイント
-│   │   ├── Fetchers/ †             # HTTP取得（Showdown / PokéAPI）
-│   │   ├── Pipeline/ †             # 増分判定・パッチ適用・マージ変換
-│   │   ├── Models/ †               # データ型（ChecksumSet 等）
-│   │   ├── Common/ †               # 共通ヘルパー
-│   │   └── Patches/ †              # 手動管理データ（JSON）
-│   └── PokelensTools.Tests/ †      # xUnit テストプロジェクト
-│       └── PokelensTools.Tests.csproj †
-├── cache/ †                        # C# ツールの中間データ（gitignore対象）
-├── data/ †                         # データファイル（JSONのみ）
+├── src/                            # JavaScript フロントエンド ソースコード
+│   ├── main.js                     # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
+│   ├── data/                       # データ読み込みレイヤー
+│   ├── logic/                      # ロジックレイヤー（純粋関数）
+│   └── ui/                         # UIレイヤー（DOM操作）
+├── tests/                          # テストコード（JS）
+│   ├── unit/                       # ユニットテスト（Vitest）
+│   └── e2e/                        # E2E テスト（Playwright）
+├── tools/                          # C# データ準備ツール
+│   ├── PokelensTools/
+│   │   ├── PokelensTools.csproj
+│   │   ├── Program.cs              # エントリーポイント
+│   │   ├── Fetchers/               # HTTP取得（Showdown / PokéAPI）
+│   │   ├── Pipeline/               # 増分判定・パッチ適用・マージ変換
+│   │   ├── Models/                 # データ型（ChecksumSet 等）
+│   │   ├── Common/                 # 共通ヘルパー
+│   │   └── Patches/                # 手動管理データ（JSON）
+│   └── PokelensTools.Tests/        # xUnit テストプロジェクト
+│       └── PokelensTools.Tests.csproj
+├── cache/                          # C# ツールの中間データ（gitignore対象）
+├── data/                           # データファイル（JSONのみ）
 ├── docs/                           # プロジェクトドキュメント
+│   ├── product-requirements.md     # PRD
+│   ├── functional-design.md        # 機能設計
+│   ├── architecture.md             # アーキテクチャ設計
+│   ├── repository-structure.md     # 本書
+│   ├── development-guidelines.md   # 開発ガイドライン
+│   ├── glossary.md                 # 用語集
 │   ├── ideas/                      # 初期アイデア・要件メモ（参照専用）
 │   └── testing/                    # テスト派生ドキュメント（テストレベル別）
-│       ├── unit/                   # 単体テストのケース一覧（自動）
-│       ├── integration/            # 統合テストのケース一覧（自動）
-│       └── e2e/                    # E2E テストの仕様書（手動）
+│       ├── unit/automated-test-cases.md           # 単体テストのケース一覧（自動）
+│       ├── integration/automated-test-cases.md    # 統合テストのケース一覧（自動・C#パイプライン）
+│       └── e2e/
+│           ├── automated-test-cases.md            # E2E 自動テストのケース一覧（Playwright）
+│           └── manual-test-cases.md               # E2E 手動テストの仕様書（環境セットアップ系のみ）
 ├── .claude/                        # Claude Code 設定
 ├── .devcontainer/                  # 開発コンテナ設定
-├── .husky/                         # コミット前フック（husky）
 ├── .steering/                      # 作業タスク管理（gitignore済み）
-├── index.html †                    # アプリエントリーポイント
-├── vite.config.js †                # Vite 設定
-├── vitest.config.js †              # Vitest 設定
-├── playwright.config.js †          # Playwright（E2E）設定
-├── eslint.config.js †              # ESLint 設定
-├── .prettierrc †                   # Prettier 設定
-└── package.json
+├── index.html                      # アプリエントリーポイント
+├── vite.config.js                  # Vite 設定
+├── vitest.config.js                # Vitest 設定
+├── playwright.config.js            # Playwright（E2E）設定
+├── eslint.config.js                # ESLint 設定
+└── package.json                    # Prettier 設定はデフォルトを使用（個別の .prettierrc 等は持たない）
 ```
 
 ---
@@ -92,6 +96,7 @@ src/data/
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
 - `calc-actual-stats.js`: 実数値計算
 - `resolve-modifier.js`: 特性・持ち物の補正条件解決
+- `constants.js`: ドメイン区分値の定数集約（`MODIFIER_KIND` 等の純粋エクスポートのみ）
 
 **命名規則**: kebab-case（複数単語はハイフン区切り）
 
@@ -107,7 +112,8 @@ src/logic/
 ├── speed-calc.js
 ├── name-search.js
 ├── calc-actual-stats.js
-└── resolve-modifier.js
+├── resolve-modifier.js
+└── constants.js
 ```
 
 ---
@@ -122,6 +128,8 @@ src/logic/
 - `opponent-party-panel.js` (`OpponentPartyPanel`): 相手パーティ6スロットの管理
 - `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ6パターン）
 - `search-input.js` (`SearchInput`): ポケモン名サジェスト入力
+- `dom-utils.js`: 共通 DOM 操作ヘルパー（`el()` 等）
+- `stat-labels.js`: 種族値・実数値の表示ラベル定義と整形ヘルパー（`STAT_LABELS` / `formatBaseStats`）
 
 **命名規則**: kebab-case（コンポーネント名はUIの役割を表す）
 
@@ -136,7 +144,9 @@ src/ui/
 ├── own-pokemon-detail.js
 ├── opponent-party-panel.js
 ├── opponent-pokemon-detail.js
-└── search-input.js
+├── search-input.js
+├── dom-utils.js
+└── stat-labels.js
 ```
 
 ---
@@ -159,16 +169,6 @@ tests/unit/
 ```
 
 **命名規則**: `[対象ファイル名].test.js`
-
-#### tests/integration/
-
-**役割**: DataLoader → UIコンポーネントへのデータ供給フロー全体をテストする
-
-**構造**:
-```
-tests/integration/
-└── data-flow.test.js
-```
 
 #### tests/e2e/
 
@@ -294,7 +294,7 @@ cache/
 - `types.json`: 手書き管理・タイプ名日本語変換マップ（git 管理対象）
 - `move-categories.json`: 手書き管理・技分類日本語変換マップ（git 管理対象）
 - `natures.json`: 手書き管理・性格補正倍率マップ（git 管理対象）
-- `party.json`: ユーザーが手編集する自分パーティ（git 管理対象）
+- `party.json`: ユーザーが手編集する自分パーティ（**git 管理対象外**。開発者ごとに異なるサンプルのため `.gitignore` で除外。各環境でローカル編集）
 
 ```
 data/
@@ -330,7 +330,8 @@ data/
   - `integration/`: 統合テストのケース一覧
     - `automated-test-cases.md`: 統合テスト（C# パイプライン）のケース一覧。テストコードから抽出したスナップショット
   - `e2e/`: E2E（エンドツーエンド）テストの仕様書
-    - `manual-test-cases.md`: 手動・E2E テストのケース一覧（ブラウザ操作で P0 機能を検証）。PRD の受け入れ条件から起こす
+    - `automated-test-cases.md`: Playwright による自動 E2E テストのケース一覧（`tests/e2e/*.spec.js` に対応）。テストコードから手動で抽出したスナップショット
+    - `manual-test-cases.md`: 手動 E2E テストのケース一覧（環境セットアップ・C# データ生成・dev サーバー起動の 3 件のみ。それ以外の機能挙動は自動 E2E が担保）
 
 ---
 
@@ -352,9 +353,10 @@ data/
 
 | テスト種別 | 配置先 | 命名規則 | 例 |
 |-----------|--------|---------|-----|
-| ユニットテスト | `tests/unit/` | `[対象].test.js` | `power-index-calc.test.js` |
-| 統合テスト | `tests/integration/` | `[フロー].test.js` | `data-flow.test.js` |
-| E2E テスト | `tests/e2e/` | `[機能グループ].spec.js` | `own-party-display.spec.js` |
+| ユニットテスト（JS） | `tests/unit/` | `[対象].test.js` | `power-index-calc.test.js` |
+| E2E テスト（JS） | `tests/e2e/` | `[機能グループ].spec.js` | `own-party-display.spec.js` |
+| ユニットテスト（C#） | `tools/PokelensTools.Tests/` | `[対象]Tests.cs` | `MergeConverterTests.cs` |
+| 統合テスト（C#） | `tools/PokelensTools.Tests/` | `[対象]IntegrationTests.cs` | `PipelineIntegrationTests.cs` |
 
 ---
 
@@ -414,15 +416,22 @@ dist/
 .steering/*
 !.steering/.gitkeep
 .claude/settings.local.json
+.claude/tmp/                # slash command の一時出力
 cache/                      # C# ツールの中間データ（再生成可能）
 data/pokedex.json           # C# ツールで再生成可能
 data/moves.json             # C# ツールで再生成可能
 data/items.json             # C# ツールで再生成可能
 data/abilities.json         # C# ツールで再生成可能
-coverage/
+data/party.json             # 開発者ごとのローカル専用サンプルパーティ
+coverage/                   # Vitest カバレッジレポート
+playwright-report/          # Playwright テストレポート
+test-results/               # Playwright テスト実行結果
+playwright/.cache/          # Playwright ブラウザキャッシュ
+tools/**/bin/               # .NET ビルド出力
+tools/**/obj/
 ```
 
-`data/types.json` / `data/move-categories.json` / `data/natures.json` / `data/party.json` は git 管理対象とする（手書き管理またはユーザー資産）。
+`data/types.json` / `data/move-categories.json` / `data/natures.json` は git 管理対象とする（手書き管理データ）。`data/party.json` は開発者ごとに異なるサンプルパーティのため git 管理対象外（上記の通り `.gitignore` 済み）。
 
 ---
 

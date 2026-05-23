@@ -92,22 +92,27 @@
 
 **定義**: ポケモンの特性によって火力指数に乗算される係数。例: ちからもち（atk×2.0）、てつのこぶし（物理技 atk×1.2）。
 
-**説明**: 未定義の特性（pokelens に未登録）は1.0として計算する。HP依存の条件付き補正（もうか等）は P0 スコープ外。補正値はマスターデータ（`data/abilities.json`）から参照する。
+**説明**: 未定義の特性（pokelens に未登録）は1.0として計算する。「最大火力指向」のためタイプ・技タグで判定できる条件はマスターデータに登録するが、対戦状況依存（天候・状態異常・ターン数・性別）はマスターデータに含めず補正値1.0として扱う。補正値はマスターデータ（`data/abilities.json`）から参照する。
+
+> ピンチ特性（もうか・しんりょく・げきりゅう・むしのしらせ等）はタイプ条件（`isType`）として登録し、HP条件は無視して常時発動として扱う（最大火力指向ポリシー）。
 
 **condition 種類**（条件付き補正。詳細仕様は[機能設計書](./functional-design.md)のエンティティ定義を参照）:
 
 | condition | 判定内容 | 対象例 |
 |-----------|---------|--------|
-| `isType` | 技タイプが指定タイプと一致 | シルクのスカーフ・もくたん |
+| `isType` | 技タイプが指定タイプと一致 | シルクのスカーフ・もくたん・もうか（→Fire）・しんりょく（→Grass） |
 | `isPunch` | パンチ技（`move.tags` に `"isPunch"`） | てつのこぶし・パンチグローブ |
 | `isPulse` | 波動技（`move.tags` に `"isPulse"`） | メガランチャー |
-| `isBite` | かみつき技（`move.tags` に `"isBite"`） | つよいあご |
+| `isBite` | かみつき技（`move.tags` に `"isBite"`） | がんじょうあご |
 | `isRecoil` | 反動技（`move.tags` に `"isRecoil"`） | すてみ |
 | `isSlice` | 切断技（`move.tags` に `"isSlice"`） | きれあじ |
+| `isContact` | 接触技（`move.tags` に `"isContact"`） | タフクロー |
+| `isSound` | 音技（`move.tags` に `"isSound"`） | パンクロック |
+| `hasSecondary` | 追加効果あり技（`move.tags` に `"hasSecondary"`） | ちからずく |
 | `powerMax60` | 技の威力が60以下 | テクニシャン |
 | `isStab` | タイプ一致技（ポケモンのタイプと比較） | てきおうりょく（STAB倍率を2.0に上書き） |
-
-> `isContact`（接触技）は `move.tags` に格納される。P0スコープの補正計算（火力指数）では直接参照しないが、Showdownの全フラグを格納する方針のため含まれる。
+| `convertNormalTo` | ノーマル技のタイプを `convertedType` に変換（STAB 計算に反映） | ピクシレート（→Fairy）・フリーズスキン（→Ice）・スカイスキン（→Flying）・エレキスキン（→Electric） |
+| `convertAllTo` | 全技のタイプを `convertedType` に変換（STAB 計算に反映） | ノーマライズ（→Normal） |
 
 **関連用語**: [火力指数](#火力指数)
 
@@ -117,7 +122,9 @@
 
 **定義**: ポケモンが持つ道具によって火力指数に乗算される係数。例: いのちのたま1.3。
 
-**説明**: 未定義の持ち物は1.0として計算する。補正値はマスターデータ（`data/items.json`）から参照する。持ち物で使用される `condition` は `isType`（タイプ一致）と `isPunch`（パンチ技）のみ。特性で使われる `isPulse` / `isBite` / `isRecoil` / `isSlice` / `powerMax60` / `isStab` は持ち物には存在しない。詳細仕様は[機能設計書](./functional-design.md)のエンティティ定義を参照。
+**説明**: 未定義の持ち物は1.0として計算する。補正値はマスターデータ（`data/items.json`）から参照する。持ち物で使用される `condition` は `isType`（タイプ一致／例: シルクのスカーフ・もくたん）・`isPunch`（パンチ技／例: パンチグローブ）・`isStab`（タイプ一致技／例: たつじんのおび）の 3 種類。特性のみで使われる condition（`isPulse` / `isBite` / `isRecoil` / `isSlice` / `isContact` / `isSound` / `hasSecondary` / `powerMax60` / `convertNormalTo` / `convertAllTo`）は持ち物には存在しない。詳細仕様は[機能設計書](./functional-design.md)のエンティティ定義を参照。
+
+> 素早さ補正のみの持ち物（こだわりスカーフ等）は火力指数に影響しないため、`items-modifiers.json` には含めない（SKIP ポリシー）。
 
 **関連用語**: [火力指数](#火力指数)
 
@@ -214,7 +221,7 @@
 
 **定義**: C# データ準備ツールが変化のあったファイルに応じて必要な最小ステップのみを再実行する仕組み。
 
-**説明**: `cache/checksums.json` に `showdown-*.json` / `pokeapi-translations.json` / `champions-patch.json` / `moves-power-patch.json` / `items-modifiers.json` / `abilities-modifiers.json` / `pokemon-name-patch.json` / `item-name-patch.json` のハッシュ値を保存し、次回起動時と比較する。変化したファイルの種類に応じて実行を開始するステップが決まり、変化なしの場合は全ステップをスキップする。スキップ条件の詳細は[機能設計書](./functional-design.md)の「増分実行の仕組み（ハッシュ比較）」および[アーキテクチャ設計書](./architecture.md)を参照。
+**説明**: `cache/checksums.json` に `showdown-*.json` / `pokeapi-translations.json` および `Patches/` 配下の全パッチ・modifier ファイルのハッシュ値を保存し、次回起動時と比較する。変化したファイルの種類に応じて Step2 以降の起動位置が決まる。Step1（Showdown データ取得）は変化の有無に関わらず毎回必ず実行され、取得後のハッシュ比較結果によって Step2 以降のスキップを決定する。変化なしの場合は Step2 以降を全スキップする（`data/` は最新のまま）。スキップ条件の詳細は[機能設計書](./functional-design.md)の「増分実行の仕組み（ハッシュ比較）」および[アーキテクチャ設計書](./architecture.md)を参照。
 
 **関連ドキュメント**: [機能設計書](./functional-design.md)
 
@@ -224,7 +231,7 @@
 
 **定義**: Pokémon Champions 独自のポケモンデータ（名称変更・新規追加など）を Showdown データに差分適用するための手書き管理 JSON ファイル。
 
-**配置**: `tools/PokelensTools/champions-patch.json`
+**配置**: `tools/PokelensTools/Patches/champions-patch.json`
 
 **説明**: C# データ準備ツール実行時にマージされ、最終的な `data/pokedex.json` / `data/moves.json` に反映される。変更時は[開発ガイドライン](./development-guidelines.md)の C# コーディング規約内の管理ルールに従うこと。
 
@@ -236,7 +243,7 @@
 
 **定義**: Pokémon Showdown で `power: null`（威力不定）となる技に最大威力を定義するための手書き管理 JSON ファイル。
 
-**配置**: `tools/PokelensTools/moves-power-patch.json`
+**配置**: `tools/PokelensTools/Patches/moves-power-patch.json`
 
 **説明**: `champions-patch.json`（Showdown 語彙・Step3 適用）とは異なり、最終出力語彙（`moves.json` の `power` フィールド）でStep4 に適用される。複数回攻撃技は C# ツールが `basePower × multihit[1]` で自動計算するため本ファイルの対象外。パッチ未定義の威力不定技は UI 上「−」表示となる。
 
@@ -248,7 +255,7 @@
 
 **定義**: PokéAPI のフォルム認識ロジックでは一意化できないポケモンの日本語名を手動で上書き定義する JSON ファイル。
 
-**配置**: `tools/PokelensTools/pokemon-name-patch.json`
+**配置**: `tools/PokelensTools/Patches/pokemon-name-patch.json`
 
 **説明**: Showdown キーをキー、上書き後の日本語名を値とする単純な `{ "key": "name" }` 形式。Step4 で MergeConverter が `pokeapi-translations.json` 由来の日本語名を解決した直後に、本ファイルのエントリで上書きする。補正対象は以下の 4 カテゴリ:
 - PokéAPI の翻訳データバグ（パルデアケンタロス3種が同名で返る等）
@@ -266,7 +273,7 @@
 
 **定義**: PokéAPI が翻訳を欠落／誤訳しているアイテムの日本語名を手動で上書き定義する JSON ファイル。
 
-**配置**: `tools/PokelensTools/item-name-patch.json`
+**配置**: `tools/PokelensTools/Patches/item-name-patch.json`
 
 **説明**: Showdown キーをキー、上書き後の日本語名を値とする単純な `{ "key": "name" }` 形式。MergeConverter は `items-modifiers.json` の各キーに対し、まず本ファイルを参照して上書き値があれば優先採用、なければ `pokeapi-translations.json` をフォールバックとして使用する。補正対象は以下の 3 カテゴリ:
 - PokéAPI 翻訳の誤り（ケッサクのちゃわんが PokéAPI ja で "ボンサクのちゃわん" を返す等のデータバグ）
@@ -281,14 +288,25 @@
 
 **定義**: 持ち物・特性ごとの補正値（倍率・適用条件）を定義する手書き管理 JSON ファイル。C# データ準備ツールが `data/items.json` / `data/abilities.json` を生成する際の入力として使用する。
 
-**配置**: `tools/PokelensTools/items-modifiers.json`、`tools/PokelensTools/abilities-modifiers.json`
+**配置**: `tools/PokelensTools/Patches/items-modifiers.json`、`tools/PokelensTools/Patches/abilities-modifiers.json`
 
 **データ構造（例）**:
+
+**`items-modifiers.json` の例**（持ち物の補正定義）:
 ```json
 {
   "lifeorb":    { "modifier": { "atk": 1.3, "spa": 1.3 } },
   "choiceband": { "modifier": { "atk": 1.5 } },
-  "adaptability": { "modifier": { "condition": "isStab", "stab": 2.0 } }
+  "expertbelt": { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "isStab" } }
+}
+```
+
+**`abilities-modifiers.json` の例**（特性の補正定義）:
+```json
+{
+  "ironfist":     { "modifier": { "condition": "isPunch", "atk": 1.2, "spa": 1.2 } },
+  "adaptability": { "modifier": { "condition": "isStab", "stab": 2.0 } },
+  "pixilate":     { "modifier": { "condition": "convertNormalTo", "convertedType": "Fairy", "atk": 1.2, "spa": 1.2 } }
 }
 ```
 
@@ -302,7 +320,7 @@
 
 **定義**: ポケモンに関する情報を集積した日本語 Wiki サイト（https://wiki.pokemonwiki.com/wiki/Pok%C3%A9mon_Champions）。
 
-**本プロジェクトでの用途**: Pokémon Champions における種族値変更・技威力変更などの差分を手動調査するために参照する。調査結果は `tools/PokelensTools/champions-patch.json` に静的パッチとして記録する。ランタイムへの影響はない（オフライン参照のみ）。
+**本プロジェクトでの用途**: Pokémon Champions における種族値変更・技威力変更などの差分を手動調査するために参照する。調査結果は `tools/PokelensTools/Patches/champions-patch.json` に静的パッチとして記録する。ランタイムへの影響はない（オフライン参照のみ）。
 
 **関連ドキュメント**: [機能設計書](./functional-design.md)
 
@@ -336,9 +354,54 @@
 
 **定義**: Vite ベースの JavaScript/TypeScript テストフレームワーク。Jest 互換の API を持つ。
 
-**本プロジェクトでの用途**: `src/logic/` 配下の純粋関数のユニットテストに使用。
+**本プロジェクトでの用途**: `src/logic/` 配下の純粋関数および `src/data/loader.js`（DataLoader）のユニットテストに使用（`tests/unit/`）。実行: `npm test`。
 
 **バージョン**: ^2.0.0
+
+---
+
+### Playwright
+
+**定義**: Microsoft が開発する E2E テスト自動化フレームワーク。実ブラウザ（Chromium / Firefox / WebKit）を駆動して UI 結合動作を検証する。
+
+**本プロジェクトでの用途**: `tests/e2e/` 配下の E2E 自動テストに使用（Chromium のみ）。`playwright.config.js` の `webServer` で `npm run dev` を自動起動し、`page.route('**/data/party.json', ...)` で party.json を mock 注入する設計。実行: `npm run test:e2e`。初回セットアップに `npx playwright install chromium`（〜100MB）が必要。
+
+**バージョン**: ^1.60.0
+
+**関連ドキュメント**: [docs/testing/e2e/automated-test-cases.md](./testing/e2e/automated-test-cases.md)
+
+---
+
+### xUnit
+
+**定義**: .NET 用のユニットテストフレームワーク。`[Fact]` / `[Theory]` 属性でテストケースを宣言する。
+
+**本プロジェクトでの用途**: `tools/PokelensTools.Tests/` の C# テスト（ユニット＋統合）に使用。実行: `dotnet test tools/PokelensTools.Tests`。
+
+---
+
+### テストケース ID 接頭辞
+
+**定義**: 各テストファイル・テスト種別を区別するための ID 接頭辞。`docs/testing/` 配下の仕様書で `<接頭辞>-<連番>` 形式で採番される。
+
+| 接頭辞 | 種別 | 対応ファイル |
+|--------|------|------------|
+| **AET** | Automated E2E Test（Playwright） | `tests/e2e/*.spec.js`（仕様書: `docs/testing/e2e/automated-test-cases.md`） |
+| **MET** | Manual E2E Test（手動セットアップ） | 仕様書: `docs/testing/e2e/manual-test-cases.md` |
+| **PIT** | Pipeline Integration Tests（C# 統合） | `tools/PokelensTools.Tests/PipelineIntegrationTests.cs` |
+| CAS | calc-actual-stats（JS 単体） | `tests/unit/calc-actual-stats.test.js` |
+| PIC | power-index-calc（JS 単体） | `tests/unit/power-index-calc.test.js` |
+| SPD | speed-calc（JS 単体） | `tests/unit/speed-calc.test.js` |
+| RMOD | resolve-modifier（JS 単体） | `tests/unit/resolve-modifier.test.js` |
+| NS | name-search（JS 単体） | `tests/unit/name-search.test.js` |
+| LD | loader（JS 単体） | `tests/unit/loader.test.js` |
+| MCT | MergeConverterTests（C# 単体） | `tools/PokelensTools.Tests/MergeConverterTests.cs` |
+| PAT | PatchApplicatorTests（C# 単体） | `tools/PokelensTools.Tests/PatchApplicatorTests.cs` |
+| IRT | IncrementalRunnerTests（C# 単体） | `tools/PokelensTools.Tests/IncrementalRunnerTests.cs` |
+| PFT | PokeAPIFetcherTests（C# 単体） | `tools/PokelensTools.Tests/PokeAPIFetcherTests.cs` |
+| PNM | PokeApiNameTests（C# 単体） | `tools/PokelensTools.Tests/PokeApiNameTests.cs` |
+| PSL | PokeApiSlugTests（C# 単体） | `tools/PokelensTools.Tests/PokeApiSlugTests.cs` |
+| SFT | ShowdownFetcherTests（C# 単体） | `tools/PokelensTools.Tests/ShowdownFetcherTests.cs` |
 
 ---
 
@@ -360,7 +423,7 @@
 
 **定義**: 計算・検索・データ変換を担う純粋関数のモジュール群。DOM操作とデータ読み込みから分離されている。
 
-**実装**: `src/logic/`（`power-index-calc.js`, `speed-calc.js`, `name-search.js`, `calc-actual-stats.js`）
+**実装**: `src/logic/`（`power-index-calc.js`, `speed-calc.js`, `name-search.js`, `calc-actual-stats.js`, `resolve-modifier.js`, `constants.js`）
 
 **依存関係**: `src/ui/` からのみ呼び出し可能。`src/data/` を直接 import しない。計算に必要なデータは UIレイヤーが DataLoader から取得して引数として渡す設計。
 
@@ -370,7 +433,7 @@
 
 **定義**: DOM操作・イベント処理・画面表示を担うモジュール群。
 
-**実装**: `src/ui/`（`own-party-panel.js`, `own-pokemon-detail.js`, `opponent-party-panel.js`, `opponent-pokemon-detail.js`, `search-input.js`）
+**実装**: `src/ui/`（`own-party-panel.js`, `own-pokemon-detail.js`, `opponent-party-panel.js`, `opponent-pokemon-detail.js`, `search-input.js`, `dom-utils.js`, `stat-labels.js`）
 
 **依存関係**: `src/logic/` と `src/data/` を呼び出す。
 
@@ -382,7 +445,7 @@
 
 **実装**: `src/data/`（`loader.js`）— `DataLoader` クラスとして実装される。
 
-**DataLoader の主なメソッド**: `load()`, `getPokemonByName()`, `searchByName()`, `getItemModifier()`, `getAbilityModifier()`, `getTypeName()`, `getMoveCategory()`, `getNatureModifiers()`。詳細は[機能設計書](./functional-design.md)の DataLoader セクションを参照。
+**DataLoader の主なメソッド**: `load()`, `getPokemonByName()`, `searchByName()`, `getMove()`, `getItemModifier()`, `getAbilityModifier()`, `getTypeName()`, `getMoveCategory()`, `getNatureModifiers()`。詳細は[機能設計書](./functional-design.md)の DataLoader セクションを参照。
 
 **依存関係**: `src/ui/` からのみ呼び出される。`src/logic/` には依存しない。
 
@@ -406,16 +469,16 @@
 
 ## 略語一覧
 
-**能力値フィールド名**（`party.json` の `abilityPoints` キーおよび「実数値（H-A-B-C-D-S）」表記との対応）:
+**能力値フィールド名**（`party.json` の `abilityPoints` キーおよび「実数値（H-A-B-C-D-S）」表記との対応）。略字は `src/ui/stat-labels.js` の `STAT_LABELS` で定義され、UI 表示順は H → A → B → C → D → S：
 
-| フィールド名 | 英語 | 日本語 |
-|------------|------|-------|
-| `hp` | Hit Points | HP |
-| `atk` | Attack | 攻撃 |
-| `def` | Defense | 防御 |
-| `spa` | Special Attack | 特攻 |
-| `spd` | Special Defense | 特防 |
-| `spe` | Speed | 素早さ |
+| 略字 | フィールド名 | 英語 | 日本語 |
+|------|------------|------|-------|
+| `H` | `hp` | Hit Points | HP |
+| `A` | `atk` | Attack | 攻撃 |
+| `B` | `def` | Defense | 防御（B は伝統表記） |
+| `C` | `spa` | Special Attack | 特攻（C は伝統表記） |
+| `D` | `spd` | Special Defense | 特防 |
+| `S` | `spe` | Speed | 素早さ |
 
 **略語一覧**:
 
@@ -481,6 +544,9 @@
 - [items-modifiers.json / abilities-modifiers.json](#items-modifiersjson--abilities-modifiersjson)
 - [PokéAPI](#pokéapi)
 - [Pokémon Showdown データ](#pokémon-showdown-データ)
+- [Playwright](#playwright)
+- [テストケース ID 接頭辞](#テストケース-id-接頭辞)
 - [UIレイヤー](#uiレイヤー)
 - [Vite](#vite)
 - [Vitest](#vitest)
+- [xUnit](#xunit)

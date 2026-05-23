@@ -21,7 +21,7 @@ function calc(m, s) { }
 |------|------|-----|
 | 変数 | camelCase、名詞 | `baseSpe`, `partyData` |
 | 関数 | camelCase、動詞始まり | `calcSpeedPatterns`, `loadParty` |
-| 定数（モジュールスコープ） | UPPER_SNAKE_CASE | `STAB_MODIFIER`, `MAX_PARTY_SIZE` |
+| 定数（モジュールスコープ） | UPPER_SNAKE_CASE | `STAB_MULTIPLIER`, `MAX_PARTY_SIZE` |
 | Boolean | `is` / `has` / `can` 始まり | `isPhysical`, `hasAbilityBonus` |
 
 #### ファイル名
@@ -37,7 +37,7 @@ function calc(m, s) { }
 ### コードフォーマット
 
 - インデント: **2スペース**（Prettier が自動適用）
-- 最大行長: **100文字**
+- 最大行長: 規約上の目安は **100 文字**。ただし `.prettierrc` 等の設定ファイルは持たず Prettier のデフォルト `printWidth: 80` を使用しているため、`npm run format` 実行時は 80 文字基準で折り返される。JSDoc・長文コメントは 100 文字までの逸脱を許容する
 - 文字列: **シングルクォート**
 - セミコロン: **あり**
 
@@ -57,11 +57,11 @@ npm run lint     # ESLint
 ```js
 // ✅ 良い例
 if (isStab) {
-  power *= STAB_MODIFIER;
+  power *= STAB_MULTIPLIER;
 }
 
 // ❌ 悪い例: 波括弧なし（行を足すと壊れやすい）
-if (isStab) power *= STAB_MODIFIER;
+if (isStab) power *= STAB_MULTIPLIER;
 ```
 
 （JavaScript は ESLint の `curly` ルールで機械的に強制できる。）
@@ -133,12 +133,16 @@ if (lang == LangJa) { /* ... */ }
 
 ```js
 // ✅ 良い例: なぜそうするかを説明
-// Showdownデータは威力不定技の power が null のため最大値で代替する
-const basePower = move.power ?? move.maxPower;
+// 威力不定技（カウンター・じわれ等）はパッチ未定義のため火力指数計算の対象外
+if (move.power === null) {
+  return null;
+}
 
 // ❌ 悪い例: コードを読めばわかる
-// basePower を設定する
-const basePower = move.power ?? move.maxPower;
+// power が null なら null を返す
+if (move.power === null) {
+  return null;
+}
 ```
 
 **ドキュメンテーションコメント**: 公開 API には、その言語の標準的なドキュメンテーションコメントを付ける。
@@ -174,16 +178,23 @@ const basePower = move.power ?? move.maxPower;
 
 ```js
 // ✅ 良い例: 副作用なし、同じ入力→同じ出力（Pokémon Champions 計算式）
+import { calcStat } from './calc-actual-stats.js';
+const MAX_ABILITY_POINTS = 32;
+const NATURE_UP = 1.1;
+const NATURE_NEUTRAL = 1.0;
+const NATURE_DOWN = 0.9;
+const SCARF_MULTIPLIER = 1.5;
+
 export function calcSpeedPatterns(baseSpe) {
-  const fastest = calcSpeed(baseSpe, 32, 1.1);
-  const fast    = calcSpeed(baseSpe, 32, 1.0);
+  const fastest = calcStat(baseSpe, MAX_ABILITY_POINTS, NATURE_UP);
+  const fast    = calcStat(baseSpe, MAX_ABILITY_POINTS, NATURE_NEUTRAL);
   return {
-    fastestScarf: Math.floor(fastest * 1.5),
-    fastScarf:    Math.floor(fast    * 1.5),
+    fastestScarf: Math.floor(fastest * SCARF_MULTIPLIER),
+    fastScarf:    Math.floor(fast    * SCARF_MULTIPLIER),
     fastest,
     fast,
-    neutral: calcSpeed(baseSpe, 0, 1.0),
-    slowest: calcSpeed(baseSpe, 0, 0.9),
+    neutral: calcStat(baseSpe, 0, NATURE_NEUTRAL),
+    slowest: calcStat(baseSpe, 0, NATURE_DOWN),
   };
 }
 
@@ -220,8 +231,8 @@ export async function loadData() {
 // ✅ ロジック層はエラーを握り潰さない
 export function calcPowerIndex(move, actualStats, pokemonTypes, abilityModifier, itemModifier) {
   if (move.category === 'Status') return null;
-  // null を返すのはコントラクトの一部（変化技）であり、エラーではない
-  const basePower = move.power ?? move.maxPower;
+  // null を返すのはコントラクトの一部（変化技・威力不定技）であり、エラーではない
+  if (move.power === null) return null;
   ...
 }
 ```
@@ -316,8 +327,8 @@ var count = GetCount();   // → int count = GetCount();
 | 名前検索・正規化 | ユニット | `tests/unit/name-search.test.js` |
 | 実数値計算 | ユニット | `tests/unit/calc-actual-stats.test.js` |
 | DataLoader JSON 読み込み | ユニット | `tests/unit/loader.test.js` |
-| DataLoader → UI フロー | 統合 | `tests/integration/data-flow.test.js` |
 | UI 結合・画面表示・サジェスト・火力指数の UI 反映 | E2E（Playwright） | `tests/e2e/*.spec.js` |
+| C# データ準備パイプラインの結合 | 統合（C#） | `tools/PokelensTools.Tests/PipelineIntegrationTests.cs` |
 | 環境セットアップ・C# データ生成・dev サーバー起動 | 手動 E2E | [`docs/testing/e2e/manual-test-cases.md`](./testing/e2e/manual-test-cases.md) |
 
 ### E2E テスト方針（Playwright）
@@ -325,13 +336,14 @@ var count = GetCount();   // → int count = GetCount();
 UI コンポーネント（`src/ui/`）の結合動作は Playwright で自動化する。テストは Chromium 上で実ブラウザを起動し、Vite dev サーバーに接続する（`playwright.config.js` の `webServer` で自動起動）。
 
 **データ注入パターン**:
-- 各テストの `beforeEach` で `page.route('**/data/party.json', ...)` を呼び、fixture JSON を返す
+- 各テストの `beforeEach` で `tests/e2e/helpers/mock-party.js` の `mockParty(page, fixture)` を呼び、`page.goto('/')` する（直接 `page.route` を書かない）
 - マスターデータ（pokedex / moves / items / abilities / types / move-categories / natures）は実ファイルを使用する（mock しない）
 - アプリ本体（`src/`）は無改修。テストモード切替や DI は持ち込まない
 
 **規約**:
 - セレクタは `tests/e2e/helpers/selectors.js` の `SEL` 定数を介して参照する（DOM 構造変更を一箇所に閉じる）
 - party fixture は `tests/e2e/helpers/party-fixtures.js` にエクスポート（再利用前提）
+- 異常系 fixture は `mockPartyInvalidJson()` / `partyMissingField()` のヘルパーを使う（mock-party.js / party-fixtures.js 提供）
 - カードのクリックは `element.click({ force: true })` を使う（CSS `transition: border-color` が Playwright の stability check と衝突するため）
 - 並列実行を前提とし、テスト間で共有状態を持たない（`page.route` はテストスコープ）
 
@@ -448,18 +460,19 @@ main
 
 | scope | 対象 |
 |-------|------|
-| `ui` | `src/ui/` |
-| `logic` | `src/logic/` |
-| `data` | `src/data/` |
-| `tools` | `tools/PokelensTools/` |
-| `docs` | `docs/` |
-| `config` | `vite.config.js` / `vitest.config.js` / `eslint.config.js` 等 |
+| `ui` | `src/ui/` および `tests/e2e/`（UI 結合 E2E テスト） |
+| `logic` | `src/logic/` および対応する `tests/unit/` |
+| `data` | `src/data/` および対応する `tests/unit/loader.test.js` |
+| `tools` | `tools/PokelensTools/` および `tools/PokelensTools.Tests/` |
+| `docs` | `docs/` 配下（テスト仕様書 `docs/testing/` を含む） |
+| `config` | `vite.config.js` / `vitest.config.js` / `playwright.config.js` / `eslint.config.js` / `.gitignore` / `package.json` 等 |
 
 **例**:
 ```
 feat(ui): 相手ポケモン詳細パネルを追加
 fix(logic): 素早さ計算のfloorの位置を修正
 test(logic): 火力指数の変化技ケースを追加
+test(ui): E2E に opponent search のキーボード操作ケースを追加
 chore(config): vitest.config.js の include パターンを追加
 ```
 
@@ -481,12 +494,15 @@ chore(config): vitest.config.js の include パターンを追加
 # 1. 依存関係のインストール
 npm install
 
-# 2. C# ツールでマスターデータを生成
+# 2. （E2E テストを実行する場合）Playwright Chromium バイナリ取得（〜100MB、初回のみ）
+npx playwright install chromium
+
+# 3. C# ツールでマスターデータを生成
 dotnet run --project tools/PokelensTools
 
-# 3. data/party.json を自分のパーティで編集
+# 4. data/party.json を自分のパーティで編集
 
-# 4. 開発サーバー起動（file:// ではなく必ず Vite 経由で開く）
+# 5. 開発サーバー起動（file:// ではなく必ず Vite 経由で開く）
 npm run dev
 ```
 
@@ -622,4 +638,5 @@ PN の全機能ブランチが `PN/release` にマージされたら、`PN/relea
 - [ ] import してよいのは `src/logic/` と `src/data/`、および `src/ui/` 内の純粋ユーティリティモジュール（コンポーネントを含まない DOM ヘルパー等。例: `src/ui/dom-utils.js`）のみ
 - [ ] `npm test` を実行して既存テストが全パスすること
 - [ ] `npm run lint` がパスすること
-- [ ] Chrome 最新版で手動テストを実施する（確認項目はテスト戦略の手動テスト確認項目を参照）
+- [ ] Playwright E2E（`npm run test:e2e`）で UI 結合を検証する。新規 UI セレクタを増やした場合は `tests/e2e/helpers/selectors.js` の `SEL` 定数を更新する
+- [ ] Chrome 最新版で手動確認も実施する（確認項目は [`docs/testing/e2e/manual-test-cases.md`](./testing/e2e/manual-test-cases.md) を参照。自動 E2E でカバーしている範囲はスキップ可）

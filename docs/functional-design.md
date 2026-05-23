@@ -137,7 +137,7 @@ graph TB
 
 **ポケモンWiki（Champions差分・手動調査）**
 
-Showdown データと Pokémon Champions の差分（技威力・種族値変更など）をポケモンWiki（https://wiki.pokemonwiki.com/wiki/Pok%C3%A9mon_Champions）で調査し、`tools/PokelensTools/champions-patch.json` に静的パッチとして管理する。C# ツールはShowdownデータ変換後にパッチを上書き適用する。
+Showdown データと Pokémon Champions の差分（技威力・種族値変更など）をポケモンWiki（https://wiki.pokemonwiki.com/wiki/Pok%C3%A9mon_Champions）で調査し、`tools/PokelensTools/Patches/champions-patch.json` に静的パッチとして管理する。C# ツールはShowdownデータ変換後にパッチを上書き適用する。
 
 **`champions-patch.json` の構造**:
 
@@ -465,37 +465,47 @@ C# ツールは先頭の `'use strict';\nexports.BattleXxx = ` と末尾の `;` 
 - 技の `accuracy: true`（Showdown の必中表現）は `null` に変換する（`basePower: 0 → null` と同様の扱い）
 ### アイテム・特性の補正データ
 
-Showdown の `items.js` / `abilities.js` は補正値をJavaScript関数で記述しているためC#から直接パースできない。補正値は `tools/PokelensTools/items-modifiers.json` / `tools/PokelensTools/abilities-modifiers.json` に手書きで管理し、Step4でMergeConverterが日本語名（`pokeapi-translations.json` 参照）と結合して `data/items.json` / `data/abilities.json` を生成する。新規アイテム・特性の追加やバランス変更時はこれらのJSONファイルを直接更新する。
+Showdown の `items.js` / `abilities.js` は補正値をJavaScript関数で記述しているためC#から直接パースできない。補正値は `tools/PokelensTools/Patches/items-modifiers.json` / `tools/PokelensTools/Patches/abilities-modifiers.json` に手書きで管理し、Step4でMergeConverterが日本語名（`pokeapi-translations.json` 参照）と結合して `data/items.json` / `data/abilities.json` を生成する。新規アイテム・特性の追加やバランス変更時はこれらのJSONファイルを直接更新する。
+
+> 方針: 「最大火力指向のため発動済みとして常時補正をかける」。タイプ・技タグで判定できる条件（`isType` / `isPunch` 等）はマスターデータに含めるが、対戦状況に依存する条件（HP・天候・状態異常・ターン数・性別等）はマスターデータに含めず P0 スコープ外として補正値 1.0 で扱う。
+
+> 素早さ補正のみの持ち物（こだわりスカーフ等）は火力指数に影響しないため `items-modifiers.json` には含めない（SKIP ポリシー）。
 
 **`items-modifiers.json` の構造**（キーはShowdown英語識別キー）:
 
 ```json
 {
-  "choicescarf":   { "modifier": { "spe": 1.5 } },
+  "muscleband":    { "modifier": { "atk": 1.1 } },
   "lifeorb":       { "modifier": { "atk": 1.3, "spa": 1.3 } },
   "silkscarf":     { "modifier": { "condition": "isType", "moveType": "Normal", "atk": 1.2, "spa": 1.2 } },
-  "punchingglove": { "modifier": { "condition": "isPunch", "atk": 1.1 } }
+  "expertbelt":    { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "isStab" } },
+  "punchingglove": { "modifier": { "atk": 1.1, "spa": 1.1, "condition": "isPunch" } }
 }
 ```
 
 > `condition` キーは省略可能。省略した場合は `null`（無条件全技適用）と同等に扱う。`lifeorb` のように物理・特殊の両方を補正する場合は `atk` と `spa` の両方を記述する。
-```
 
 **`abilities-modifiers.json` の構造**（キーはShowdown英語識別キー）:
 
 ```json
 {
-  "ironfist":      { "modifier": { "condition": "isPunch",    "atk": 1.2 } },
+  "ironfist":      { "modifier": { "condition": "isPunch",    "atk": 1.2, "spa": 1.2 } },
   "sharpness":     { "modifier": { "condition": "isSlice",    "atk": 1.5, "spa": 1.5 } },
   "technician":    { "modifier": { "condition": "powerMax60", "atk": 1.5, "spa": 1.5 } },
   "megalauncher":  { "modifier": { "condition": "isPulse",    "atk": 1.5, "spa": 1.5 } },
-  "strongjaw":     { "modifier": { "condition": "isBite",     "atk": 1.5 } },
+  "strongjaw":     { "modifier": { "condition": "isBite",     "atk": 1.5, "spa": 1.5 } },
   "reckless":      { "modifier": { "condition": "isRecoil",   "atk": 1.2 } },
-  "adaptability":  { "modifier": { "condition": "isStab",     "stab": 2.0 } }
+  "adaptability":  { "modifier": { "condition": "isStab",     "stab": 2.0 } },
+  "toughclaws":    { "modifier": { "condition": "isContact",   "atk": 1.3, "spa": 1.3 } },
+  "punkrock":      { "modifier": { "condition": "isSound",     "atk": 1.3, "spa": 1.3 } },
+  "sheerforce":    { "modifier": { "condition": "hasSecondary","atk": 1.3, "spa": 1.3 } },
+  "blaze":         { "modifier": { "condition": "isType", "moveType": "Fire",  "atk": 1.5, "spa": 1.5 } },
+  "pixilate":      { "modifier": { "condition": "convertNormalTo", "convertedType": "Fairy", "atk": 1.2, "spa": 1.2 } },
+  "normalize":     { "modifier": { "condition": "convertAllTo",    "convertedType": "Normal", "atk": 1.2, "spa": 1.2 } }
 }
 ```
 
-条件付き補正（すいすい・ようりょくそなど天候依存）はP0スコープ外とし、マスターデータに含めない（補正値1.0として扱う）。
+> 上記は実装の代表抜粋。完全なエントリ群と「最大火力指向のため発動済みとして常時補正をかける」ポリシーの全文は `tools/PokelensTools/Patches/abilities-modifiers.json` の `_comment_policy` を参照。
 
 ---
 
@@ -570,7 +580,7 @@ C# ツールが生成する `moves.json` の構造:
 - `tags` はShowdownの `flags` フィールドの全キーを `is` + camelCase に変換して格納するマーカー配列。対象タグを持たない技は省略する
   - 変換ルール: Showdownの `flags` オブジェクトの全キーを `is` + 先頭大文字（camelCase）に変換する（例: `contact`→`isContact`、`punch`→`isPunch`、`pulse`→`isPulse`、`bite`→`isBite`、`slicing`→`isSlice`、`sound`→`isSound`、`bullet`→`isBullet`、`powder`→`isPowder`、`protect`→`isProtect` など）
   - `recoil` はShowdownでは `flags` ではなく独立フィールドとして存在するが、同様に `isRecoil` タグとして格納する
-  - P0スコープの補正計算（火力指数）で参照するのは `isPunch` / `isPulse` / `isBite` / `isRecoil` / `isSlice` / `isStab` のみ。`isContact` を含むその他のタグはP0では補正計算に使用しないが、Showdownの全フラグを格納する方針のため含まれる
+  - P0スコープの補正計算（火力指数）で参照するのは `isPunch` / `isPulse` / `isBite` / `isRecoil` / `isSlice` / `isContact` / `isSound` / `hasSecondary` / `isStab`。Showdownの全フラグはマスターデータに格納する方針のため、補正計算に直接使用しないタグ（`isProtect` / `isMirror` 等）も含まれる
 
 ---
 
@@ -582,11 +592,12 @@ C# ツールが生成する `items.json` の構造:
 {
   "こだわりハチマキ": { "modifier": { "atk": 1.5 } },
   "こだわりメガネ":   { "modifier": { "spa": 1.5 } },
-  "こだわりスカーフ": { "modifier": { "spe": 1.5 } },
+  "ちからのハチマキ": { "modifier": { "atk": 1.1 } },
   "いのちのたま":     { "modifier": { "atk": 1.3, "spa": 1.3 } },
   "シルクのスカーフ": { "modifier": { "condition": "isType", "moveType": "Normal", "atk": 1.2, "spa": 1.2 } },
   "もくたん":         { "modifier": { "condition": "isType", "moveType": "Fire",   "atk": 1.2, "spa": 1.2 } },
-  "パンチグローブ":   { "modifier": { "condition": "isPunch", "atk": 1.1 } }
+  "たつじんのおび":   { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "isStab" } },
+  "パンチグローブ":   { "modifier": { "atk": 1.1, "spa": 1.1, "condition": "isPunch" } }
 }
 ```
 
@@ -607,24 +618,25 @@ C# ツールが生成する `abilities.json` の構造:
 ```json
 {
   "ちからもち":     { "modifier": { "atk": 2.0 } },
-  "てつのこぶし":   { "modifier": { "condition": "isPunch",    "atk": 1.2 } },
+  "てつのこぶし":   { "modifier": { "condition": "isPunch",    "atk": 1.2, "spa": 1.2 } },
   "きれあじ":       { "modifier": { "condition": "isSlice",    "atk": 1.5, "spa": 1.5 } },
   "テクニシャン":   { "modifier": { "condition": "powerMax60", "atk": 1.5, "spa": 1.5 } },
   "メガランチャー": { "modifier": { "condition": "isPulse",    "atk": 1.5, "spa": 1.5 } },
-  "つよいあご":     { "modifier": { "condition": "isBite",     "atk": 1.5 } },
-  "すてみ":         { "modifier": { "condition": "isRecoil",   "atk": 1.2 } },
+  "がんじょうあご": { "modifier": { "condition": "isBite",     "atk": 1.5, "spa": 1.5 } },
+  "すてみ":         { "modifier": { "condition": "isRecoil",   "atk": 1.2, "spa": 1.2 } },
   "てきおうりょく": { "modifier": { "condition": "isStab",     "stab": 2.0 } }
 }
 ```
 
 **制約**:
 - キーは日本語特性名（`party.json` の `ability` との照合に使用）
-- 対戦状況に依存する補正はP0スコープ外のため含めない（未登録の特性は補正値1.0として扱う）
-  - HP依存（例: もうか・しんりょく・もうりょく・むしのしらせ）
+- 「最大火力指向のため発動済みとして常時補正をかける」方針により、タイプ・技タグで判定できる条件（`isType` / `isPunch` 等）はマスターデータに登録する（例: もうか・しんりょく・もうりょく・むしのしらせ等のピンチ特性は `isType` 条件として登録し、HP に関わらず常時発動として扱う）
+- 対戦状況に依存し、タイプ・技タグでは判定できない補正はP0スコープ外のため含めない（未登録の特性は補正値1.0として扱う）
   - 天候依存（例: すいすい・ようりょくそ・すなかき・ゆきかき）
   - 状態異常依存（例: こんじょう・ねつぼうそう）
   - ターン数依存（例: スロースタート）
   - 性別依存（例: ライバル）
+  - 自 HP 割合依存（特定タイプ強化以外の用途、例: いしあたま等は別途）
 
 **`modifier` オブジェクトのキー一覧**（`items.json` / `abilities.json` 共通）:
 
@@ -636,6 +648,7 @@ C# ツールが生成する `abilities.json` の構造:
 | `stab` | タイプ一致倍率の上書き | 1.5 |
 | `condition` | 補正を適用する条件名（省略時は全技に適用） | — |
 | `moveType` | `condition: "isType"` のときのみ使用。対象タイプ名（英語、例: `"Fire"`） | — |
+| `convertedType` | `condition: "convertNormalTo"` / `"convertAllTo"` のときのみ使用。変換後の技タイプ名（英語、例: `"Fairy"`） | — |
 
 **`condition` 値の一覧**:
 
@@ -644,13 +657,20 @@ C# ツールが生成する `abilities.json` の構造:
 | `isType` | `move.type === modifier.moveType` | シルクのスカーフ・もくたん・各タイププレート |
 | `isPunch` | `move.tags` に `"isPunch"` を含む | てつのこぶし・パンチグローブ |
 | `isPulse` | `move.tags` に `"isPulse"` を含む | メガランチャー |
-| `isBite` | `move.tags` に `"isBite"` を含む | つよいあご |
+| `isBite` | `move.tags` に `"isBite"` を含む | がんじょうあご |
 | `isRecoil` | `move.tags` に `"isRecoil"` を含む | すてみ |
 | `isSlice` | `move.tags` に `"isSlice"` を含む | きれあじ |
+| `isContact` | `move.tags` に `"isContact"` を含む | タフクロー（toughclaws） |
+| `isSound` | `move.tags` に `"isSound"` を含む | パンクロック（punkrock） |
+| `hasSecondary` | `move.tags` に `"hasSecondary"` を含む | ちからずく（sheerforce） |
 | `powerMax60` | `move.power !== null && move.power <= 60` | テクニシャン |
 | `isStab` | `move.type` がポケモンのタイプと一致 | てきおうりょく |
+| `convertNormalTo` | `move.type === "Normal"` の技のみ対象。STAB 計算用の技タイプを `convertedType` に上書き | ピクシレート（→Fairy）・フリーズスキン（→Ice）・スカイスキン（→Flying）・エレキスキン（→Electric） |
+| `convertAllTo` | 全技対象。STAB 計算用の技タイプを `convertedType` に上書き | ノーマライズ（→Normal） |
 
 > `isStab` は他の condition と異なり、`abilities.json` 単体では判定できない。ポケモン固有のタイプ情報（`pokemonTypes`）が必要なため、`calcPowerIndex` の呼び出し側が `pokemonTypes` を引数として渡す。`isStab` 条件が成立した場合、通常の STAB 倍率（1.5）の代わりに `modifier.stab`（2.0）を適用する。
+
+> `convertNormalTo` / `convertAllTo` 条件が成立した場合、`resolveModifier` は `moveTypeOverride` フィールドを返す。呼び出し元（`OwnPokemonDetail.#calcMovePowerIndex`）が `effectiveMove = { ...move, type: moveTypeOverride }` を生成し、これを `calcPowerIndex` に渡すことで STAB 計算に反映される（`calcPowerIndex` 自体は `move.type` をそのまま使うだけで override を意識しない）。
 
 ---
 
@@ -821,7 +841,7 @@ DataLoader
 
 - `PokedexEntry`: `pokedex.json` の各エントリに対応。`{ num: number, name: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[] }`
 - `Move`: `moves.json` の各エントリに対応。`{ type: string, category: string, power: number | null, accuracy: number | null, tags?: string[] }`
-- `Modifier`: `getItemModifier()` / `getAbilityModifier()` の戻り値型。`{ condition: string | null, atk?: number, spa?: number, spe?: number, stab?: number, moveType?: string }` — `items.json` / `abilities.json` の各エントリは `{ modifier: { ... } }` のネスト構造だが、これらのメソッドは `.modifier` を取り出して返す（ラッパーオブジェクトは呼び出し側に渡さない）
+- `Modifier`: `getItemModifier()` / `getAbilityModifier()` の戻り値型。`{ condition: string | null, atk?: number, spa?: number, spe?: number, stab?: number, moveType?: string, convertedType?: string }` — `items.json` / `abilities.json` の各エントリは `{ modifier: { ... } }` のネスト構造だが、これらのメソッドは `.modifier` を取り出して返す（ラッパーオブジェクトは呼び出し側に渡さない）。`convertedType` は `condition: "convertNormalTo"` / `"convertAllTo"` のときの変換後タイプ名
 
 ---
 
@@ -873,7 +893,8 @@ DataLoader
 - `condition: null` → 無条件で倍率を適用
 - `condition: "isType"` → `move.type === modifier.moveType` が真なら倍率を適用、偽なら 1.0
 - `condition: "isStab"` → タイプ一致（`pokemonTypes.includes(move.type)`）が真なら `modifier.stab`（2.0）を `abilityModifier` として渡し、`calcPowerIndex` 内の `stab` 変数が二重適用されないよう呼び出し元で `stab` を 1.0 固定にする（下記例参照）
-- その他の condition（`"isPunch"` 等） → `move.tags.includes(condition)` が真なら倍率を適用、偽なら 1.0
+- その他の condition（`"isPunch"` / `"isContact"` / `"isSound"` / `"hasSecondary"` 等） → `move.tags.includes(condition)` が真なら倍率を適用、偽なら 1.0
+- `condition: "convertNormalTo"` / `"convertAllTo"`（スキン系特性） → `resolveModifier` が `moveTypeOverride` フィールドを返すので、`effectiveMove = { ...move, type: moveTypeOverride }` を生成して `calcPowerIndex` に渡し、STAB 計算用の技タイプとして反映する（行673 参照）
 - `Modifier` が `null`（未登録の持ち物・特性）→ 1.0
 
 **`isStab` 特性の条件解決と `modifier.stab` 取り出し方**（てきおうりょく、ポケモンタイプ: `["Fighting", "Dark"]`、技タイプ: `"Fighting"`）:
@@ -1298,13 +1319,17 @@ src/
 │   ├── power-index-calc.js    # 火力指数計算（純粋関数）
 │   ├── speed-calc.js          # 素早さ6パターン計算（純粋関数）
 │   ├── name-search.js         # ひらがな/カタカナ正規化・前方一致検索（純粋関数）
-│   └── calc-actual-stats.js   # 実数値計算（純粋関数）
+│   ├── calc-actual-stats.js   # 実数値計算（純粋関数）
+│   ├── resolve-modifier.js    # 特性・持ち物の補正条件解決（純粋関数）
+│   └── constants.js           # ドメイン区分値（MODIFIER_KIND 等の純粋エクスポート）
 └── ui/
     ├── own-party-panel.js         # OwnPartyPanel: 自分パーティ一覧
     ├── own-pokemon-detail.js      # OwnPokemonDetail: 自分ポケモン詳細
     ├── opponent-party-panel.js    # OpponentPartyPanel: 相手パーティ入力
     ├── opponent-pokemon-detail.js # OpponentPokemonDetail: 相手ポケモン詳細
-    └── search-input.js            # SearchInput: サジェスト検索入力
+    ├── search-input.js            # SearchInput: サジェスト検索入力
+    ├── dom-utils.js               # 共通 DOM 操作ヘルパー（el() 等）
+    └── stat-labels.js             # 種族値・実数値の表示ラベル定義と整形ヘルパー
 
 data/
 ├── pokedex.json        # C# ツールが生成: ポケモン図鑑データ（最終出力）
@@ -1314,7 +1339,7 @@ data/
 ├── types.json          # 手書き管理: タイプ名日本語変換マップ
 ├── move-categories.json # 手書き管理: 技分類日本語変換マップ
 ├── natures.json         # 手書き管理: 性格補正倍率マップ
-└── party.json           # ユーザーが手編集: 自分パーティ定義
+└── party.json           # ユーザーが手編集: 自分パーティ定義（gitignore済み）
 
 cache/                  # C# ツールの中間データ（gitignore対象）
 ├── showdown-pokedex.json    # Showdownから取得した英語データ（変換なし）
@@ -1322,16 +1347,19 @@ cache/                  # C# ツールの中間データ（gitignore対象）
 ├── showdown-items.json      # Showdownから取得した英語データ（変換なし）
 ├── showdown-abilities.json  # Showdownから取得した英語データ（変換なし）
 ├── pokeapi-translations.json  # PokéAPIから取得した日本語翻訳データ（独立保持）
-└── checksums.json             # showdown-*.json / pokeapi-translations.json / champions-patch.json / moves-power-patch.json のハッシュ値（増分実行用）
+└── checksums.json             # Showdown中間データおよび Patches/ 配下全ファイルのハッシュ値（増分実行用。詳細構造は前述の checksums.json 構造節を参照）
 
 tools/
 └── PokelensTools/
     ├── PokelensTools.csproj
     ├── Program.cs
-    ├── champions-patch.json      # 手動管理: Champions差分パッチ
-    ├── moves-power-patch.json    # 手動管理: 威力不定技（power: null）の最大威力定義（複数回攻撃技はC#自動計算のため対象外）
-    ├── items-modifiers.json      # 手動管理: 持ち物補正値定義（Showdown英語キー）
-    └── abilities-modifiers.json  # 手動管理: 特性補正値定義（Showdown英語キー）
+    └── Patches/                       # 手動管理 JSON 群
+        ├── champions-patch.json       # Champions差分パッチ（pokedex/moves セクション）
+        ├── moves-power-patch.json     # 威力不定技（power: null）の最大威力定義（複数回攻撃技はC#自動計算のため対象外）
+        ├── items-modifiers.json       # 持ち物補正値定義（Showdown英語キー）
+        ├── abilities-modifiers.json   # 特性補正値定義（Showdown英語キー）
+        ├── pokemon-name-patch.json    # ポケモン日本語名の上書きパッチ（PokéAPI翻訳バグ補正）
+        └── item-name-patch.json       # 持ち物日本語名の補完パッチ（PokéAPI翻訳未収録の補完）
 ```
 
 ---

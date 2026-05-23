@@ -25,8 +25,7 @@ pokelens は2つの独立したサブシステムで構成される:
 | @vitest/coverage-v8 | ^2.0.0 | カバレッジ計測 | Vitest 公式のカバレッジプロバイダー。V8 ネイティブで追加設定不要 |
 | ESLint | ^9.0.0 | 静的解析 | コード品質維持 |
 | Prettier | ^3.2.0 | フォーマット | スタイル統一 |
-| Husky | ^9.0.0 | コミットフック | 品質ゲート（lint-staged と組み合わせ使用） |
-| lint-staged | ^15.2.0 | コミット前処理 | 品質ゲート |
+| @playwright/test | ^1.60.0 | E2E テスト | Chromium 自動操作・Vite dev サーバー連携・`page.route()` による fetch mock を標準提供 |
 
 ### C# データ準備ツール
 
@@ -56,10 +55,11 @@ pokelens は2つの独立したサブシステムで構成される:
 │  UI レイヤー                              │  DOM操作・イベント処理・表示
 │  OwnPartyPanel / OwnPokemonDetail /      │
 │  OpponentPartyPanel / OpponentPokemonDetail /   │
-│  SearchInput                             │
+│  SearchInput / dom-utils / stat-labels   │
 ├──────────────────────────────────────────┤
 │  ロジックレイヤー                          │  計算・検索（純粋関数）
-│  PowerIndexCalc / SpeedCalc / NameSearch / CalcActualStats │
+│  PowerIndexCalc / SpeedCalc / NameSearch │
+│  / CalcActualStats / ResolveModifier / constants │
 ├──────────────────────────────────────────┤
 │  データアクセスレイヤー                    │  JSON読み込み・キャッシュ
 │  DataLoader（src/data/loader.js）        │
@@ -81,7 +81,7 @@ pokelens は2つの独立したサブシステムで構成される:
 **レイヤールール**:
 - UI レイヤーはロジックレイヤーとデータアクセスレイヤーを呼び出す。JSON を直接 fetch しない
 - ロジックレイヤーは DOM に触れない。`src/data/` を直接 import しない。計算に必要なデータは UIレイヤーが DataLoader から取得して引数として渡す
-- ロジックレイヤーの計算関数は純粋関数として実装し、副作用を持たない（PowerIndexCalc / SpeedCalc / CalcActualStats / NameSearch）
+- ロジックレイヤーの計算関数は純粋関数として実装し、副作用を持たない（PowerIndexCalc / SpeedCalc / CalcActualStats / NameSearch / ResolveModifier）。`constants` はドメイン区分値（MODIFIER_KIND 等）の定数集約モジュールで、純粋なエクスポートのみ
 - データアクセスレイヤー（DataLoader）は DOM に触れない
 
 ### C# ツール: パイプライン構成
@@ -184,25 +184,30 @@ src/
 │   ├── power-index-calc.js   # 火力指数計算（純粋関数）
 │   ├── speed-calc.js         # 素早さ6パターン計算（純粋関数）
 │   ├── name-search.js        # ひらがな/カタカナ正規化・前方一致検索
-│   └── calc-actual-stats.js  # 実数値計算（純粋関数）
+│   ├── calc-actual-stats.js  # 実数値計算（純粋関数）
+│   ├── resolve-modifier.js   # 特性・持ち物の補正条件解決（純粋関数）
+│   └── constants.js          # ドメイン区分値（MODIFIER_KIND 等の純粋エクスポート）
 └── ui/
     ├── own-party-panel.js     # 自分パーティ一覧 (OwnPartyPanel)
     ├── own-pokemon-detail.js      # 自分ポケモン詳細 (OwnPokemonDetail)
     ├── opponent-party-panel.js  # 相手パーティ入力 (OpponentPartyPanel)
     ├── opponent-pokemon-detail.js # 相手ポケモン詳細 (OpponentPokemonDetail)
-    └── search-input.js    # サジェスト検索 (SearchInput)
+    ├── search-input.js    # サジェスト検索 (SearchInput)
+    ├── dom-utils.js       # 共通 DOM 操作ヘルパー（el() 等）
+    └── stat-labels.js     # 種族値・実数値の表示ラベル定義と整形ヘルパー
 
 tools/                     # C# データ準備ツール
 ├── PokelensTools/
 │   ├── PokelensTools.csproj
 │   ├── Program.cs
-│   ├── champions-patch.json      # 手動管理: Champions差分パッチ
-│   ├── moves-power-patch.json    # 手動管理: 威力不定技（power: null）の最大威力定義
-│   ├── items-modifiers.json      # 手動管理: 持ち物補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
-│   ├── abilities-modifiers.json  # 手動管理: 特性補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
-│   ├── pokemon-name-patch.json   # 手動管理: ポケモン日本語名の上書き（PokéAPIでフォルム名が一意化されない場合の補正）
-│   └── item-name-patch.json      # 手動管理: 持ち物日本語名の上書き（PokéAPIにない/誤訳されている場合の補正）
-└── PokelensTools.Tests/          # xUnit テストプロジェクト
+│   └── Patches/                       # 手動管理 JSON 群
+│       ├── champions-patch.json       # Champions差分パッチ
+│       ├── moves-power-patch.json     # 威力不定技（power: null）の最大威力定義
+│       ├── items-modifiers.json       # 持ち物補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
+│       ├── abilities-modifiers.json   # 特性補正値定義（Showdown英語キー）。Step4でMergeConverterが参照
+│       ├── pokemon-name-patch.json    # ポケモン日本語名の上書き（PokéAPIでフォルム名が一意化されない場合の補正）
+│       └── item-name-patch.json       # 持ち物日本語名の上書き（PokéAPIにない/誤訳されている場合の補正）
+└── PokelensTools.Tests/          # xUnit テストプロジェクト（tools/ 直下、PokelensTools/ と兄弟）
     └── PokelensTools.Tests.csproj
 
 cache/                     # C# ツールの中間データ（gitignore対象）
@@ -252,15 +257,19 @@ index.html                 # エントリーポイント
 
 | 種別 | ツール | 対象 |
 |------|--------|------|
-| ユニットテスト（JS） | Vitest | `logic/` 配下の純粋関数（火力指数・素早さ計算・検索正規化） |
-| 統合テスト（JS） | Vitest | DataLoader → ロジックレイヤーのデータ供給フロー |
+| ユニットテスト（JS） | Vitest | `logic/` 配下の純粋関数（火力指数・素早さ計算・検索正規化・実数値・補正条件解決）と DataLoader |
 | ユニットテスト（C#） | xUnit | MergeConverter・パッチ適用・増分実行判定・日本語キー変換 |
 | 統合テスト（C#） | xUnit | パイプライン全体のスナップショットテスト |
-| 手動テスト | ブラウザ | UI・サジェスト動作・表示確認 |
+| E2E テスト | Playwright（Chromium） | UI 結合・画面表示・サジェスト・火力指数 UI 反映・XSS 耐性 |
+| 手動テスト | ブラウザ | 環境セットアップ・C# データ生成・dev サーバー起動（[`docs/testing/e2e/manual-test-cases.md`](./testing/e2e/manual-test-cases.md)） |
 
-カバレッジ目標: ロジックレイヤー 80% 以上（計測: `npm run test:coverage`）
+> JS の統合テスト層は P0 では設けない。DataLoader → UI のデータ供給は単体テスト（DataLoader 単独）と E2E（Playwright）で担保する。
 
-テストファイルの配置: JS テストは `tests/unit/`（ユニット）および `tests/integration/`（統合）、C# テストは `tools/PokelensTools.Tests/`（詳細は `docs/repository-structure.md` を参照）
+カバレッジ目標: ロジックレイヤー（`src/logic/`）80% 以上（計測: `npm run test:coverage`）
+
+> UIレイヤー（`src/ui/`）は単体テスト対象外とし、E2E（Playwright）が UI 結合・画面表示・サジェスト・火力指数 UI 反映を担保する。`src/data/loader.js` は単体テスト（`tests/unit/loader.test.js`）で正常系とエラーパスをカバーしているが、DOM 依存部分の計測が困難なため数値目標は設けない。
+
+テストファイルの配置: JS テストは `tests/unit/`（ユニット）および `tests/e2e/`（E2E、Playwright）、C# テストは `tools/PokelensTools.Tests/`（詳細は `docs/repository-structure.md` を参照）
 
 ---
 
@@ -287,5 +296,4 @@ index.html                 # エントリーポイント
 | eslint | 静的解析 | `^9.0.0` |
 | prettier | フォーマット | `^3.2.0` |
 | vite | 開発サーバー・ビルド | `^6.0.0` |
-| husky | コミットフック | `^9.0.0` |
-| lint-staged | コミット前処理 | `^15.2.0` |
+| @playwright/test | E2E テスト | `^1.60.0` |
