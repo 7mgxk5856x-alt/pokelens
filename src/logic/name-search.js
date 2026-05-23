@@ -1,39 +1,8 @@
 const MAX_RESULTS = 10;
 
-const HALFWIDTH_KANA = {
-  'ｱ': 'ア', 'ｲ': 'イ', 'ｳ': 'ウ', 'ｴ': 'エ', 'ｵ': 'オ',
-  'ｶ': 'カ', 'ｷ': 'キ', 'ｸ': 'ク', 'ｹ': 'ケ', 'ｺ': 'コ',
-  'ｻ': 'サ', 'ｼ': 'シ', 'ｽ': 'ス', 'ｾ': 'セ', 'ｿ': 'ソ',
-  'ﾀ': 'タ', 'ﾁ': 'チ', 'ﾂ': 'ツ', 'ﾃ': 'テ', 'ﾄ': 'ト',
-  'ﾅ': 'ナ', 'ﾆ': 'ニ', 'ﾇ': 'ヌ', 'ﾈ': 'ネ', 'ﾉ': 'ノ',
-  'ﾊ': 'ハ', 'ﾋ': 'ヒ', 'ﾌ': 'フ', 'ﾍ': 'ヘ', 'ﾎ': 'ホ',
-  'ﾏ': 'マ', 'ﾐ': 'ミ', 'ﾑ': 'ム', 'ﾒ': 'メ', 'ﾓ': 'モ',
-  'ﾔ': 'ヤ', 'ﾕ': 'ユ', 'ﾖ': 'ヨ',
-  'ﾗ': 'ラ', 'ﾘ': 'リ', 'ﾙ': 'ル', 'ﾚ': 'レ', 'ﾛ': 'ロ',
-  'ﾜ': 'ワ', 'ｦ': 'ヲ', 'ﾝ': 'ン',
-  'ｧ': 'ァ', 'ｨ': 'ィ', 'ｩ': 'ゥ', 'ｪ': 'ェ', 'ｫ': 'ォ',
-  'ｬ': 'ャ', 'ｭ': 'ュ', 'ｮ': 'ョ',
-  'ｯ': 'ッ', 'ｰ': 'ー',
-  '｡': '。', '｢': '「', '｣': '」', '､': '、', '･': '・',
-};
-
-const DAKUTEN_PAIR = {
-  'カ': 'ガ', 'キ': 'ギ', 'ク': 'グ', 'ケ': 'ゲ', 'コ': 'ゴ',
-  'サ': 'ザ', 'シ': 'ジ', 'ス': 'ズ', 'セ': 'ゼ', 'ソ': 'ゾ',
-  'タ': 'ダ', 'チ': 'ヂ', 'ツ': 'ヅ', 'テ': 'デ', 'ト': 'ド',
-  'ハ': 'バ', 'ヒ': 'ビ', 'フ': 'ブ', 'ヘ': 'ベ', 'ホ': 'ボ',
-  'ウ': 'ヴ',
-};
-
-const HANDAKUTEN_PAIR = {
-  'ハ': 'パ', 'ヒ': 'ピ', 'フ': 'プ', 'ヘ': 'ペ', 'ホ': 'ポ',
-};
-
 const HIRAGANA_MIN = 0x3041;
 const HIRAGANA_MAX = 0x3096;
 const HIRAGANA_TO_KATAKANA_OFFSET = 0x60;
-const HALF_DAKUTEN = 'ﾞ';
-const HALF_HANDAKUTEN = 'ﾟ';
 
 // ASCII 英字の文字コード境界（A–Z / a–z）。ローマ字判定に使う
 const ASCII_UPPER_A = 'A'.charCodeAt(0);
@@ -159,7 +128,8 @@ function romajiToKatakana(input) {
 }
 
 /**
- * 検索クエリを比較用に正規化する。ローマ字をカタカナへ変換し、ひらがな・半角カナを全角カタカナに揃える。
+ * 検索クエリを比較用に正規化する。NFKC で半角カナ・濁点結合・全角英数字を一括処理し、
+ * ローマ字をカタカナへ変換、ひらがなを全角カタカナに揃える。
  * @param {string} query 入力文字列
  * @returns {string} 正規化後の文字列
  */
@@ -168,37 +138,23 @@ export function normalizeQuery(query) {
     return '';
   }
 
-  // ASCII 英字が含まれない純粋カナ入力はローマ字変換をスキップする（テーブル走査によるオーバーヘッドを避けるため）
-  const preprocessed = /[a-zA-Z]/.test(query) ? romajiToKatakana(query) : query;
+  // NFKC で半角カナ→全角カナ・濁点 / 半濁点の結合・全角英数字→ASCII を一括処理する
+  // （個別の対応辞書を持たず Unicode 標準に委ねる）
+  const nfkc = query.normalize('NFKC');
 
+  // NFKC 後に ASCII 英字が含まれていればローマ字→カタカナ変換を適用する。
+  // 元入力に全角英字（'Ａ' 等）があった場合も NFKC で 'A' になりここで拾える
+  const preprocessed = /[a-zA-Z]/.test(nfkc) ? romajiToKatakana(nfkc) : nfkc;
+
+  // 残るのはひらがな→カタカナのみ（NFKC はスクリプト変換しない）
   let result = '';
   for (let i = 0; i < preprocessed.length; i++) {
-    const ch = preprocessed[i];
-    const code = ch.charCodeAt(0);
-
+    const code = preprocessed.charCodeAt(i);
     if (code >= HIRAGANA_MIN && code <= HIRAGANA_MAX) {
       result += String.fromCharCode(code + HIRAGANA_TO_KATAKANA_OFFSET);
-      continue;
+    } else {
+      result += preprocessed[i];
     }
-
-    const fullKana = HALFWIDTH_KANA[ch];
-    if (fullKana !== undefined) {
-      const next = preprocessed[i + 1];
-      if (next === HALF_DAKUTEN && DAKUTEN_PAIR[fullKana]) {
-        result += DAKUTEN_PAIR[fullKana];
-        i++;
-        continue;
-      }
-      if (next === HALF_HANDAKUTEN && HANDAKUTEN_PAIR[fullKana]) {
-        result += HANDAKUTEN_PAIR[fullKana];
-        i++;
-        continue;
-      }
-      result += fullKana;
-      continue;
-    }
-
-    result += ch;
   }
   return result;
 }
