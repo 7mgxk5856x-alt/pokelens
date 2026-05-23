@@ -90,6 +90,35 @@ describe('normalizeQuery()', () => {
       expect(normalizeQuery('vi')).toBe('ヴィ');
     });
   });
+
+  describe('半角ハイフン → 長音記号変換', () => {
+    it('ローマ字＋ハイフンで長音記号に変換する', () => {
+      // `ri-` → `リー`、`u-raosu` → `ウーラオス`（ローマ字入力時の長音補完）
+      expect(normalizeQuery('ri-')).toBe('リー');
+      expect(normalizeQuery('u-raosu')).toBe('ウーラオス');
+    });
+
+    it('ひらがな・カタカナ＋ハイフンでも長音記号に変換する', () => {
+      // ローマ字以外（かな入力中の補完）でも `-` を `ー` として扱う
+      expect(normalizeQuery('ぴ-')).toBe('ピー');
+      expect(normalizeQuery('ピ-')).toBe('ピー');
+    });
+
+    it('全角ハイフン `－` も NFKC 経由で長音記号に変換される', () => {
+      // 全角ハイフン (U+FF0D) は NFKC で半角 `-` (U+002D) になり、その後 `ー` に変換される
+      expect(normalizeQuery('ri－')).toBe('リー');
+    });
+
+    it('ハイフンを含まないローマ字入力は影響を受けない', () => {
+      // 回帰確認: 既存のローマ字変換（`gabu` → `ガブ`）が壊れていない
+      expect(normalizeQuery('gabu')).toBe('ガブ');
+    });
+
+    it('既存の長音記号 `ー` 直接入力は冪等', () => {
+      // 回帰確認: 元入力に `ー` が既に含まれる場合もそのまま保たれる
+      expect(normalizeQuery('ウーラオス')).toBe('ウーラオス');
+    });
+  });
 });
 
 describe('searchByName()', () => {
@@ -123,6 +152,13 @@ describe('searchByName()', () => {
   it('半角カタカナ入力でエントリにヒットする', () => {
     const result = searchByName('ｶﾞﾌﾞ', entries);
     expect(result.map((e) => e.name)).toEqual(['ガブリアス']);
+  });
+
+  it('ローマ字＋ハイフン入力（ri-）でカタカナエントリにヒットする', () => {
+    // `ri-` → `リー` に正規化され、リーフィア等に前方一致する（PRD 機能 3 受け入れ条件）
+    const leafiaEntries = [...entries, { num: 470, name: 'リーフィア' }];
+    const result = searchByName('ri-', leafiaEntries);
+    expect(result.map((e) => e.name)).toEqual(['リーフィア']);
   });
 
   it('該当 0 件で空配列を返す', () => {
