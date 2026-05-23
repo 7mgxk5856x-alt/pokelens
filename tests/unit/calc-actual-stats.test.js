@@ -24,7 +24,7 @@ describe('calcStat()', () => {
     expect(calcStat(80, 0, 0.9)).toBe(90);
   });
 
-  it('性格補正なし(1.0)でも動作する', () => {
+  it('等倍補正 (nature=1.0) かつ能力ポイント最大値 (ap=32) で計算できる', () => {
     expect(calcStat(100, 32, 1.0)).toBe(152);
   });
 

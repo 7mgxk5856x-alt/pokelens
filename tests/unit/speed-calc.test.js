@@ -95,6 +95,7 @@ describe('calcSpeedPatterns', () => {
 
     // When / Then
     expect(() => calcSpeedPatterns(baseSpe)).toThrow(RangeError);
+    expect(() => calcSpeedPatterns(baseSpe)).toThrow(/baseSpe は正の整数/);
   });
 
   it('負の種族値を渡すと RangeError を投げる', () => {
@@ -103,6 +104,7 @@ describe('calcSpeedPatterns', () => {
 
     // When / Then
     expect(() => calcSpeedPatterns(baseSpe)).toThrow(RangeError);
+    expect(() => calcSpeedPatterns(baseSpe)).toThrow(/baseSpe は正の整数/);
   });
 
   it('NaN を渡すと RangeError を投げる', () => {
@@ -111,6 +113,7 @@ describe('calcSpeedPatterns', () => {
 
     // When / Then
     expect(() => calcSpeedPatterns(baseSpe)).toThrow(RangeError);
+    expect(() => calcSpeedPatterns(baseSpe)).toThrow(/baseSpe は正の整数/);
   });
 
   it('非整数 (小数) を渡すと RangeError を投げる', () => {
@@ -119,6 +122,7 @@ describe('calcSpeedPatterns', () => {
 
     // When / Then
     expect(() => calcSpeedPatterns(baseSpe)).toThrow(RangeError);
+    expect(() => calcSpeedPatterns(baseSpe)).toThrow(/baseSpe は正の整数/);
   });
 
   it('文字列を渡すと RangeError を投げる', () => {
@@ -127,5 +131,6 @@ describe('calcSpeedPatterns', () => {
 
     // When / Then
     expect(() => calcSpeedPatterns(baseSpe)).toThrow(RangeError);
+    expect(() => calcSpeedPatterns(baseSpe)).toThrow(/baseSpe は正の整数/);
   });
 });

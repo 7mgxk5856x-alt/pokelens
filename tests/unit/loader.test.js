@@ -344,6 +344,10 @@ describe('DataLoader.getPokemonByName()', () => {
     expect(entry).not.toBeNull();
     expect(entry.name).toBe('ガブリアス');
     expect(entry.types).toEqual(['Dragon', 'Ground']);
+    // calcActualStats / calcSpeedPatterns へ渡す前提となる構造を担保する
+    expect(entry.baseStats.spe).toBe(102);
+    expect(Array.isArray(entry.abilities)).toBe(true);
+    expect(entry.abilities.length).toBeGreaterThanOrEqual(1);
   });
 
   it('存在しないポケモン名で null を返す', async () => {
