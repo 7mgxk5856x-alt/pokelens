@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using PokelensTools.Common;
 using PokelensTools.Models;
 
 namespace PokelensTools.Pipeline;
@@ -8,6 +9,8 @@ namespace PokelensTools.Pipeline;
 /// <remarks>
 /// 変化のない入力に対する不要な再取得・再生成を避けるための差分実行機構。チェックサムは
 /// <see cref="SaveChecksums"/> で永続化し、次回起動時に <see cref="LoadChecksums"/> で読み戻して比較する。
+/// 入出力先は <see cref="DataPaths"/> 経由で解決するため、テストは <see cref="DataPaths.OverrideRepoRoot"/> で
+/// temp dir に redirect する。
 /// </remarks>
 internal static class IncrementalRunner
 {
@@ -20,15 +23,15 @@ internal static class IncrementalRunner
 
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
-    /// <summary>保存済みチェックサム JSON を読み込む。</summary>
+    /// <summary>保存済みチェックサム JSON（<see cref="DataPaths.Cache.Checksums"/>）を読み込む。</summary>
     /// <remarks>
     /// ファイルが存在しない（＝初回実行）場合と、内容が JSON の null リテラルの場合に null を返す。
     /// 破損・想定外の形式では例外が伝播しうるが、checksums.json は <see cref="SaveChecksums"/> のみが書き込むキャッシュのため実用上は起きない。
     /// </remarks>
-    /// <param name="path">チェックサム JSON のパス。</param>
     /// <returns>読み込んだ <see cref="ChecksumSet"/>。ファイルが無い・読めない場合は null。</returns>
-    internal static ChecksumSet? LoadChecksums(string path)
+    internal static ChecksumSet? LoadChecksums()
     {
+        string path = DataPaths.Cache.Checksums();
         if (!File.Exists(path))
         {
             return null;
@@ -37,6 +40,23 @@ internal static class IncrementalRunner
         string json = File.ReadAllText(path);
         return JsonSerializer.Deserialize<ChecksumSet>(json);
     }
+
+    /// <summary>パイプラインが扱う全入力ファイルを現在の <see cref="DataPaths"/> 配下から読み、ハッシュをまとめた <see cref="ChecksumSet"/> を返す。</summary>
+    /// <remarks><see cref="LoadChecksums"/> の対となる「今回値」の計算。</remarks>
+    /// <returns>11 入力ファイルのハッシュを含む <see cref="ChecksumSet"/>。存在しないファイルは空文字列ハッシュになる。</returns>
+    internal static ChecksumSet ComputeCurrentChecksums()
+        => new(
+            ShowdownPokedex: ComputeHash(DataPaths.Cache.ShowdownPokedex()),
+            ShowdownMoves: ComputeHash(DataPaths.Cache.ShowdownMoves()),
+            ShowdownItems: ComputeHash(DataPaths.Cache.ShowdownItems()),
+            ShowdownAbilities: ComputeHash(DataPaths.Cache.ShowdownAbilities()),
+            PokeApiTranslations: ComputeHash(DataPaths.Cache.PokeApiTranslations()),
+            ChampionsPatch: ComputeHash(DataPaths.Patch.Champions()),
+            MovesPowerPatch: ComputeHash(DataPaths.Patch.MovesPower()),
+            ItemsModifiers: ComputeHash(DataPaths.Patch.ItemsModifiers()),
+            AbilitiesModifiers: ComputeHash(DataPaths.Patch.AbilitiesModifiers()),
+            PokemonNamePatch: ComputeHash(DataPaths.Patch.PokemonNamePatch()),
+            ItemNamePatch: ComputeHash(DataPaths.Patch.ItemNamePatch()));
 
     /// <summary>ファイルの SHA-256 ハッシュを小文字 16 進文字列で返す。</summary>
     /// <remarks>差分検知に用いる。ファイルが存在しない場合は空文字列を返し、例外にはしない。</remarks>
@@ -93,12 +113,12 @@ internal static class IncrementalRunner
         return new Steps(needsStep2, needsStep3, needsStep4);
     }
 
-    /// <summary>チェックサムを整形 JSON として保存する。</summary>
+    /// <summary>チェックサムを <see cref="DataPaths.Cache.Checksums"/> に整形 JSON として保存する。</summary>
     /// <remarks>出力先ディレクトリが無ければ作成する。Step2〜Step4 が例外で中断した場合は呼ばれず、次回同ステップから再実行される。</remarks>
     /// <param name="checksums">保存するチェックサム。</param>
-    /// <param name="path">保存先パス。</param>
-    internal static void SaveChecksums(ChecksumSet checksums, string path)
+    internal static void SaveChecksums(ChecksumSet checksums)
     {
+        string path = DataPaths.Cache.Checksums();
         string? dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir))
         {

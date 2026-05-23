@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using PokelensTools.Common;
 using PokelensTools.Pipeline;
 using Xunit;
 
@@ -7,29 +8,37 @@ namespace PokelensTools.Tests;
 public class PipelineIntegrationTests : IDisposable
 {
     private readonly string _tmpDir;
+    private readonly string _cacheDir;
+    private readonly string _patchesDir;
+    private readonly IDisposable _repoRootScope;
 
     public PipelineIntegrationTests()
     {
+        // temp dir を仮のリポジトリルートとして扱い、本番ディレクトリ構造（cache/、tools/PokelensTools/Patches/、data/）を再現する。
+        // DataPaths.OverrideRepoRoot で library 関数（MergeConverter / PatchApplicator）の参照先を temp dir に redirect する。
         _tmpDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_tmpDir);
+        _cacheDir = Path.Combine(_tmpDir, "cache");
+        _patchesDir = Path.Combine(_tmpDir, "tools", "PokelensTools", "Patches");
+        Directory.CreateDirectory(_cacheDir);
+        Directory.CreateDirectory(_patchesDir);
+        _repoRootScope = DataPaths.OverrideRepoRoot(_tmpDir);
     }
 
     public void Dispose()
     {
+        _repoRootScope.Dispose();
         Directory.Delete(_tmpDir, recursive: true);
     }
 
-    private string Write(string name, string json)
+    private static void WriteFile(string path, string json)
     {
-        var path = Path.Combine(_tmpDir, name);
         File.WriteAllText(path, json);
-        return path;
     }
 
     [Fact]
     public void FullPipeline_ProducesCorrectPokedexJson()
     {
-        var pokedexPath = Write("showdown-pokedex.json", """
+        WriteFile(Path.Combine(_cacheDir, "showdown-pokedex.json"), """
             {
               "pikachu": {
                 "num": 25, "name": "Pikachu",
@@ -39,7 +48,7 @@ public class PipelineIntegrationTests : IDisposable
               }
             }
             """);
-        var movesPath = Write("showdown-moves.json", """
+        WriteFile(Path.Combine(_cacheDir, "showdown-moves.json"), """
             {
               "thunderbolt": {
                 "num": 85, "name": "Thunderbolt", "type": "Electric", "category": "Special",
@@ -47,9 +56,9 @@ public class PipelineIntegrationTests : IDisposable
               }
             }
             """);
-        var itemsPath = Write("showdown-items.json", """{"choicescarf":{"num":287}}""");
-        var abilitiesPath = Write("showdown-abilities.json", """{"ironfist":{"num":89}}""");
-        var translationsPath = Write("pokeapi-translations.json", """
+        WriteFile(Path.Combine(_cacheDir, "showdown-items.json"), """{"choicescarf":{"num":287}}""");
+        WriteFile(Path.Combine(_cacheDir, "showdown-abilities.json"), """{"ironfist":{"num":89}}""");
+        WriteFile(Path.Combine(_cacheDir, "pokeapi-translations.json"), """
             {
               "pokemon": {"pikachu":"ピカチュウ"},
               "moves": {"thunderbolt":"10まんボルト"},
@@ -57,25 +66,19 @@ public class PipelineIntegrationTests : IDisposable
               "items": {"choicescarf":"こだわりスカーフ"}
             }
             """);
-        var movesPowerPatchPath = Write("moves-power-patch.json", "{}");
-        var itemsModifiersPath = Write("items-modifiers.json", """
+        WriteFile(Path.Combine(_patchesDir, "moves-power-patch.json"), "{}");
+        WriteFile(Path.Combine(_patchesDir, "items-modifiers.json"), """
             {"choicescarf":{"modifier":{"spe":1.5}}}
             """);
-        var abilitiesModifiersPath = Write("abilities-modifiers.json", """
+        WriteFile(Path.Combine(_patchesDir, "abilities-modifiers.json"), """
             {"ironfist":{"modifier":{"condition":"isPunch","atk":1.2}}}
             """);
-        var pokemonNamePatchPath = Write("pokemon-name-patch.json", "{}");
-        var itemNamePatchPath = Write("item-name-patch.json", "{}");
+        WriteFile(Path.Combine(_patchesDir, "pokemon-name-patch.json"), "{}");
+        WriteFile(Path.Combine(_patchesDir, "item-name-patch.json"), "{}");
+
+        MergeConverter.Convert();
 
         var dataDir = Path.Combine(_tmpDir, "data");
-
-        MergeConverter.Convert(
-            pokedexPath, movesPath, itemsPath, abilitiesPath,
-            translationsPath, movesPowerPatchPath,
-            itemsModifiersPath, abilitiesModifiersPath,
-            pokemonNamePatchPath, itemNamePatchPath,
-            dataDir);
-
         var pokedex = JsonNode.Parse(File.ReadAllText(Path.Combine(dataDir, "pokedex.json")))!.AsObject();
         Assert.True(pokedex.ContainsKey("pikachu"));
         Assert.Equal("ピカチュウ", pokedex["pikachu"]!["name"]!.GetValue<string>());
@@ -101,7 +104,8 @@ public class PipelineIntegrationTests : IDisposable
     [Fact]
     public void FullPipeline_ChampionsPatch_OverridesBaseStats()
     {
-        var pokedexPath = Write("showdown-pokedex.json", """
+        var pokedexPath = Path.Combine(_cacheDir, "showdown-pokedex.json");
+        WriteFile(pokedexPath, """
             {
               "pikachu": {
                 "num": 25, "name": "Pikachu",
@@ -111,12 +115,12 @@ public class PipelineIntegrationTests : IDisposable
               }
             }
             """);
-        var patchPath = Write("champions-patch.json", """
+        WriteFile(Path.Combine(_patchesDir, "champions-patch.json"), """
             {"pokedex":{"pikachu":{"baseStats":{"atk":99}}}}
             """);
-        var dummyMovesPath = Write("no-moves.json", "{}");
+        WriteFile(Path.Combine(_cacheDir, "showdown-moves.json"), "{}");
 
-        PatchApplicator.Apply(pokedexPath, dummyMovesPath, patchPath);
+        PatchApplicator.Apply();
 
         var patched = JsonNode.Parse(File.ReadAllText(pokedexPath))!.AsObject();
         Assert.Equal(99, patched["pikachu"]!["baseStats"]!["atk"]!.GetValue<int>());

@@ -1,3 +1,4 @@
+using PokelensTools.Common;
 using PokelensTools.Models;
 using PokelensTools.Pipeline;
 using Xunit;
@@ -138,14 +139,24 @@ public class IncrementalRunnerTests
     [Fact]
     public void LoadChecksums_NonExistentFile_ReturnsNull()
     {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".json");
-        var result = IncrementalRunner.LoadChecksums(path);
-        Assert.Null(result);
+        // RepoRoot を空の temp dir に redirect すれば、cache/checksums.json は存在しない状態になる
+        var tmpDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            using var _ = DataPaths.OverrideRepoRoot(tmpDir);
+            Assert.Null(IncrementalRunner.LoadChecksums());
+        }
+        finally
+        {
+            Directory.Delete(tmpDir, recursive: true);
+        }
     }
 
     [Fact]
     public void ComputeHash_NonExistentFile_ReturnsEmptyString()
     {
+        // ComputeHash は任意のファイルパスを受ける汎用ユーティリティ。DataPaths への依存はない。
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Assert.Equal(string.Empty, IncrementalRunner.ComputeHash(path));
     }
@@ -153,14 +164,23 @@ public class IncrementalRunnerTests
     [Fact]
     public void SaveAndLoadChecksums_RoundTrip()
     {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".json");
-        var checksums = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+        // temp dir を RepoRoot として扱い、SaveChecksums → LoadChecksums を同じ場所で round-trip させる
+        var tmpDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            using var _ = DataPaths.OverrideRepoRoot(tmpDir);
+            var checksums = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
 
-        IncrementalRunner.SaveChecksums(checksums, path);
-        var loaded = IncrementalRunner.LoadChecksums(path);
+            IncrementalRunner.SaveChecksums(checksums);
+            var loaded = IncrementalRunner.LoadChecksums();
 
-        Assert.Equal(checksums, loaded);
-        File.Delete(path);
+            Assert.Equal(checksums, loaded);
+        }
+        finally
+        {
+            Directory.Delete(tmpDir, recursive: true);
+        }
     }
 
     private static ChecksumSet MakeChecksums(

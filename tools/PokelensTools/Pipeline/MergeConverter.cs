@@ -28,53 +28,24 @@ internal static class MergeConverter
     }
 
     /// <summary>全入力（Showdown キャッシュ・翻訳・パッチ・修正子）を読み込んでマージし、成果物 JSON を出力する。</summary>
-    /// <remarks>data/ 配下に pokedex / moves / items / abilities の各 JSON を書き出す。出力先ディレクトリは無ければ作成する。</remarks>
-    /// <param name="showdownPokedexPath">Showdown ポケデックスキャッシュのパス。</param>
-    /// <param name="showdownMovesPath">Showdown 技キャッシュのパス。</param>
-    /// <param name="showdownItemsPath">Showdown アイテムキャッシュのパス。</param>
-    /// <param name="showdownAbilitiesPath">Showdown 特性キャッシュのパス。</param>
-    /// <param name="translationsPath">PokéAPI 由来の翻訳辞書のパス。</param>
-    /// <param name="movesPowerPatchPath">威力不定技を補完する moves-power-patch のパス。</param>
-    /// <param name="itemsModifiersPath">アイテム修正子定義のパス。</param>
-    /// <param name="abilitiesModifiersPath">特性修正子定義のパス。</param>
-    /// <param name="pokemonNamePatchPath">ポケモン日本語名の上書きパッチのパス。</param>
-    /// <param name="itemNamePatchPath">アイテム日本語名の上書きパッチのパス。</param>
-    /// <param name="dataDir">成果物 JSON の出力先ディレクトリ。</param>
-    internal static void Convert(
-        string showdownPokedexPath,
-        string showdownMovesPath,
-        string showdownItemsPath,
-        string showdownAbilitiesPath,
-        string translationsPath,
-        string movesPowerPatchPath,
-        string itemsModifiersPath,
-        string abilitiesModifiersPath,
-        string pokemonNamePatchPath,
-        string itemNamePatchPath,
-        string dataDir)
+    /// <remarks>
+    /// 入出力先は <see cref="DataPaths"/> 配下のパス。data/ 出力先ディレクトリは無ければ作成する。
+    /// テストは <see cref="DataPaths.OverrideRepoRoot"/> で temp dir に redirect する。
+    /// </remarks>
+    internal static void Convert()
     {
-        Directory.CreateDirectory(dataDir);
+        Directory.CreateDirectory(DataPaths.Master.Dir);
 
-        JsonObject pokedex = JsonNode.Parse(File.ReadAllText(showdownPokedexPath))!.AsObject();
-        JsonObject moves = JsonNode.Parse(File.ReadAllText(showdownMovesPath))!.AsObject();
-        JsonObject items = JsonNode.Parse(File.ReadAllText(showdownItemsPath))!.AsObject();
-        JsonObject abilities = JsonNode.Parse(File.ReadAllText(showdownAbilitiesPath))!.AsObject();
-        JsonObject translations = JsonNode.Parse(File.ReadAllText(translationsPath))!.AsObject();
-        JsonObject movesPowerPatch = File.Exists(movesPowerPatchPath)
-            ? JsonNode.Parse(File.ReadAllText(movesPowerPatchPath))?.AsObject() ?? new JsonObject()
-            : new JsonObject();
-        JsonObject itemsModifiers = File.Exists(itemsModifiersPath)
-            ? JsonNode.Parse(File.ReadAllText(itemsModifiersPath))?.AsObject() ?? new JsonObject()
-            : new JsonObject();
-        JsonObject abilitiesModifiers = File.Exists(abilitiesModifiersPath)
-            ? JsonNode.Parse(File.ReadAllText(abilitiesModifiersPath))?.AsObject() ?? new JsonObject()
-            : new JsonObject();
-        JsonObject pokemonNamePatch = File.Exists(pokemonNamePatchPath)
-            ? JsonNode.Parse(File.ReadAllText(pokemonNamePatchPath))?.AsObject() ?? new JsonObject()
-            : new JsonObject();
-        JsonObject itemNamePatch = File.Exists(itemNamePatchPath)
-            ? JsonNode.Parse(File.ReadAllText(itemNamePatchPath))?.AsObject() ?? new JsonObject()
-            : new JsonObject();
+        JsonObject pokedex = JsonNode.Parse(File.ReadAllText(DataPaths.Cache.ShowdownPokedex()))!.AsObject();
+        JsonObject moves = JsonNode.Parse(File.ReadAllText(DataPaths.Cache.ShowdownMoves()))!.AsObject();
+        JsonObject items = JsonNode.Parse(File.ReadAllText(DataPaths.Cache.ShowdownItems()))!.AsObject();
+        JsonObject abilities = JsonNode.Parse(File.ReadAllText(DataPaths.Cache.ShowdownAbilities()))!.AsObject();
+        JsonObject translations = JsonNode.Parse(File.ReadAllText(DataPaths.Cache.PokeApiTranslations()))!.AsObject();
+        JsonObject movesPowerPatch = ReadOptionalJson(DataPaths.Patch.MovesPower());
+        JsonObject itemsModifiers = ReadOptionalJson(DataPaths.Patch.ItemsModifiers());
+        JsonObject abilitiesModifiers = ReadOptionalJson(DataPaths.Patch.AbilitiesModifiers());
+        JsonObject pokemonNamePatch = ReadOptionalJson(DataPaths.Patch.PokemonNamePatch());
+        JsonObject itemNamePatch = ReadOptionalJson(DataPaths.Patch.ItemNamePatch());
 
         JsonObject pokemonNames = translations[TranslationKey.Pokemon]?.AsObject() ?? new JsonObject();
         JsonObject moveNames = translations[TranslationKey.Moves]?.AsObject() ?? new JsonObject();
@@ -82,21 +53,27 @@ internal static class MergeConverter
         JsonObject itemNames = translations[TranslationKey.Items]?.AsObject() ?? new JsonObject();
 
         File.WriteAllText(
-            DataPaths.Master.Pokedex(dataDir),
+            DataPaths.Master.Pokedex(),
             JsonHelpers.ToIndentedJson(ConvertPokedex(pokedex, pokemonNames, abilityNames, pokemonNamePatch)));
 
         File.WriteAllText(
-            DataPaths.Master.Moves(dataDir),
+            DataPaths.Master.Moves(),
             JsonHelpers.ToIndentedJson(ConvertMoves(moves, moveNames, movesPowerPatch)));
 
         File.WriteAllText(
-            DataPaths.Master.Items(dataDir),
+            DataPaths.Master.Items(),
             JsonHelpers.ToIndentedJson(ConvertItems(itemsModifiers, itemNames, itemNamePatch)));
 
         File.WriteAllText(
-            DataPaths.Master.Abilities(dataDir),
+            DataPaths.Master.Abilities(),
             JsonHelpers.ToIndentedJson(ConvertAbilities(abilitiesModifiers, abilityNames)));
     }
+
+    // optional パッチ・修正子 JSON: ファイルが無ければ空オブジェクトを返し、パッチ未提供を許容する
+    private static JsonObject ReadOptionalJson(string path)
+        => File.Exists(path)
+            ? JsonNode.Parse(File.ReadAllText(path))?.AsObject() ?? new JsonObject()
+            : new JsonObject();
 
     /// <summary>Showdown ポケデックスに日本語名（翻訳＋ name-patch 上書き）と日本語特性名を当て、成果物形式に変換する。</summary>
     /// <remarks>翻訳が無いエントリは出力から除外する。name-patch は翻訳由来の名前を上書きする。</remarks>

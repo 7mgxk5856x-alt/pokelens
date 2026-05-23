@@ -25,20 +25,8 @@ await showdownFetcher.FetchAllAsync();
 Console.WriteLine("  Done.");
 
 // 差分実行の判定用に現在のチェックサムを計算する
-var currentChecksums = new ChecksumSet(
-    ShowdownPokedex: IncrementalRunner.ComputeHash(DataPaths.Cache.ShowdownPokedex()),
-    ShowdownMoves: IncrementalRunner.ComputeHash(DataPaths.Cache.ShowdownMoves()),
-    ShowdownItems: IncrementalRunner.ComputeHash(DataPaths.Cache.ShowdownItems()),
-    ShowdownAbilities: IncrementalRunner.ComputeHash(DataPaths.Cache.ShowdownAbilities()),
-    PokeApiTranslations: IncrementalRunner.ComputeHash(DataPaths.Cache.PokeApiTranslations()),
-    ChampionsPatch: IncrementalRunner.ComputeHash(DataPaths.Patch.Champions()),
-    MovesPowerPatch: IncrementalRunner.ComputeHash(DataPaths.Patch.MovesPower()),
-    ItemsModifiers: IncrementalRunner.ComputeHash(DataPaths.Patch.ItemsModifiers()),
-    AbilitiesModifiers: IncrementalRunner.ComputeHash(DataPaths.Patch.AbilitiesModifiers()),
-    PokemonNamePatch: IncrementalRunner.ComputeHash(DataPaths.Patch.PokemonNamePatch()),
-    ItemNamePatch: IncrementalRunner.ComputeHash(DataPaths.Patch.ItemNamePatch()));
-
-ChecksumSet? previousChecksums = IncrementalRunner.LoadChecksums(DataPaths.Cache.Checksums());
+var currentChecksums = IncrementalRunner.ComputeCurrentChecksums();
+ChecksumSet? previousChecksums = IncrementalRunner.LoadChecksums();
 IncrementalRunner.Steps steps = IncrementalRunner.DetermineSteps(previousChecksums, currentChecksums);
 
 if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
@@ -65,10 +53,7 @@ if (steps.NeedsStep2)
 if (steps.NeedsStep3)
 {
     Console.WriteLine("[Step 3] Applying champions-patch.json...");
-    PatchApplicator.Apply(
-        DataPaths.Cache.ShowdownPokedex(),
-        DataPaths.Cache.ShowdownMoves(),
-        DataPaths.Patch.Champions());
+    PatchApplicator.Apply();
     Console.WriteLine("  Done.");
 }
 
@@ -76,23 +61,12 @@ if (steps.NeedsStep3)
 if (steps.NeedsStep4)
 {
     Console.WriteLine("[Step 4] Generating data/*.json...");
-    MergeConverter.Convert(
-        DataPaths.Cache.ShowdownPokedex(),
-        DataPaths.Cache.ShowdownMoves(),
-        DataPaths.Cache.ShowdownItems(),
-        DataPaths.Cache.ShowdownAbilities(),
-        DataPaths.Cache.PokeApiTranslations(),
-        DataPaths.Patch.MovesPower(),
-        DataPaths.Patch.ItemsModifiers(),
-        DataPaths.Patch.AbilitiesModifiers(),
-        DataPaths.Patch.PokemonNamePatch(),
-        DataPaths.Patch.ItemNamePatch(),
-        DataPaths.Master.Dir);
+    MergeConverter.Convert();
     Console.WriteLine("  Done.");
 }
 
 // チェックサムを更新する
 // Step2〜Step4 が例外で終了した場合は SaveChecksums に到達しないため、
 // 次回起動で同ステップから再実行される（部分失敗の回復性を担保するための意図的設計）。
-IncrementalRunner.SaveChecksums(currentChecksums, DataPaths.Cache.Checksums());
+IncrementalRunner.SaveChecksums(currentChecksums);
 Console.WriteLine("Completed successfully.");

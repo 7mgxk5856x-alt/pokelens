@@ -11,17 +11,15 @@ namespace PokelensTools.Pipeline;
 internal static class PatchApplicator
 {
     /// <summary>champions-patch.json を読み込み、pokedex / moves セクションをそれぞれのキャッシュへ適用する。</summary>
-    /// <remarks>不在やパース失敗を握り潰すと Step4 が古いキャッシュで進行してしまうため、明示的に例外を投げる。</remarks>
-    /// <param name="showdownPokedexPath">適用先のポケデックスキャッシュのパス。</param>
-    /// <param name="showdownMovesPath">適用先の技キャッシュのパス。</param>
-    /// <param name="championsPatchPath">読み込む champions-patch.json のパス。</param>
-    /// <exception cref="FileNotFoundException"><paramref name="championsPatchPath"/> のファイルが存在しない場合。</exception>
+    /// <remarks>
+    /// 入出力先は <see cref="DataPaths"/> 配下。不在やパース失敗を握り潰すと Step4 が古いキャッシュで進行してしまうため、明示的に例外を投げる。
+    /// テストは <see cref="DataPaths.OverrideRepoRoot"/> で temp dir に redirect する。
+    /// </remarks>
+    /// <exception cref="FileNotFoundException">champions-patch.json が存在しない場合。</exception>
     /// <exception cref="InvalidDataException">champions-patch.json、またはポケデックス・技キャッシュの JSON パースに失敗した場合。</exception>
-    internal static void Apply(
-        string showdownPokedexPath,
-        string showdownMovesPath,
-        string championsPatchPath)
+    internal static void Apply()
     {
+        string championsPatchPath = DataPaths.Patch.Champions();
         // champions-patch.json はパイプライン構成上、常に存在するべきファイル。
         // 不在やパース失敗をサイレントにスキップすると Step4 が古いキャッシュで進行してしまうため、
         // 明示的に例外として伝播させる。
@@ -36,8 +34,8 @@ internal static class PatchApplicator
             ?? throw new InvalidDataException(
                 $"champions-patch.json のパースに失敗しました: {championsPatchPath}");
 
-        ApplyPokedexPatch(showdownPokedexPath, patch[PatchKey.Champions.Pokedex]?.AsObject());
-        ApplyMovesPatch(showdownMovesPath, patch[PatchKey.Champions.Moves]?.AsObject());
+        ApplyPokedexPatch(DataPaths.Cache.ShowdownPokedex(), patch[PatchKey.Champions.Pokedex]?.AsObject());
+        ApplyMovesPatch(DataPaths.Cache.ShowdownMoves(), patch[PatchKey.Champions.Moves]?.AsObject());
     }
 
     /// <summary>パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。</summary>

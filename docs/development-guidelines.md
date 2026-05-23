@@ -288,7 +288,7 @@ var count = GetCount();   // → int count = GetCount();
 
 **namespace はフォルダ構造に揃える**: `tools/PokelensTools/<Folder>/` 配下のファイルは `namespace PokelensTools.<Folder>;`（例: `Common/` → `PokelensTools.Common`、`Fetchers/` → `PokelensTools.Fetchers`、`Pipeline/` → `PokelensTools.Pipeline`、`Models/` → `PokelensTools.Models`）。**ルート直下のファイル**（`Program.cs` / `AssemblyInfo.cs`）は namespace 宣言不要（`Program.cs` は top-level statements、`AssemblyInfo.cs` は assembly 属性のみで、いずれも namespace に属する型を宣言しない）。テストプロジェクトは `PokelensTools.Tests`（プロジェクト単位）に集約しフォルダ分割しない。.NET 標準慣習に従うことで IDE の新規ファイル生成テンプレートとも整合する。
 
-**`DataPaths` のオーバーロード使い分け**: `Common/DataPaths.cs` は各ファイルに引数なし／引数あり 2 つのオーバーロードを持つ。**実際にテストで dir を差し替えて呼ばれる library 関数**（例: `MergeConverter.Convert(..., dataDir)`、`PatchApplicator.Apply(...)` — `PipelineIntegrationTests` が temp dir を渡す）は dir 引数を持たせて**引数あり版** `DataPaths.X.Y(dir)` を内部で使い、test 隔離を担保する。一方、**production 固定で動かない関数**（HTTP fetcher など、実テストで dir が変動しない関数）は dir 引数を持たず、内部で**引数なし版** `DataPaths.X.Y()` を直接使ってよい — fake parameterization（実際には誰も別の値を渡さない引数）を避けるため。判断基準は「将来テストするかもしれない」ではなく「**今、実テストで引数が変動しているか**」。将来テストが追加されたタイミングで dir 引数を導入すればよい（YAGNI）。
+**ファイルパス引数を library 関数に渡さない**: `Common/DataPaths.cs` がリポジトリレイアウト由来のファイルパスを一元提供する。Library 関数（Fetcher / Pipeline / IncrementalRunner 等）は**path 引数を取らず**、内部で `DataPaths.Cache.X()` / `DataPaths.Master.X()` / `DataPaths.Patch.X()` を直接参照する。テストは `using var _ = DataPaths.OverrideRepoRoot(tempDir);` で scope ごとに RepoRoot を redirect することで temp dir に隔離する（AsyncLocal ベースなので並列テストでも互いに干渉しない）。例外は `IncrementalRunner.ComputeHash(string filePath)` のような**汎用ユーティリティ**（任意のファイルパスをデータとして受け取る・DataPaths への依存がない）で、これは引数を保持する。「library 関数を parameterless に保つ」原則と「テスト隔離」を両立する設計。
 
 **champions-patch.json の管理ルール**:
 - Pokémon Champions 独自データ（Showdown データとの差分）を手書き管理するファイル
