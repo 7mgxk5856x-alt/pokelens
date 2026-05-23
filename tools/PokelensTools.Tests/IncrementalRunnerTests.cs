@@ -137,6 +137,36 @@ public class IncrementalRunnerTests
     }
 
     [Fact]
+    public void DetermineSteps_ShowdownAndChampionsPatch_Step234Required()
+    {
+        // showdown-pokedex（Step2 起動点）と champions-patch（Step3 起動点）が同時に変化した場合、
+        // 最も上流の Step2 が必要なため全 Step が再実行される
+        var old = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+        var current = MakeChecksums("X", "b", "c", "d", "e", "Y", "g", "h", "i", "j", "k");
+
+        var steps = IncrementalRunner.DetermineSteps(old, current);
+
+        Assert.True(steps.NeedsStep2);
+        Assert.True(steps.NeedsStep3);
+        Assert.True(steps.NeedsStep4);
+    }
+
+    [Fact]
+    public void DetermineSteps_ChampionsAndMovesPowerPatch_Step34Required()
+    {
+        // champions-patch（Step3 起動点）と moves-power-patch（Step4 専用）が同時に変化した場合、
+        // 最も上流の Step3 が必要となり Step3/4 を再実行する（Step2 は不要）
+        var old = MakeChecksums("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k");
+        var current = MakeChecksums("a", "b", "c", "d", "e", "X", "Y", "h", "i", "j", "k");
+
+        var steps = IncrementalRunner.DetermineSteps(old, current);
+
+        Assert.False(steps.NeedsStep2);
+        Assert.True(steps.NeedsStep3);
+        Assert.True(steps.NeedsStep4);
+    }
+
+    [Fact]
     public void LoadChecksums_NonExistentFile_ReturnsNull()
     {
         // RepoRoot を空の temp dir に redirect すれば、cache/checksums.json は存在しない状態になる

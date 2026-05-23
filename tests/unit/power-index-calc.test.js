@@ -45,6 +45,12 @@ describe('calcPowerIndex()', () => {
     );
   });
 
+  it('特殊技でも STAB × ability × item の三重補正が乗る (spa 参照)', () => {
+    expect(calcPowerIndex(special({ type: 'Fire' }), STATS, ['Fire'], 1.3, 1.2)).toBeCloseTo(
+      90 * 90 * 1.5 * 1.3 * 1.2
+    );
+  });
+
   it('引数オブジェクトを変更しない', () => {
     const move = physical();
     const stats = { ...STATS };

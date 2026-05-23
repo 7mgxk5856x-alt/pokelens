@@ -183,6 +183,28 @@ describe('DataLoader.load()', () => {
       'types.json が見つかりません。リポジトリを確認してください'
     );
   });
+
+  it('party.json の species が pokedex.json に未登録でも load() は throw せず継続する', async () => {
+    // UI 側で null チェックして「不明なポケモン: <species>」を表示する設計のため、
+    // データ層では species の pokedex 存在検証はせず throw もしない
+    const unknownSpeciesParty = {
+      party: [
+        {
+          species: '未知のポケモン',
+          ability: 'さめはだ',
+          item: 'こだわりスカーフ',
+          nature: 'いじっぱり',
+          abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+          moves: [{ name: 'じしん' }],
+        },
+      ],
+    };
+    setupFetch({ './data/party.json': makeOkResponse(unknownSpeciesParty) });
+    const loader = new DataLoader();
+    const data = await loader.load();
+    expect(data.userParty.party[0].species).toBe('未知のポケモン');
+    expect(loader.getPokemonByName('未知のポケモン')).toBeNull();
+  });
 });
 
 describe('DataLoader.getTypeName()', () => {
@@ -209,6 +231,13 @@ describe('DataLoader.getMoveCategory()', () => {
     await loader.load();
     expect(loader.getMoveCategory('Physical')).toBe('物理');
     expect(loader.getMoveCategory('Status')).toBe('変化');
+  });
+
+  it('Special を日本語に変換する', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.getMoveCategory('Special')).toBe('特殊');
   });
 });
 
