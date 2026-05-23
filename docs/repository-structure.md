@@ -213,7 +213,8 @@ tools/
 │   │   ├── ShowdownKey.cs          # Showdown データ JSON のキー定数
 │   │   ├── PokeApiKey.cs           # PokéAPI レスポンス JSON のキー定数
 │   │   ├── PokeApiSlug.cs          # Showdown 名 → PokéAPI slug 変換
-│   │   └── PokeApiName.cs          # PokéAPI レスポンスからの和名・フォルム抽出
+│   │   ├── PokeApiName.cs          # PokéAPI レスポンスからの和名・フォルム抽出
+│   │   └── PatchKey.cs             # 手動パッチ JSON の構造キー定数
 │   └── Patches/                    # 手動管理データ（git管理対象）
 │       ├── champions-patch.json    # Champions差分パッチ
 │       ├── moves-power-patch.json  # 威力不定技の最大威力定義

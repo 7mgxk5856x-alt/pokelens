@@ -35,8 +35,8 @@ internal static class PatchApplicator
             ?? throw new InvalidDataException(
                 $"champions-patch.json のパースに失敗しました: {championsPatchPath}");
 
-        ApplyPokedexPatch(showdownPokedexPath, patch["pokedex"]?.AsObject());
-        ApplyMovesPatch(showdownMovesPath, patch["moves"]?.AsObject());
+        ApplyPokedexPatch(showdownPokedexPath, patch[PatchKey.Champions.Pokedex]?.AsObject());
+        ApplyMovesPatch(showdownMovesPath, patch[PatchKey.Champions.Moves]?.AsObject());
     }
 
     /// <summary>パッチの pokedex セクションを当該キャッシュにマージする（baseStats / types / abilities を上書き）。</summary>

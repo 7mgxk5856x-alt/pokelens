@@ -220,7 +220,7 @@ internal static class MergeConverter
             // 威力が null の技には moves-power-patch を適用する
             if (power == null && movesPowerPatch.TryGetPropertyValue(key, out JsonNode? patchEntry))
             {
-                int? patchPower = patchEntry?["power"]?.GetValue<int>();
+                int? patchPower = patchEntry?[PatchKey.MovesPower.Power]?.GetValue<int>();
                 if (patchPower != null)
                 {
                     power = patchPower;
