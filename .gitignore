@@ -20,6 +20,9 @@ data/moves.json
 data/items.json
 data/abilities.json
 
+# Local-only sample party (developer-specific, not regenerated)
+data/party.json
+
 # Test coverage
 coverage/
 
