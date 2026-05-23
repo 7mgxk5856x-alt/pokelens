@@ -117,6 +117,28 @@ test.describe('相手パーティ入力・サジェスト検索', () => {
     await expect(page.locator(SEL.opponentDetail)).toBeHidden();
   });
 
+  test('AET-023b: 確定済みスロットの × は Tab フォーカス対象外（PRD 機能 3）', async ({
+    page,
+  }) => {
+    const cards = page.locator(SEL.opponentCards);
+    const firstInput = cards.nth(0).locator(SEL.oppInput);
+
+    // 1 スロット目を確定して × ボタンを出現させる
+    await firstInput.fill('ガブ');
+    await firstInput.press('Enter');
+    await expect(cards.nth(0).locator(SEL.opponentClear)).toBeVisible();
+
+    // 2 スロット目の入力欄にフォーカスを当て、Tab で次へ移動
+    const secondInput = cards.nth(1).locator(SEL.oppInput);
+    await secondInput.focus();
+    await expect(secondInput).toBeFocused();
+    await secondInput.press('Tab');
+
+    // 1 スロット目の × ではなく、3 スロット目の入力欄にフォーカスが移動する
+    await expect(cards.nth(0).locator(SEL.opponentClear)).not.toBeFocused();
+    await expect(cards.nth(2).locator(SEL.oppInput)).toBeFocused();
+  });
+
   test('AET-024: 未入力スロットが残ってもアプリが正常動作（元 MET-028）', async ({ page }) => {
     const cards = page.locator(SEL.opponentCards);
     // 1 匹だけ入力・確定

@@ -47,6 +47,9 @@ export class OpponentPartyPanel {
     clearButton.textContent = '×';
     clearButton.hidden = true;
     clearButton.setAttribute('aria-label', 'クリア');
+    // Tab フォーカスから外す。6 つの入力欄を Tab で順に移動する操作性を優先し、
+    // クリア操作は明示的なマウスクリックに統一する（aria-label でスクリーンリーダーには認識される）
+    clearButton.tabIndex = -1;
     clearButton.addEventListener('click', (e) => {
       e.stopPropagation();
       this.#clearSlot(index);
