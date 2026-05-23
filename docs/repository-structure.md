@@ -208,7 +208,7 @@ tools/
 │   │   └── ChecksumSet.cs          # チェックサムの型
 │   ├── Common/
 │   │   ├── JsonHelpers.cs          # JSON出力ヘルパー
-│   │   ├── CacheFileName.cs        # cache/ 中間ファイル名の共有定数
+│   │   ├── DataPaths.cs            # ファイル・ディレクトリのパス（cache/data/patch 別）
 │   │   ├── Endpoints.cs            # 外部HTTPエンドポイント（Showdown / PokéAPI）
 │   │   ├── ShowdownKey.cs          # Showdown データ JSON のキー定数
 │   │   ├── PokeApiKey.cs           # PokéAPI レスポンス JSON のキー定数
@@ -216,7 +216,6 @@ tools/
 │   │   ├── PokeApiName.cs          # PokéAPI レスポンスからの和名・フォルム抽出
 │   │   ├── PatchKey.cs             # 手動パッチ JSON の構造キー定数
 │   │   ├── TranslationKey.cs       # 翻訳辞書 JSON の構造キー定数
-│   │   ├── MasterDataFile.cs       # マスタ出力 JSON のファイル名定数
 │   │   ├── MasterKey.cs            # マスタ出力 JSON の構造キー定数
 │   │   └── MasterTag.cs            # マスタ出力 JSON のタグ値定数
 │   └── Patches/                    # 手動管理データ（git管理対象）

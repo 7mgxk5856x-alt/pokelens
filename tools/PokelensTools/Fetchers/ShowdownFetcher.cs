@@ -47,7 +47,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, CacheFileName.ShowdownPokedex),
+            DataPaths.Cache.ShowdownPokedex(cacheDir),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -110,7 +110,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, CacheFileName.ShowdownMoves),
+            DataPaths.Cache.ShowdownMoves(cacheDir),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -181,7 +181,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, CacheFileName.ShowdownItems),
+            DataPaths.Cache.ShowdownItems(cacheDir),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -225,7 +225,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            Path.Combine(cacheDir, CacheFileName.ShowdownAbilities),
+            DataPaths.Cache.ShowdownAbilities(cacheDir),
             JsonHelpers.ToIndentedJson(filtered));
     }
 

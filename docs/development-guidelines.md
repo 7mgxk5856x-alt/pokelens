@@ -288,6 +288,8 @@ var count = GetCount();   // → int count = GetCount();
 
 **namespace はフォルダ構造に揃える**: `tools/PokelensTools/<Folder>/` 配下のファイルは `namespace PokelensTools.<Folder>;`（例: `Common/` → `PokelensTools.Common`、`Fetchers/` → `PokelensTools.Fetchers`、`Pipeline/` → `PokelensTools.Pipeline`、`Models/` → `PokelensTools.Models`）。**ルート直下のファイル**（`Program.cs` / `AssemblyInfo.cs`）は namespace 宣言不要（`Program.cs` は top-level statements、`AssemblyInfo.cs` は assembly 属性のみで、いずれも namespace に属する型を宣言しない）。テストプロジェクトは `PokelensTools.Tests`（プロジェクト単位）に集約しフォルダ分割しない。.NET 標準慣習に従うことで IDE の新規ファイル生成テンプレートとも整合する。
 
+**`DataPaths` のオーバーロード使い分け**: `Common/DataPaths.cs` は各ファイルに引数なし／引数あり 2 つのオーバーロードを持つ。引数なし版は `Directory.GetCurrentDirectory()` から派生する**本番固定パス**を返すため `Program.cs` 等の wiring 層からのみ使う。**Fetcher / Pipeline などのライブラリ関数からは必ず引数あり版を使う**こと（呼び出し元から `cacheDir` / `dataDir` / `patchesDir` を受け取って引き渡す）。引数なし版を library 内で誤用すると、テストが指定する temp dir を無視して本番ディレクトリに書き込み、テスト隔離がサイレントに壊れる。
+
 **champions-patch.json の管理ルール**:
 - Pokémon Champions 独自データ（Showdown データとの差分）を手書き管理するファイル
 - 追加・変更時は既存エントリのフォーマットを維持する

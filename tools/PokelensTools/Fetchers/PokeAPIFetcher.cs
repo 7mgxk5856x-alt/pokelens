@@ -76,7 +76,7 @@ internal class PokeAPIFetcher
 
         Directory.CreateDirectory(cacheDir);
         File.WriteAllText(
-            Path.Combine(cacheDir, CacheFileName.PokeApiTranslations),
+            DataPaths.Cache.PokeApiTranslations(cacheDir),
             translations.ToJsonString(WriteOptions));
     }
 

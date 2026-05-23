@@ -82,19 +82,19 @@ internal static class MergeConverter
         JsonObject itemNames = translations[TranslationKey.Items]?.AsObject() ?? new JsonObject();
 
         File.WriteAllText(
-            Path.Combine(dataDir, MasterDataFile.Pokedex),
+            DataPaths.Master.Pokedex(dataDir),
             JsonHelpers.ToIndentedJson(ConvertPokedex(pokedex, pokemonNames, abilityNames, pokemonNamePatch)));
 
         File.WriteAllText(
-            Path.Combine(dataDir, MasterDataFile.Moves),
+            DataPaths.Master.Moves(dataDir),
             JsonHelpers.ToIndentedJson(ConvertMoves(moves, moveNames, movesPowerPatch)));
 
         File.WriteAllText(
-            Path.Combine(dataDir, MasterDataFile.Items),
+            DataPaths.Master.Items(dataDir),
             JsonHelpers.ToIndentedJson(ConvertItems(itemsModifiers, itemNames, itemNamePatch)));
 
         File.WriteAllText(
-            Path.Combine(dataDir, MasterDataFile.Abilities),
+            DataPaths.Master.Abilities(dataDir),
             JsonHelpers.ToIndentedJson(ConvertAbilities(abilitiesModifiers, abilityNames)));
     }
 
