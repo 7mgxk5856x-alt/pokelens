@@ -21,7 +21,7 @@ var pokeApiFetcher = new PokeAPIFetcher(http);
 
 // Step 1: Showdown データは常に取得する
 Console.WriteLine("[Step 1] Fetching Showdown data...");
-await showdownFetcher.FetchAllAsync(DataPaths.Cache.Dir);
+await showdownFetcher.FetchAllAsync();
 Console.WriteLine("  Done.");
 
 // 差分実行の判定用に現在のチェックサムを計算する
@@ -51,12 +51,7 @@ if (!steps.NeedsStep2 && !steps.NeedsStep3 && !steps.NeedsStep4)
 if (steps.NeedsStep2)
 {
     Console.WriteLine("[Step 2] Fetching PokéAPI translations...");
-    await pokeApiFetcher.FetchTranslationsAsync(
-        DataPaths.Cache.Dir,
-        DataPaths.Cache.ShowdownPokedex(),
-        DataPaths.Cache.ShowdownMoves(),
-        DataPaths.Cache.ShowdownItems(),
-        DataPaths.Cache.ShowdownAbilities());
+    await pokeApiFetcher.FetchTranslationsAsync();
     Console.WriteLine("  Done.");
 
     // 取得後に PokéAPI 翻訳のハッシュを更新する

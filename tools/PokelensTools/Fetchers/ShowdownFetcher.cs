@@ -17,22 +17,21 @@ internal class ShowdownFetcher
     }
 
     /// <summary>4 種のデータ（pokedex / moves / items / abilities）を並行取得して cache/ に書き出す。</summary>
-    /// <remarks>出力先ディレクトリは無ければ作成する。</remarks>
-    /// <param name="cacheDir">取得結果の保存先ディレクトリ。</param>
+    /// <remarks>出力先は <see cref="DataPaths.Cache"/> 配下の本番固定パス。無ければ作成する。</remarks>
     /// <exception cref="HttpRequestException">いずれかのデータ取得が HTTP エラー（非成功ステータス）になった場合。</exception>
     /// <exception cref="FormatException">取得した Showdown JS にトップレベルのオブジェクトが見つからない場合。</exception>
-    internal async Task FetchAllAsync(string cacheDir)
+    internal async Task FetchAllAsync()
     {
-        Directory.CreateDirectory(cacheDir);
+        Directory.CreateDirectory(DataPaths.Cache.Dir);
         await Task.WhenAll(
-            FetchPokedexAsync(cacheDir),
-            FetchMovesAsync(cacheDir),
-            FetchItemsAsync(cacheDir),
-            FetchAbilitiesAsync(cacheDir)
+            FetchPokedexAsync(),
+            FetchMovesAsync(),
+            FetchItemsAsync(),
+            FetchAbilitiesAsync()
         );
     }
 
-    internal async Task FetchPokedexAsync(string cacheDir)
+    internal async Task FetchPokedexAsync()
     {
         string js = await FetchTextAsync(Endpoints.Showdown.Pokedex);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -47,7 +46,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            DataPaths.Cache.ShowdownPokedex(cacheDir),
+            DataPaths.Cache.ShowdownPokedex(),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -95,7 +94,7 @@ internal class ShowdownFetcher
         return pokedexEntry;
     }
 
-    internal async Task FetchMovesAsync(string cacheDir)
+    internal async Task FetchMovesAsync()
     {
         string js = await FetchTextAsync(Endpoints.Showdown.Moves);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -110,7 +109,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            DataPaths.Cache.ShowdownMoves(cacheDir),
+            DataPaths.Cache.ShowdownMoves(),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -166,7 +165,7 @@ internal class ShowdownFetcher
         return moveEntry;
     }
 
-    internal async Task FetchItemsAsync(string cacheDir)
+    internal async Task FetchItemsAsync()
     {
         string js = await FetchTextAsync(Endpoints.Showdown.Items);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -181,7 +180,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            DataPaths.Cache.ShowdownItems(cacheDir),
+            DataPaths.Cache.ShowdownItems(),
             JsonHelpers.ToIndentedJson(filtered));
     }
 
@@ -210,7 +209,7 @@ internal class ShowdownFetcher
         };
     }
 
-    internal async Task FetchAbilitiesAsync(string cacheDir)
+    internal async Task FetchAbilitiesAsync()
     {
         string js = await FetchTextAsync(Endpoints.Showdown.Abilities);
         JsonObject root = JsonNode.Parse(JsToJson(js))!.AsObject();
@@ -225,7 +224,7 @@ internal class ShowdownFetcher
         }
 
         await File.WriteAllTextAsync(
-            DataPaths.Cache.ShowdownAbilities(cacheDir),
+            DataPaths.Cache.ShowdownAbilities(),
             JsonHelpers.ToIndentedJson(filtered));
     }
 

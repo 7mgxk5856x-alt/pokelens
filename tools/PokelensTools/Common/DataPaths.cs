@@ -5,11 +5,14 @@ namespace PokelensTools.Common;
 /// リポジトリルートは <see cref="Directory.GetCurrentDirectory"/> で起動時に 1 回キャプチャし、
 /// 静的フィールドに保持する。各ファイル種別（Cache / Master / Patch）に対して 2 つのオーバーロードを提供する:
 /// <list type="bullet">
-/// <item>引数なし — 本番固定パス。Program.cs などの wiring 層から使う。</item>
-/// <item>引数あり（dir 指定）— ライブラリ関数（Fetcher / Pipeline）から、呼び出し元から受け取った dir に対して
-/// 使う。テスト隔離のため、library 関数からは必ずこちらを使うこと（引数なし版は本番固定ディレクトリを
-/// 指すため、library 内部で誤用するとテストが指定した temp dir を無視し本番側へ書き込んで隔離が壊れる）。</item>
+/// <item>引数なし — 本番固定パス。Program.cs などの wiring 層、および HTTP fetcher のように
+/// 実テストで dir が変動しない library 関数からも使う（fake parameterization を避けるため）。</item>
+/// <item>引数あり（dir 指定）— **実テストで dir を差し替えて呼ばれる** library 関数（例: MergeConverter、
+/// PatchApplicator — PipelineIntegrationTests が temp dir を渡す）から使う。テスト隔離のため、これらの関数
+/// では内部で必ずこちらを使うこと（引数なし版を使うと temp dir を無視して本番側へ書き込み隔離が壊れる）。</item>
 /// </list>
+/// 判断基準は「将来テストするかも」ではなく「**今、実テストで引数が変動しているか**」。
+/// 詳細は development-guidelines.md の同名節を参照。
 /// </remarks>
 internal static class DataPaths
 {
@@ -21,7 +24,8 @@ internal static class DataPaths
 
     /// <summary>cache/ 配下の中間キャッシュファイル。</summary>
     /// <remarks>引数なし版は本番 cache/ 配下、引数あり版は呼び出し元から受け取った任意の dir 配下のパスを返す。
-    /// Library 関数（Fetcher / Pipeline）からは必ず引数あり版を使うこと（テスト隔離のため）。</remarks>
+    /// 現状 Fetcher（HTTP 取得）は実テストで dir が変動しないため引数なし版を直接使っている。
+    /// 将来、テストで dir を差し替えて library 関数を呼ぶケースが生じたら、その関数では引数あり版を使うこと。</remarks>
     internal static class Cache
     {
         /// <summary>cache/ ディレクトリ（本番）。</summary>
@@ -48,7 +52,7 @@ internal static class DataPaths
 
     /// <summary>data/ 配下のフロントエンド向けマスタ出力 JSON。</summary>
     /// <remarks>引数なし版は本番 data/ 配下、引数あり版は呼び出し元から受け取った任意の dir 配下のパスを返す。
-    /// Library 関数（MergeConverter 等）からは必ず引数あり版を使うこと（テスト隔離のため）。</remarks>
+    /// MergeConverter は PipelineIntegrationTests で temp dataDir を受けるため、内部で必ず引数あり版を使う。</remarks>
     internal static class Master
     {
         /// <summary>data/ ディレクトリ（本番）。</summary>
@@ -69,8 +73,8 @@ internal static class DataPaths
 
     /// <summary>tools/PokelensTools/Patches/ 配下の手動パッチファイル。</summary>
     /// <remarks>引数なし版は本番 Patches/ 配下、引数あり版は呼び出し元から受け取った任意の dir 配下のパスを返す。
-    /// Library 関数からは引数あり版を使うこと（現状 PatchApplicator は呼び出し元から完全パスを受け取る設計のため
-    /// DataPaths 自体を参照しないが、将来追加する library 関数があれば同方針）。</remarks>
+    /// 現状 PatchApplicator は呼び出し元（Program.cs）から完全パスを受け取る設計のため DataPaths 自体を内部参照しない。
+    /// 将来 library 関数を追加する場合、実テストで dir が変動するなら引数あり版を、固定なら引数なし版を内部で使う。</remarks>
     internal static class Patch
     {
         /// <summary>Patches/ ディレクトリ（本番）。</summary>

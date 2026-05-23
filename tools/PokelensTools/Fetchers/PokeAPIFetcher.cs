@@ -33,38 +33,31 @@ internal class PokeAPIFetcher
     }
 
     /// <summary>ポケモン・技・特性・アイテムすべての日本語名を取得し、pokeapi-translations.json として cache/ に保存する。</summary>
-    /// <remarks>PokeAPIFetcher インスタンスごとに最大 1 回の呼び出しを想定する（冒頭で内部キャッシュを Clear する）。出力先ディレクトリは無ければ作成する。</remarks>
-    /// <param name="cacheDir">翻訳辞書の保存先ディレクトリ。</param>
-    /// <param name="showdownPokedexPath">対象ポケモンを列挙する Showdown ポケデックスキャッシュのパス。</param>
-    /// <param name="showdownMovesPath">対象技を列挙する Showdown 技キャッシュのパス。</param>
-    /// <param name="showdownItemsPath">対象アイテムを列挙する Showdown アイテムキャッシュのパス。</param>
-    /// <param name="showdownAbilitiesPath">対象特性を列挙する Showdown 特性キャッシュのパス。</param>
-    internal async Task FetchTranslationsAsync(
-        string cacheDir,
-        string showdownPokedexPath,
-        string showdownMovesPath,
-        string showdownItemsPath,
-        string showdownAbilitiesPath)
+    /// <remarks>
+    /// PokeAPIFetcher インスタンスごとに最大 1 回の呼び出しを想定する（冒頭で内部キャッシュを Clear する）。
+    /// 入出力先は <see cref="DataPaths.Cache"/> 配下の本番固定パス。出力先ディレクトリは無ければ作成する。
+    /// </remarks>
+    internal async Task FetchTranslationsAsync()
     {
         _speciesCache.Clear();
 
         Console.WriteLine("  Fetching Pokémon names from PokéAPI...");
-        JsonObject pokemon = await FetchPokemonNamesAsync(showdownPokedexPath);
+        JsonObject pokemon = await FetchPokemonNamesAsync(DataPaths.Cache.ShowdownPokedex());
 
         Console.WriteLine("  Fetching move names from PokéAPI...");
         JsonObject moves = await FetchCategoryAsync(
-            showdownMovesPath,
+            DataPaths.Cache.ShowdownMoves(),
             Endpoints.PokeApi.Move,
             "moves");
 
         Console.WriteLine("  Fetching ability names from PokéAPI...");
         JsonObject abilities = await FetchCategoryAsync(
-            showdownAbilitiesPath,
+            DataPaths.Cache.ShowdownAbilities(),
             Endpoints.PokeApi.Ability,
             "abilities");
 
         Console.WriteLine("  Fetching item names from PokéAPI...");
-        JsonObject items = await FetchItemNamesAsync(showdownItemsPath);
+        JsonObject items = await FetchItemNamesAsync(DataPaths.Cache.ShowdownItems());
 
         var translations = new JsonObject
         {
@@ -74,9 +67,9 @@ internal class PokeAPIFetcher
             [TranslationKey.Items] = items,
         };
 
-        Directory.CreateDirectory(cacheDir);
+        Directory.CreateDirectory(DataPaths.Cache.Dir);
         File.WriteAllText(
-            DataPaths.Cache.PokeApiTranslations(cacheDir),
+            DataPaths.Cache.PokeApiTranslations(),
             translations.ToJsonString(WriteOptions));
     }
 
