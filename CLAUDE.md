@@ -13,9 +13,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev           # Vite開発サーバー起動（必ずこれ経由で開く。file://不可）
 npm run lint          # ESLint
 npm run format        # Prettier
-npm test              # テスト実行（vitest）
+npm test              # 単体・統合テスト実行（vitest）
 npm run test:watch    # vitestウォッチモード
 npm run test:coverage
+npm run test:e2e      # E2E テスト実行（Playwright、Chromium）
+npm run test:e2e:ui   # Playwright UI モード（インタラクティブ実行）
+npm run test:e2e:headed # ヘッド付きブラウザで実行（デバッグ用）
 
 # C# データ準備ツール
 dotnet run --project tools/PokelensTools      # マスターデータ生成
@@ -23,6 +26,8 @@ dotnet test tools/PokelensTools.Tests         # C# テスト実行
 ```
 
 単一ファイルのテスト実行: `npx vitest run tests/unit/speed-calc.test.js`
+
+E2E 初回セットアップ: `npx playwright install chromium`（〜100MB のブラウザバイナリを取得）
 
 lint / format はコミットフックでは走らない。必要に応じて `npm run lint` / `npm run format` を手動で実行する。
 

@@ -26,6 +26,11 @@ data/party.json
 # Test coverage
 coverage/
 
+# Playwright E2E test outputs
+playwright-report/
+test-results/
+playwright/.cache/
+
 # .NET build output
 tools/**/bin/
 tools/**/obj/

@@ -317,20 +317,32 @@ var count = GetCount();   // → int count = GetCount();
 | 実数値計算 | ユニット | `tests/unit/calc-actual-stats.test.js` |
 | DataLoader JSON 読み込み | ユニット | `tests/unit/loader.test.js` |
 | DataLoader → UI フロー | 統合 | `tests/integration/data-flow.test.js` |
+| UI 結合・画面表示・サジェスト・火力指数の UI 反映 | E2E（Playwright） | `tests/e2e/*.spec.js` |
+| 環境セットアップ・C# データ生成・dev サーバー起動 | 手動 E2E | [`docs/testing/e2e/manual-test-cases.md`](./testing/e2e/manual-test-cases.md) |
 
-UIコンポーネント（`src/ui/`）は手動ブラウザテストで確認する（E2Eテストは不要）。
+### E2E テスト方針（Playwright）
 
-**手動テスト対象ブラウザ**: Chrome 最新版
+UI コンポーネント（`src/ui/`）の結合動作は Playwright で自動化する。テストは Chromium 上で実ブラウザを起動し、Vite dev サーバーに接続する（`playwright.config.js` の `webServer` で自動起動）。
 
-**確認項目**（機能追加・変更時に必ず実施）:
-- 対象コンポーネントが正常に表示されること
-- 自分ポケモン選択時に性格（上昇/下降ステの↑↓付き）・種族値（H-A-B-C-D-S）・実数値（H-A-B-C-D-S）が正しく表示されること
-- 自分ポケモン選択時に各技の火力指数が表示されること（変化技は「−」）
-- ポケモン名サジェストが表示・選択できること（ひらがな/カタカナ/半角カナ/ローマ字いずれの入力でも）
-- タブキーで6つの相手パーティ入力欄を順番に移動できること
-- 入力中にタブキー / 矢印キー（↓↑）でサジェスト候補を選択し、エンターキーで決定できること
-- 各パネル（種族値・素早さ6パターン・火力指数）が正しく切り替わること
-- 入力リセット・ページリロード後に初期状態に戻ること
+**データ注入パターン**:
+- 各テストの `beforeEach` で `page.route('**/data/party.json', ...)` を呼び、fixture JSON を返す
+- マスターデータ（pokedex / moves / items / abilities / types / move-categories / natures）は実ファイルを使用する（mock しない）
+- アプリ本体（`src/`）は無改修。テストモード切替や DI は持ち込まない
+
+**規約**:
+- セレクタは `tests/e2e/helpers/selectors.js` の `SEL` 定数を介して参照する（DOM 構造変更を一箇所に閉じる）
+- party fixture は `tests/e2e/helpers/party-fixtures.js` にエクスポート（再利用前提）
+- カードのクリックは `element.click({ force: true })` を使う（CSS `transition: border-color` が Playwright の stability check と衝突するため）
+- 並列実行を前提とし、テスト間で共有状態を持たない（`page.route` はテストスコープ）
+
+**実行**:
+```bash
+npm run test:e2e          # 通常実行（CLI）
+npm run test:e2e:ui       # Playwright UI モード
+npm run test:e2e:headed   # ヘッド付きブラウザで実行（デバッグ用）
+```
+
+**初回セットアップ**: `npx playwright install chromium`（〜100MB のバイナリ取得）
 
 ### テストの書き方（Given-When-Then）
 
@@ -384,7 +396,7 @@ describe('calcPowerIndex', () => {
 
 - `src/logic/` 配下: **80% 以上**
 - `src/data/` 配下: 正常系・ファイル不存在時のエラーパスをカバーする（数値目標は設けない）
-- `src/ui/` 配下: 対象外（手動テスト）
+- `src/ui/` 配下: 単体テスト対象外。UI 結合は Playwright E2E（`tests/e2e/`）で担保する
 
 ```bash
 npm run test:coverage   # カバレッジレポート生成

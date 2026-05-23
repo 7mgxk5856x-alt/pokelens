@@ -41,6 +41,7 @@ pokelens/
 ├── index.html †                    # アプリエントリーポイント
 ├── vite.config.js †                # Vite 設定
 ├── vitest.config.js †              # Vitest 設定
+├── playwright.config.js †          # Playwright（E2E）設定
 ├── eslint.config.js †              # ESLint 設定
 ├── .prettierrc †                   # Prettier 設定
 └── package.json
@@ -168,6 +169,28 @@ tests/unit/
 tests/integration/
 └── data-flow.test.js
 ```
+
+#### tests/e2e/
+
+**役割**: Playwright による自動 E2E テスト。Vite dev サーバー上で実ブラウザ（Chromium）を起動し、`page.route()` で `data/party.json` のみを mock 注入して UI 結合・画面表示を検証する。マスターデータ（pokedex/moves/items/abilities/types/move-categories/natures）は実ファイルを使用する
+
+**構造**:
+```
+tests/e2e/
+├── helpers/
+│   ├── mock-party.js              # page.route で party.json を mock するヘルパー
+│   ├── party-fixtures.js          # 各テスト用の party 入力データ
+│   └── selectors.js               # UI セレクタ定数（DOM 構造変更耐性）
+├── own-party-display.spec.js      # 自分パーティの表示・選択・状態遷移
+├── own-pokemon-detail.spec.js     # 自分ポケモン詳細・火力指数・性格・技一覧
+├── opponent-suggest.spec.js       # 相手パーティ入力・サジェスト検索・XSS 耐性
+├── opponent-pokemon-detail.spec.js # 相手ポケモン詳細・素早さ 6 パターン
+└── error-handling.spec.js         # party.json 構文不正・必須フィールド欠落
+```
+
+**命名規則**: `[機能グループ].spec.js`
+
+**初回セットアップ**: `npx playwright install chromium`（〜100MB のブラウザバイナリを取得）
 
 ---
 
@@ -331,6 +354,7 @@ data/
 |-----------|--------|---------|-----|
 | ユニットテスト | `tests/unit/` | `[対象].test.js` | `power-index-calc.test.js` |
 | 統合テスト | `tests/integration/` | `[フロー].test.js` | `data-flow.test.js` |
+| E2E テスト | `tests/e2e/` | `[機能グループ].spec.js` | `own-party-display.spec.js` |
 
 ---
 
