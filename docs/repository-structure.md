@@ -93,6 +93,7 @@ src/data/
 **配置ファイル**:
 - `power-index-calc.js`: 火力指数計算
 - `speed-calc.js`: 素早さ4パターン計算
+- `endurance-calc.js`: 耐久指数計算（物理 = HP × 防御、特殊 = HP × 特防）
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
 - `calc-actual-stats.js`: 実数値計算
 - `resolve-modifier.js`: 特性・持ち物の補正条件解決
@@ -124,9 +125,9 @@ src/logic/
 
 **配置ファイル**:
 - `own-party-panel.js` (`OwnPartyPanel`): 自分パーティ6匹のカード一覧表示
-- `own-pokemon-detail.js` (`OwnPokemonDetail`): 自分ポケモン詳細パネル（実数値・技・火力指数）
+- `own-pokemon-detail.js` (`OwnPokemonDetail`): 自分ポケモン詳細パネル（実数値・技・火力指数・耐久指数）
 - `opponent-party-panel.js` (`OpponentPartyPanel`): 相手パーティ6スロットの管理
-- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ4パターン）
+- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ4パターン・耐久指数4パターン）
 - `search-input.js` (`SearchInput`): ポケモン名サジェスト入力
 - `dom-utils.js`: 共通 DOM 操作ヘルパー（`el()` 等）
 - `stat-labels.js`: 種族値・実数値の表示ラベル定義と整形ヘルパー（`STAT_LABELS` / `formatBaseStats`）

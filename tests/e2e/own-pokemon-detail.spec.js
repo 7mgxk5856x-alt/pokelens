@@ -237,6 +237,28 @@ test.describe('自分ポケモン詳細・火力指数', () => {
     expect(text).not.toContain(')');
   });
 
+  test('AET-037: 自分側に物理耐久指数・特殊耐久指数を表示する', async ({ page }) => {
+    // GARCHOMP_PHYSICAL: ガブリアス いじっぱり HP32 atk32（他 0）
+    // HP実数値 = 108+32+75 = 215、B実数値 = (95+0+20)×1.0 = 115、D実数値 = (85+0+20)×1.0 = 105
+    // 物理耐久指数 = 215×115 = 24725、特殊耐久指数 = 215×105 = 22575
+    await mockParty(page, GARCHOMP_PHYSICAL);
+    await page.goto('/');
+    await page.locator(SEL.ownCards).first().click({ force: true });
+
+    const enduranceCells = page.locator(SEL.ownEnduranceCells);
+    await expect(enduranceCells).toHaveCount(2);
+    await expect(enduranceCells.nth(0)).toHaveText('物理耐久指数: 24725');
+    await expect(enduranceCells.nth(1)).toHaveText('特殊耐久指数: 22575');
+
+    // grid 内の DOM 順序: 種族値 → 物理耐久 → 実数値 → 特殊耐久
+    const gridChildren = page.locator(`${SEL.ownStatsGrid} > *`);
+    await expect(gridChildren).toHaveCount(4);
+    await expect(gridChildren.nth(0)).toHaveText(/^種族値:/);
+    await expect(gridChildren.nth(1)).toHaveText('物理耐久指数: 24725');
+    await expect(gridChildren.nth(2)).toHaveText(/^実数値:/);
+    await expect(gridChildren.nth(3)).toHaveText('特殊耐久指数: 22575');
+  });
+
   test('AET-017: 特殊技の火力指数 = 17550（元 MET-033）', async ({ page }) => {
     await mockParty(page, GARCHOMP_SPECIAL);
     await page.goto('/');

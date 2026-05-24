@@ -183,6 +183,7 @@ src/
 ├── logic/
 │   ├── power-index-calc.js   # 火力指数計算（純粋関数）
 │   ├── speed-calc.js         # 素早さ4パターン計算（純粋関数）
+│   ├── endurance-calc.js     # 耐久指数計算（純粋関数）
 │   ├── name-search.js        # ひらがな/カタカナ正規化・前方一致検索
 │   ├── calc-actual-stats.js  # 実数値計算（純粋関数）
 │   ├── resolve-modifier.js   # 特性・持ち物の補正条件解決（純粋関数）

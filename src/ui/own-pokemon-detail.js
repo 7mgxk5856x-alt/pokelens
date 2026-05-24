@@ -1,4 +1,5 @@
 import { calcActualStats } from '../logic/calc-actual-stats.js';
+import { calcEndurance } from '../logic/endurance-calc.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
 import { MODIFIER_KIND } from '../logic/constants.js';
@@ -40,8 +41,7 @@ export class OwnPokemonDetail {
       this.#buildAbilityRow(entry.ability),
       this.#buildItemRow(entry.item),
       this.#buildNatureRow(entry.nature, natureModifiers),
-      this.#buildBaseStatsRow(pokemonData.baseStats),
-      this.#buildActualStatsRow(actualStats, entry.item),
+      this.#buildStatsGrid(pokemonData, actualStats, entry.item),
       this.#buildMovesTable(entry, pokemonData, actualStats)
     );
     this.#container.style.display = 'block';
@@ -85,6 +85,19 @@ export class OwnPokemonDetail {
     return el('div', 'detail-row', `性格: ${nature}${suffix}`);
   }
 
+  #buildStatsGrid(pokemonData, actualStats, item) {
+    // 種族値行・実数値行を CSS Grid（2 列）に並べ、各行の右隣に耐久指数セルを配置する。
+    // 同一 grid 配下の 1 列目はカラム幅自動算出で揃うため、2 列目（耐久指数）の左端も縦に揃う。
+    const physical = calcEndurance(actualStats.hp, actualStats.def);
+    const special = calcEndurance(actualStats.hp, actualStats.spd);
+    const grid = el('div', 'detail-stats-grid');
+    grid.appendChild(this.#buildBaseStatsRow(pokemonData.baseStats));
+    grid.appendChild(this.#buildEnduranceCell('物理耐久指数', physical));
+    grid.appendChild(this.#buildActualStatsRow(actualStats, item));
+    grid.appendChild(this.#buildEnduranceCell('特殊耐久指数', special));
+    return grid;
+  }
+
   #buildBaseStatsRow(baseStats) {
     const text = STAT_LABELS.map(([key, label]) => `${label} ${baseStats[key]}`).join(' / ');
     return el('div', 'detail-stats', `種族値: ${text}`);
@@ -100,6 +113,10 @@ export class OwnPokemonDetail {
       return `${label} ${value}`;
     }).join(' / ');
     return el('div', 'detail-stats', `実数値: ${text}`);
+  }
+
+  #buildEnduranceCell(label, value) {
+    return el('div', 'detail-endurance-cell', `${label}: ${value}`);
   }
 
   #buildMovesTable(entry, pokemonData, actualStats) {

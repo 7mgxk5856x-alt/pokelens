@@ -57,6 +57,42 @@ test.describe('相手ポケモン情報・素早さ 4 パターン', () => {
     expect(cellTexts).toEqual(['169', '154', '122', '109']);
   });
 
+  test('AET-038: 相手側に耐久指数 4 パターン × 2 種類の表を表示する', async ({ page }) => {
+    // ガブリアス（H108/B95/D85）の 4 パターン耐久指数:
+    //   B32+↑ = floor((95+32+20)×1.1) = 161、B0 = 115
+    //   D32+↑ = floor((85+32+20)×1.1) = 150、D0 = 105
+    //   H32 = 215、H0 = 183（HP は性格補正対象外）
+    //   特化: 215×161=34615 / 215×150=32250
+    //   極振: 183×161=29463 / 183×150=27450
+    //   H極振: 215×115=24725 / 215×105=22575
+    //   無振り: 183×115=21045 / 183×105=19215
+    const firstSlot = page.locator(SEL.opponentCards).first();
+    const input = firstSlot.locator(SEL.oppInput);
+    await input.fill('ガブ');
+    await input.press('Enter');
+
+    // 列ヘッダ: [空] + 「耐久特化 / 耐久極振 / H極振 / 無振り」 = 5 列
+    const headers = page.locator(SEL.enduranceHeaders);
+    await expect(headers).toHaveCount(5);
+    const headerTexts = await headers.allTextContents();
+    expect(headerTexts).toEqual(['', '耐久特化', '耐久極振', 'H極振', '無振り']);
+
+    // 行ヘッダ: 上から「物理耐久指数 / 特殊耐久指数」
+    const rowHeaders = page.locator(SEL.enduranceRowHeaders);
+    await expect(rowHeaders).toHaveCount(2);
+    const rowHeaderTexts = await rowHeaders.allTextContents();
+    expect(rowHeaderTexts).toEqual(['物理耐久指数', '特殊耐久指数']);
+
+    // データセル: 2 行 × 4 列 = 8 セル、上段=物理、下段=特殊、左から特化→極振→H極振→無振り
+    const cells = page.locator(SEL.enduranceCells);
+    await expect(cells).toHaveCount(8);
+    const cellTexts = await cells.allTextContents();
+    expect(cellTexts).toEqual([
+      '34615', '29463', '24725', '21045',
+      '32250', '27450', '22575', '19215',
+    ]);
+  });
+
   test('AET-029: 相手ポケモン切替時の詳細表示切替（元 MET-032）', async ({ page }) => {
     const cards = page.locator(SEL.opponentCards);
 
