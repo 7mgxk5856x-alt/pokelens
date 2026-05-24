@@ -36,5 +36,7 @@
   "galvanize":      { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertNormalTo", "convertedType": "Electric" } },
   "normalize":      { "modifier": { "atk": 1.2, "spa": 1.2, "condition": "convertAllTo", "convertedType": "Normal" } },
 
-  "technician":     { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "powerMax60" } }
+  "technician":     { "modifier": { "atk": 1.5, "spa": 1.5, "condition": "powerMax60" } },
+
+  "parentalbond":   { "modifier": { "atk": 1.25, "spa": 1.25 } }
 }
