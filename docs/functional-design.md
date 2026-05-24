@@ -250,7 +250,7 @@ Showdown データと Pokémon Champions の差分（技威力・種族値変更
 |---|---|---|
 | 技 (`isZ` または `isMax` あり) | `entry.isZ != null \|\| entry.isMax != null` | Zワザ・ダイマックスワザ・キョダイマックスワザは現代対戦 (Gen 9 標準) で使用不可。`isZ` には Z-クリスタル名 (例: `"electriumz"`) が、`isMax` には許容ポケモン名が入る |
 | 特性 (`isNonstandard` あり) | `entry.isNonstandard != null` | `"Future"` (4件: piercingdrill, dragonize, megasol, spicyspray) は次世代用の仮置き |
-| アイテム (`isNonstandard` あり) | `entry.isNonstandard != null` | `"Past"` (メガストーン、Zクリスタル)、`"Future"` (Z 進化アイテム)、`"Unobtainable"` (チェリッシュボール等)、`"CAP"` を除外 |
+| アイテム (`isNonstandard` あり、`megaStone` 持ちは例外) | `entry.isNonstandard != null && entry.megaStone == null` | `"Past"` (Zクリスタル)、`"Future"` (Z 進化アイテム)、`"Unobtainable"` (チェリッシュボール等)、`"CAP"` を除外。**メガストーン (`megaStone` フィールド持ち) は `"Past"` でも例外として通す** (機能 7 のため Gen 6/7 ルールセットの該当アイテムを保持) |
 
 > `noability`（特性、`num=0`）と CAP ポケモン（`num<0`）は既存の `num <= 0` チェックで除外済み。
 
@@ -301,6 +301,7 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
 [Step 4] 最終出力生成 → data/*.json  （条件付き）
   ※ pokedex.json 生成時に以下を適用する:
     - pokemon-name-patch.json: 翻訳された日本語名を Showdown キー単位で上書き
+    - メガシンカネスト処理 (機能 7): items.ts の `megaStone` フィールドを真実源として、(親, メガ, メガストーン) の 3 つ組を抽出し、メガ独立エントリ (例: `venusaurmega`) を親エントリ (例: `venusaur`) の `megaForms[]` にネストする。メガのトップレベルキーは削除する。Showdown 英語名 (例: `"Absol-Mega"`) は内部キー (例: `"absolmega"`) に変換する (ハイフン除去 + 小文字化)。メガ名・メガストーン名の半角 X/Y は全角 Ｘ/Ｙ に正規化する
   ※ moves.json 生成時に以下を適用する:
     - 複数回攻撃技: basePower × multihit[1] を power として出力
     - moves-power-patch.json: power が null の技に最大威力を上書き適用
@@ -526,6 +527,23 @@ C# ツールが生成する `pokedex.json` の構造:
       "spa": 50, "spd": 50, "spe": 90
     },
     "abilities": ["せいでんき", "ひらいしん"]
+  },
+  "venusaur": {
+    "num": 3,
+    "name": "フシギバナ",
+    "types": ["Grass", "Poison"],
+    "baseStats": { "hp": 80, "atk": 82, "def": 83, "spa": 100, "spd": 100, "spe": 80 },
+    "abilities": ["しんりょく", "ようりょくそ"],
+    "megaForms": [
+      {
+        "key": "venusaurmega",
+        "name": "メガフシギバナ",
+        "item": "フシギバナイト",
+        "types": ["Grass", "Poison"],
+        "baseStats": { "hp": 80, "atk": 100, "def": 123, "spa": 122, "spd": 120, "spe": 80 },
+        "abilities": ["あついしぼう"]
+      }
+    ]
   }
 }
 ```
@@ -536,40 +554,9 @@ C# ツールが生成する `pokedex.json` の構造:
 - `name` はPokéAPIから取得した日本語名（カタカナ）。サジェスト検索のキーとして使用する
 - `types` はShowdownの英語タイプ名のまま保持する。`moves.json` の `type` フィールドも英語で統一しているため、STAB判定（`pokemonTypes.includes(move.type)`）を変換なしで行える。表示時はフロントエンドが `DataLoader.getTypeName()` で日本語に変換する
 - `abilities` はShowdownの `abilities` オブジェクト（`"0"` / `"1"` / `"H"` キー）を `"0"` → `"1"` → `"H"` の順に並べ、定義されているスロットのみを `pokeapi-translations.json` で日本語名に変換した配列
+- `megaForms` (機能 7): メガシンカ可能なポケモンのみ持つオプショナルフィールド。配列の各要素は親エントリと同じ `name` / `types` / `baseStats` / `abilities` を持ち、追加で `key` (メガ独立識別子、例: `venusaurmega`) と `item` (対応するメガストーンの日本語名、X/Y は全角 `Ｘ`/`Ｙ`) を持つ。メガ独立エントリは pokedex のトップレベルには **存在しない** (親に物理ネスト)
 
-> **メガシンカ対応（機能 7、P0.5 実装済み）**: 当初計画では `pokedex.json` に `mega?: {...}` フィールドを追加する schema 拡張を予定していたが、実装では C# パイプライン変更を避けるため JS 層で論理的に「親に紐づくサブデータ」を表現する方式を採用した。現状の `pokedex.json` はメガフォームを独立エントリで保持しているが、`DataLoader.getPokemonByName(メガ名)` で `null` 返却・`searchByName` でメガ除外という挙動により、外部からは「親 + サブデータ」として見える。マッピング情報は `src/data/mega-evolutions.json`（後述）で別管理する。
-
----
-
-### エンティティ: MegaEvolutions（メガシンカマッピング、機能 7）
-
-`src/data/mega-evolutions.json` の構造（**手動メンテ**・コミット対象。C# パイプラインの出力ではない）:
-
-```json
-{
-  "_comment": "親ポケモン日本語名 → { stones, megaForms } のマッピング。手動メンテ",
-  "フシギバナ": {
-    "stones": ["フシギバナイト"],
-    "megaForms": ["メガフシギバナ"]
-  },
-  "リザードン": {
-    "stones": ["リザードナイトＸ", "リザードナイトＹ"],
-    "megaForms": ["メガリザードンＸ", "メガリザードンＹ"]
-  },
-  "カメックス": {
-    "stones": ["カメックスナイト"],
-    "megaForms": ["メガカメックス"]
-  }
-}
-```
-
-**制約**:
-- キーは親ポケモンの日本語名（カタカナ）。`pokedex.json` の `name` と一致させる
-- `stones`: 当該ポケモンに対応するメガストーン日本語名（複数可）。`OwnPartyPanel` で `entry.item` との突合に使用
-- `megaForms`: メガフォームの日本語名（複数可）。`pokedex.json` 内に同名のエントリが存在することが前提
-- `stones[i]` と `megaForms[i]` の対応順序は厳密ではない（リザードナイトＸ→メガリザードンＸ等の対応は意味的なものでロジック上は循環順序のみ反映）
-- `_comment` 等のメタキー（`META_KEYS` Set で識別）はマッピング対象外
-- ファイル配置は `src/data/`（手動メンテ・コミット対象）。C# パイプライン出力の `data/` 配下とは区別される
+> **メガシンカ対応（機能 7、P0.5）**: メガシンカ後のポケモンは独立した pokedex エントリとして扱わず、親エントリの `megaForms[]` 配列にサブデータとして物理ネストする。トップレベルにメガキー (例: `venusaurmega`) は存在しないため、`searchByName` は自然にメガを除外できる。メガフォームのデータを引きたい場合は `DataLoader.getMegaFormByName(メガ名)` または `DataLoader.getMegaFormByItem(親名, アイテム名)` を使う (詳細は DataLoader セクション参照)。
 
 ---
 
@@ -860,10 +847,10 @@ DataLoader
                               main.js は try-catch で捕捉し、`e.message` を画面に表示して起動を中断する。
                             ※ party.json の必須フィールド欠落チェック（species・nature・abilityPoints・moves）は DataLoader.load() 内で行い、欠落時は構文エラーと同一のメッセージで throw する（main.js 側では行わない）。
   getPokemonByName(name)  → PokedexEntry | null   ※日本語名で pokedex.json を検索。メガフォーム名（例「メガフシギバナ」）は null（機能 7）
-  getMegaInfo(parentName) → { stones: string[], megaForms: string[] } | null  ※親ポケモン名からメガストーン名・メガフォーム名のリストを引く（機能 7）
-  isMegaForm(name)        → boolean             ※名前がメガフォームかを判定（機能 7。`#megaFormNameSet` で O(1) ルックアップ）
-  getMegaFormData(megaName)→ PokedexEntry | null ※メガフォーム名で pokedex 内のメガエントリを引く（機能 7。通常名・未登録名は null）
-  searchByName(query)     → PokedexEntry[]        ※DataLoader が保持する全 PokedexEntry を entries として NameSearch.searchByName(query, entries) に委譲する。メガフォームは事前にフィルタ除外（機能 7）
+  isMegaForm(name)        → boolean             ※名前がメガフォームかを判定（機能 7。派生 Map `megaLocationByName` で O(1) ルックアップ）
+  getMegaFormByName(megaName) → MegaFormData | null ※メガフォーム日本語名から、親エントリにネストされたメガデータを引く（機能 7。派生 Map 経由で O(1) ルックアップ。通常名・未登録名は null）
+  getMegaFormByItem(parentName, itemName) → MegaFormData | null ※親ポケモン名と持ち物名から、対応するメガフォームのデータを引く（機能 7。自分側パーティの切替ボタン表示判定に使用）
+  searchByName(query)     → PokedexEntry[]        ※DataLoader が保持する全 PokedexEntry を entries として NameSearch.searchByName(query, entries) に委譲する。pokedex.json トップレベルにメガキーが存在しないため自然にメガ除外（機能 7）
   getMove(name)           → Move | null
   getItemModifier(name)   → Modifier | null
   getAbilityModifier(name)→ Modifier | null
@@ -874,18 +861,33 @@ DataLoader
 
 **型定義**:
 
-- `PokedexEntry`: `pokedex.json` の各エントリに対応。`{ num: number, name: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[] }`
+- `PokedexEntry`: `pokedex.json` の各エントリに対応。`{ num: number, name: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[], megaForms?: MegaFormData[] }`。`megaForms` はメガシンカ可能ポケモンのみ持つオプショナルフィールド
+- `MegaFormData`: メガフォームデータ（機能 7）。`{ key: string, name: string, item: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[] }`。`PokedexEntry` と同じフィールドに加え、メガ独立識別子 `key` と対応メガストーン名 `item` を持つ
 - `Move`: `moves.json` の各エントリに対応。`{ type: string, category: string, power: number | null, accuracy: number | null, tags?: string[] }`
 - `Modifier`: `getItemModifier()` / `getAbilityModifier()` の戻り値型。`{ condition: string | null, atk?: number, spa?: number, spe?: number, stab?: number, moveType?: string, convertedType?: string }` — `items.json` / `abilities.json` の各エントリは `{ modifier: { ... } }` のネスト構造だが、これらのメソッドは `.modifier` を取り出して返す（ラッパーオブジェクトは呼び出し側に渡さない）。`convertedType` は `condition: "convertNormalTo"` / `"convertAllTo"` のときの変換後タイプ名
 
 **メガシンカ関連の責務（機能 7）**:
 
-- `src/data/mega-evolutions.json`（親ポケモン日本語名 → `{ stones: string[], megaForms: string[] }` マップ）を ES Modules の JSON import で取り込み、`#megaFormNameSet` を Set として一度だけ構築する（O(1) ルックアップ）
-- 「マスターデータ上、メガシンカ後は親に紐づくサブデータ」という PRD 機能 7 の論理表現を JS 層で実現する責務:
-  - `getPokemonByName(メガ名)` は `null` を返す（`party.json` の `species` にメガ名指定は不明扱い）
-  - `searchByName` でメガフォームをサジェスト候補から除外
-  - メガフォームのデータ取得は専用 API `getMegaFormData(メガ名)` 経由のみ
-- `_comment` メタキーはマッピング対象外（`META_KEYS` Set で除外）
+- `data/pokedex.json` の親エントリにネストされた `megaForms[]` を真実源とし、ローダー初期化時に派生 Map (`megaLocationByName: Map<メガ和名, {parentKey, megaIndex}>`) を一度だけ構築する（O(1) ルックアップ）
+- 「メガシンカ後は親に紐づくサブデータ」という PRD 機能 7 の表現を物理スキーマで実現する責務:
+  - `getPokemonByName(メガ名)` は `null` を返す（`party.json` の `species` にメガ名指定は不明扱い）。pokedex.json トップレベルにメガキーが存在しないため自然に成立
+  - `searchByName` はトップレベル走査のみ。メガフォームは自然に除外される
+  - メガフォームのデータ取得は派生 Map 経由の専用 API `getMegaFormByName(メガ名)` / `getMegaFormByItem(親名, アイテム名)` で行う
+
+---
+
+### メガシンカ循環ルール（機能 7）
+
+自分側と相手側でメガシンカ状態の循環内容が異なる。これは「ユーザーが持つ情報量を正確に反映する」設計判断による。
+
+| サイド | 持ち物の状態 | 循環内容 |
+|---|---|---|
+| 相手側 | 未知 | 全メガ形態を循環。例: リザードン → メガリザードンＸ → メガリザードンＹ → リザードン → ... |
+| 自分側 | 既知 (`party.json` で指定) | 持ち物に対応するメガ形態のみ循環。例: リザードン + リザードナイトＸ → 通常 ↔ メガリザードンＸ |
+
+**根拠**: 自分側でリザードン + リザードナイトＸ 持ちのときに「メガリザードンＹ」を表示するのは、実際の対戦で到達不可能な状態であり「正確に参照」のユーザーストーリーから外れる。相手側は持ち物未知のため全形態の可能性が残り、循環に含める必然性がある。
+
+**実装**: 自分側は `DataLoader.getMegaFormByItem(親名, アイテム名)` で 1 件の対応メガを取得し、循環は 2 状態 (通常 ↔ matched mega) のみ。相手側は `parent.megaForms` 配列全体を循環。
 
 ---
 
@@ -901,12 +903,12 @@ DataLoader
 - **メガシンカ状態**（カードごとに独立して保持・機能 7）: `#megaIndices[i]` で各スロットの状態を `-1`（通常）または `0..n-1`（n 番目のメガフォーム）として保持。メモリのみで管理しページリロードで全カードが `-1` にリセットされる
 
 **メガシンカ切替ボタン（機能 7）**:
-- 表示条件: `DataLoader.getMegaInfo(entry.species)` が非 null かつ `stones` 配列に `entry.item` が含まれる場合のみ表示する（持ち物が当該ポケモンに対応するメガストーン一致時のみ）
-- 切替ロジック: ボタン押下で `#megaIndices[i]` が `-1 → 0 → 1 → ... → n-1 → -1` の順に循環する（n はメガフォーム数）
-- 切替後のカード表示: メガ状態に応じた表示用 `PokemonData`（通常は `getPokemonByName`、メガは `getMegaFormData`）でカード内容（名前・タイプ・種族値）を再描画
+- 表示条件: `DataLoader.getMegaFormByItem(entry.species, entry.item)` が非 null の場合のみ表示する（持ち物が当該ポケモンに対応するメガストーン一致時のみ）
+- 切替ロジック: 自分側は持ち物に対応するメガ形態のみ循環するため、`#megaIndices[i]` は `-1 → 0 → -1` の 2 状態のみ循環する（メガシンカ循環ルール参照）。例: リザードン + リザードナイトＸ なら `通常 ↔ メガリザードンＸ` のみ循環し、メガリザードンＹ は登場しない
+- 切替後のカード表示: 通常状態は `getPokemonByName(entry.species)`、メガ状態は `getMegaFormByItem(entry.species, entry.item)` でデータを取得し、カード内容（名前・タイプ・種族値）を再描画
 - 詳細パネル連動: 切替したカードが選択中の場合、`onSelect(entry, displayedPokemonData)` を呼び OwnPokemonDetail を再描画させる
 - フォーカス: 操作上の対称性（×ボタン・相手側 mega-toggle と同じポリシー）から `tabIndex = -1` で Tab フォーカスから外す
-- 防御層: `getMegaFormData` が null を返した場合（マッピングと pokedex の不整合時）、親の pokemonData にフォールバックして空白カード化や TypeError を回避
+- 防御層: `getMegaFormByItem` が null を返した場合は親の pokemonData にフォールバックして空白カード化や TypeError を回避（マスターデータが単一真実源化されたため不整合は通常発生しないが、念のため）
 
 **イベントフロー**:
 1. ポケモンカードをクリックすると、そのスロットを「選択中」状態にする（同時に選択できるのは最大1匹）
@@ -1005,9 +1007,9 @@ const powerIndex = calcPowerIndex(move, actualStats, typesForCalc, abilityModifi
 - **メガシンカ状態（機能 7）**: 各スロットが `megaIndex`（`-1`=通常、`0..n-1`=メガフォーム）を保持。メモリのみで管理しページリロードで全スロットが `-1` にリセットされる。`#commitSlot` 時および `#clearSlot` 時に `-1` へ初期化
 
 **メガシンカ切替ボタン（機能 7）**:
-- 表示条件: スロットが確定済み（`species` 非 null）かつ `DataLoader.getMegaInfo(species)` が非 null の場合のみ `.opponent-info` 内に表示する（相手の持ち物は未知のため item チェックは行わない）
-- 切替ロジック: 自分側と同じ `-1 → 0 → 1 → ... → n-1 → -1` の循環
-- 切替後の info 表示: メガ状態に応じた表示用 `PokemonData` で `.opponent-info` の名前・タイプ・種族値を再描画
+- 表示条件: スロットが確定済み（`species` 非 null）かつ `DataLoader.getPokemonByName(species).megaForms` が非空配列の場合のみ `.opponent-info` 内に表示する（相手の持ち物は未知のため item チェックは行わない）
+- 切替ロジック: 相手側は持ち物未知のため全メガ形態を循環する。`megaIndex` が `-1 → 0 → 1 → ... → n-1 → -1` の順に循環する（n = `parent.megaForms.length`、メガシンカ循環ルール参照）
+- 切替後の info 表示: 通常状態は `getPokemonByName(species)`、メガ状態は `parent.megaForms[megaIndex]` でデータを取得し、`.opponent-info` の名前・タイプ・種族値を再描画
 - 詳細パネル連動: 切替したスロットが選択中の場合、`onSelect(species, displayedPokemonData)` を呼び `OpponentPokemonDetail` を再描画させる
 - フォーカス: `tabIndex = -1` で Tab フォーカスから外す（×ボタンと同じポリシー）
 
@@ -1190,24 +1192,36 @@ sequenceDiagram
     participant OD as OwnPokemonDetail<br/>(or OpponentPokemonDetail)
 
     Note over PP: カード初期描画時
-    PP->>DL: getMegaInfo(species)
-    DL-->>PP: { stones, megaForms } or null
-    alt 自分側: stones に entry.item が含まれる
-        PP->>PP: メガ切替ボタンを表示
-    else 相手側: メガ可能なら持ち物に関わらず
-        PP->>PP: メガ切替ボタンを表示
+    alt 自分側
+        PP->>DL: getMegaFormByItem(entry.species, entry.item)
+        DL-->>PP: MegaFormData or null
+        opt 戻り値が非 null（持ち物がメガストーンと一致）
+            PP->>PP: メガ切替ボタンを表示
+        end
+    else 相手側
+        PP->>DL: getPokemonByName(species)
+        DL-->>PP: PokedexEntry（megaForms? 含む）
+        opt parent.megaForms が非空配列
+            PP->>PP: メガ切替ボタンを表示
+        end
     end
 
     User->>PP: メガ切替ボタンを押下
-    PP->>PP: megaIndex を -1 → 0 → ... → n-1 → -1 で循環
-    alt megaIndex >= 0
-        PP->>DL: getMegaFormData(megaForms[megaIndex])
-        DL-->>PP: メガフォームの PokedexEntry
+    alt 自分側
+        PP->>PP: megaIndex を -1 → 0 → -1 で循環（持ち物対応の 1 件のみ）
+    else 相手側
+        PP->>PP: megaIndex を -1 → 0 → ... → n-1 → -1 で循環（全メガ形態）
+    end
+    alt megaIndex >= 0 かつ 自分側
+        PP->>DL: getMegaFormByItem(species, entry.item)
+        DL-->>PP: MegaFormData
+    else megaIndex >= 0 かつ 相手側
+        PP->>PP: parent.megaForms[megaIndex] を取得
     else megaIndex === -1
         PP->>DL: getPokemonByName(species)
         DL-->>PP: 通常の PokedexEntry
     end
-    PP->>PP: カード/info を表示用 PokedexEntry で再描画
+    PP->>PP: カード/info を表示用データで再描画
 
     alt カードが選択中
         PP->>OD: update(entry/species, displayedPokemonData)
@@ -1442,8 +1456,7 @@ src/
 ├── main.js                    # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
 ├── styles.css                 # 全 UI のスタイルシート（main.js から import、Vite がバンドル）
 ├── data/
-│   ├── loader.js              # JSON読み込み・キャッシュ（DataLoader）
-│   └── mega-evolutions.json   # メガシンカマッピング（機能 7・手動メンテ）
+│   └── loader.js              # JSON読み込み・キャッシュ（DataLoader）
 ├── logic/
 │   ├── power-index-calc.js    # 火力指数計算（純粋関数）
 │   ├── speed-calc.js          # 素早さ4パターン計算（純粋関数）
@@ -1505,7 +1518,7 @@ tools/
 | `types.json` / `move-categories.json` / `natures.json` が見つからない | 起動を中断 | 「[ファイル名] が見つかりません。リポジトリを確認してください」 |
 | `party.json` の `species` が `pokedex.json` に存在しない | 該当スロットをエラー表示して起動を継続（他スロットは正常表示） | 該当スロットに「不明なポケモン: [species名]」を表示 |
 | `party.json` の `species` にメガフォーム名（例: 「メガフシギバナ」）が指定された場合（機能 7） | `DataLoader.getPokemonByName(メガ名)` が `null` を返すため、未知 species と同じ扱いとなり起動継続 | 該当スロットに「不明なポケモン: [メガ名]」を表示 |
-| `src/data/mega-evolutions.json` の `megaForms` に列挙したメガ名が `pokedex.json` に存在しない（手動メンテ不整合・機能 7） | `getMegaFormData` が `null` を返す。`OwnPartyPanel` / `OpponentPartyPanel` は親の `PokedexEntry` にフォールバックして空白カード化や TypeError を回避 | カードはメガ前の値で表示。切替ボタンは引き続き押せるがメガ表示は機能しない（運用上の手動メンテで修正） |
+| `data/pokedex.json` の `megaForms[]` のネスト構造が不正（C# パイプライン生成ミス・機能 7） | `getMegaFormByName` / `getMegaFormByItem` が `null` を返す。`OwnPartyPanel` / `OpponentPartyPanel` は親の `PokedexEntry` にフォールバックして空白カード化や TypeError を回避 | カードはメガ前の値で表示。切替ボタンは引き続き押せるがメガ表示は機能しない（マスターデータは単一真実源化されたため通常発生しない。発生時は C# パイプラインを再実行）|
 | 技名が `moves.json` に存在しない | 補正値1.0として計算を継続。技一覧のタイプ・威力・命中率・分類欄は `−` を表示し、火力指数も `−` とする | 技名はそのまま表示し、データ欄のみ `−` |
 | ポケモン名入力で候補なし | 候補リスト内に「見つかりません」を表示（リストは表示したまま） | 「見つかりません」 |
 | 空欄のスロット選択 | 何もしない | — |
@@ -1522,7 +1535,7 @@ tools/
 - `calcEnduranceIndex` / `calcEnduranceIndexPatterns`: 物理耐久 / 特殊耐久指数の積、4 パターン × 2 種類の網羅
 - `searchByName` / `normalizeQuery`: ひらがな/カタカナ混在クエリの正規化と前方一致
 - `DataLoader.load`: 正常系 / ファイル不存在時のエラー
-- `DataLoader` メガシンカ API（機能 7）: `getMegaInfo` / `isMegaForm` / `getMegaFormData` / `getPokemonByName` のメガ名 null 返却 / `searchByName` のメガ除外
+- `DataLoader` メガシンカ API（機能 7）: `isMegaForm` / `getMegaFormByName` / `getMegaFormByItem` / `getPokemonByName` のメガ名 null 返却 / `searchByName` のメガ除外
 
 ### 統合テスト
 
