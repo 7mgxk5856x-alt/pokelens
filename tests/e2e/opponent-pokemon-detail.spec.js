@@ -93,6 +93,48 @@ test.describe('相手ポケモン情報・素早さ 4 パターン', () => {
     ]);
   });
 
+  test('AET-041: 相手側メガ切替ボタンはメガシンカ可能なポケモンに常時表示・切替後に詳細パネルが連動更新', async ({
+    page,
+  }) => {
+    // メガシンカ可能（リザードン）と不可（ガブリアス）で切替ボタン表示を比較
+    // リザードンは複数メガ（X/Y）あり、通常 → メガリザードンＸ → メガリザードンＹ → 通常 の循環を確認
+    const slots = page.locator(SEL.opponentCards);
+
+    // スロット 0 で リザードン を確定（前方一致 "リザード" は charmeleon (リザード) もヒットするためフル名で確定）
+    const input0 = slots.nth(0).locator(SEL.oppInput);
+    await input0.fill('リザードン');
+    await input0.press('Enter');
+
+    // メガ切替ボタンがスロット 0 に表示される（持ち物に依存しない）
+    const toggle0 = slots.nth(0).locator('.mega-toggle');
+    await expect(toggle0).toHaveCount(1);
+
+    // 詳細パネルがリザードンを表示
+    const detail = page.locator(SEL.opponentDetail);
+    await expect(detail.locator('.detail-header .name')).toHaveText('リザードン');
+
+    // 切替: メガリザードンＸ → 詳細パネルも連動
+    await toggle0.click({ force: true });
+    await expect(slots.nth(0).locator('.opponent-info .name')).toHaveText('メガリザードンＸ');
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガリザードンＸ');
+
+    // 切替: メガリザードンＹ
+    await toggle0.click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガリザードンＹ');
+
+    // 切替: 通常へ循環
+    await toggle0.click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('リザードン');
+
+    // スロット 1 で メタモン を確定（Champions データでメガシンカ非対応のポケモン。
+    // ガブリアス は Champions では mega-evolutions.json に含まれるため非メガの代表として使えない）
+    const input1 = slots.nth(1).locator(SEL.oppInput);
+    await input1.fill('メタモン');
+    await input1.press('Enter');
+    // メガ切替ボタンは表示されない
+    await expect(slots.nth(1).locator('.mega-toggle')).toHaveCount(0);
+  });
+
   test('AET-029: 相手ポケモン切替時の詳細表示切替（元 MET-032）', async ({ page }) => {
     const cards = page.locator(SEL.opponentCards);
 

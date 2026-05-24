@@ -180,7 +180,8 @@ src/
 ├── main.js                # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
 ├── styles.css             # 全 UI のスタイルシート（main.js から import、Vite がバンドル）
 ├── data/
-│   └── loader.js          # JSON読み込み・キャッシュ
+│   ├── loader.js          # JSON読み込み・キャッシュ
+│   └── mega-evolutions.json  # メガシンカマッピング（手動管理。親 → stones / megaForms）
 ├── logic/
 │   ├── power-index-calc.js   # 火力指数計算（純粋関数）
 │   ├── speed-calc.js         # 素早さ4パターン計算（純粋関数）

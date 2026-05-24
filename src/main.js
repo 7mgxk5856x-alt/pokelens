@@ -33,15 +33,19 @@ async function init() {
   const ownDetail = new OwnPokemonDetail(ownDetailEl, loader);
   const opponentDetail = new OpponentPokemonDetail(opponentDetailEl, loader);
 
-  new OwnPartyPanel(ownPartyEl, userParty.party, loader, (entry) => {
-    ownDetail.update(entry);
+  new OwnPartyPanel(ownPartyEl, userParty.party, loader, (entry, displayedPokemonData) => {
+    // 機能 7: メガシンカ状態の場合、表示用ポケモンデータをパネル側から受け取り詳細パネルに渡す
+    const isMega = loader.isMegaForm(displayedPokemonData?.name);
+    ownDetail.update(entry, isMega ? displayedPokemonData : undefined);
   });
 
-  new OpponentPartyPanel(opponentPartyEl, loader, (species) => {
+  new OpponentPartyPanel(opponentPartyEl, loader, (species, displayedPokemonData) => {
     if (species === null) {
       opponentDetail.hide();
     } else {
-      opponentDetail.update(species);
+      // 機能 7: メガシンカ状態の場合、表示用ポケモンデータをパネル側から受け取り詳細パネルに渡す
+      const isMega = loader.isMegaForm(displayedPokemonData?.name);
+      opponentDetail.update(species, isMega ? displayedPokemonData : undefined);
     }
   });
 }

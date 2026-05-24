@@ -114,6 +114,31 @@ h2 {
   font-size: 14px;
   color: #b91c1c;
 }
+.mega-toggle {
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  align-self: flex-start;
+}
+#own-side .mega-toggle {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #1e40af;
+}
+#own-side .mega-toggle:hover {
+  background: #1e40af;
+}
+#opponent-side .mega-toggle {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #991b1b;
+}
+#opponent-side .mega-toggle:hover {
+  background: #991b1b;
+}
 #own-detail,
 #opponent-detail {
   display: none;

@@ -164,6 +164,68 @@ export const MULTIHIT_FIXTURE = {
 };
 
 /**
+ * メガシンカ対応の動作確認用 fixture（機能 7・AET-039/040/042 用）。
+ * 0: フシギバナ + フシギバナイト → メガ切替ボタン表示
+ * 1: フシギバナ + カメックスナイト → ボタン非表示（持ち物不一致）
+ * 2: フシギバナ + こだわりハチマキ → ボタン非表示（メガストーンでない）
+ * 3: リザードン + リザードナイトＸ → メガ切替（複数メガを循環、通常→Ｘ→Ｙ→通常）
+ * 4: ガブリアス + こだわりスカーフ → ボタン非表示（メガ不可ポケモン）
+ * 5: リザードン + 持ち物なし（item: null） → ボタン非表示（メガストーン不一致）
+ */
+export const MEGA_FIXTURE = {
+  party: [
+    {
+      species: 'フシギバナ',
+      ability: 'しんりょく',
+      item: 'フシギバナイト',
+      nature: 'ひかえめ',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [{ name: 'ギガドレイン' }, { name: 'ヘドロばくだん' }, { name: 'まもる' }, { name: 'みがわり' }],
+    },
+    {
+      species: 'フシギバナ',
+      ability: 'しんりょく',
+      item: 'カメックスナイト',
+      nature: 'ひかえめ',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [{ name: 'ギガドレイン' }, { name: 'まもる' }, { name: 'みがわり' }, { name: 'たいあたり' }],
+    },
+    {
+      species: 'フシギバナ',
+      ability: 'しんりょく',
+      item: 'こだわりハチマキ',
+      nature: 'いじっぱり',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [{ name: 'たいあたり' }, { name: 'まもる' }, { name: 'みがわり' }, { name: 'ギガドレイン' }],
+    },
+    {
+      species: 'リザードン',
+      ability: 'もうか',
+      item: 'リザードナイトＸ',
+      nature: 'いじっぱり',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [{ name: 'ひのこ' }, { name: 'まもる' }, { name: 'みがわり' }, { name: 'たいあたり' }],
+    },
+    {
+      species: 'ガブリアス',
+      ability: 'さめはだ',
+      item: 'こだわりスカーフ',
+      nature: 'いじっぱり',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [{ name: 'じしん' }, { name: 'まもる' }, { name: 'みがわり' }, { name: 'げきりん' }],
+    },
+    {
+      species: 'リザードン',
+      ability: 'もうか',
+      item: null,
+      nature: 'まじめ',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [{ name: 'ひのこ' }, { name: 'まもる' }, { name: 'みがわり' }, { name: 'たいあたり' }],
+    },
+  ],
+};
+
+/**
  * 6 匹分の基本パーティ（AET-001/002/003/006/007/009/015 用の汎用 fixture）。
  */
 export const STANDARD_PARTY = {

@@ -4,6 +4,7 @@ import {
   STANDARD_PARTY,
   UNKNOWN_SPECIES_FIXTURE,
   NATURE_MIX,
+  MEGA_FIXTURE,
 } from './helpers/party-fixtures.js';
 import { SEL } from './helpers/selectors.js';
 
@@ -116,5 +117,76 @@ test.describe('自分パーティ表示', () => {
     // 1 枚目の選択状態は解除されている
     await expect(cards.nth(0)).not.toHaveClass(/selected/);
     await expect(cards.nth(1)).toHaveClass(/selected/);
+  });
+
+  test('AET-039: 自分側メガ切替ボタンは対応メガストーン持ちのときだけ表示・切替後にカード表示が更新される', async ({
+    page,
+  }) => {
+    // MEGA_FIXTURE: 0=フシギバナ+フシギバナイト, 1=フシギバナ+カメックスナイト,
+    //              2=フシギバナ+こだわりハチマキ, 3=リザードン+リザードナイトＸ,
+    //              4=ガブリアス+こだわりスカーフ, 5=リザードン+持ち物なし
+    await mockParty(page, MEGA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+
+    // 0: フシギバナ + フシギバナイト → ボタン表示
+    await expect(cards.nth(0).locator('.mega-toggle')).toHaveCount(1);
+    // 1: フシギバナ + カメックスナイト → ボタン非表示（対応アイテム不一致）
+    await expect(cards.nth(1).locator('.mega-toggle')).toHaveCount(0);
+    // 2: フシギバナ + こだわりハチマキ → ボタン非表示（メガストーンでない）
+    await expect(cards.nth(2).locator('.mega-toggle')).toHaveCount(0);
+    // 3: リザードン + リザードナイトＸ → ボタン表示
+    await expect(cards.nth(3).locator('.mega-toggle')).toHaveCount(1);
+    // 4: ガブリアス → ボタン非表示（メガ不可ポケモン）
+    await expect(cards.nth(4).locator('.mega-toggle')).toHaveCount(0);
+    // 5: リザードン + 持ち物なし → ボタン非表示
+    await expect(cards.nth(5).locator('.mega-toggle')).toHaveCount(0);
+
+    // フシギバナを切替: 通常 "フシギバナ" → メガ "メガフシギバナ"
+    await expect(cards.nth(0).locator('.name')).toHaveText('フシギバナ');
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('メガフシギバナ');
+    // 再度押して通常に戻る
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('フシギバナ');
+  });
+
+  test('AET-042: 選択済みカードでメガ切替時、自分ポケモン詳細パネルが連動して再描画される', async ({
+    page,
+  }) => {
+    await mockParty(page, MEGA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+    const detail = page.locator(SEL.ownDetail);
+
+    // フシギバナカード（index 0）を選択
+    await cards.nth(0).click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('フシギバナ');
+    // 通常特性「しんりょく」が詳細パネルに表示される
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('しんりょく');
+
+    // メガ切替を押す
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    // 詳細パネルの名前・特性がメガフォームのものに更新される（メガフシギバナ・特性「あついしぼう」）
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガフシギバナ');
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('あついしぼう');
+  });
+
+  test('AET-040: 複数メガ（リザードン）は 通常 → Ｘ → Ｙ → 通常 の順で循環する', async ({ page }) => {
+    await mockParty(page, MEGA_FIXTURE);
+    await page.goto('/');
+
+    const card = page.locator(SEL.ownCards).nth(3); // リザードン + リザードナイトＸ
+    const toggle = card.locator('.mega-toggle');
+
+    await expect(card.locator('.name')).toHaveText('リザードン');
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('メガリザードンＸ');
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('メガリザードンＹ');
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('リザードン');
   });
 });

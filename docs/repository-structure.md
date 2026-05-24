@@ -93,7 +93,8 @@ pokelens/
 **例**:
 ```
 src/data/
-└── loader.js
+├── loader.js
+└── mega-evolutions.json   # メガシンカマッピング（親 → stones / megaForms。手動管理）
 ```
 
 ---

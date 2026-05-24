@@ -2,6 +2,7 @@ import { SearchInput } from './search-input.js';
 import { formatBaseStats } from './stat-labels.js';
 
 const PARTY_SIZE = 6;
+const NORMAL_STATE = -1;
 
 /** 相手パーティの選出枠（6 体）を描画し、ポケモン名の入力・選択・クリアを扱うパネル。 */
 export class OpponentPartyPanel {
@@ -20,6 +21,7 @@ export class OpponentPartyPanel {
       search: null,
       clearButton: null,
       species: null,
+      megaIndex: NORMAL_STATE,
     }));
 
     for (let i = 0; i < PARTY_SIZE; i++) {
@@ -60,6 +62,9 @@ export class OpponentPartyPanel {
       if (e.target.tagName === 'INPUT' || e.target === clearButton) {
         return;
       }
+      if (e.target.classList.contains('mega-toggle')) {
+        return;
+      }
       if (this.#slots[index].species) {
         this.#selectSlot(index);
       }
@@ -76,7 +81,8 @@ export class OpponentPartyPanel {
   #commitSlot(index, species) {
     const slot = this.#slots[index];
     slot.species = species;
-    this.#renderInfo(slot, species);
+    slot.megaIndex = NORMAL_STATE;
+    this.#renderInfo(slot, index);
     slot.searchWrapper.hidden = true;
     slot.clearButton.hidden = false;
     this.#selectSlot(index);
@@ -86,6 +92,7 @@ export class OpponentPartyPanel {
     const slot = this.#slots[index];
     const wasSelected = this.#selectedIndex === index;
     slot.species = null;
+    slot.megaIndex = NORMAL_STATE;
     slot.info.hidden = true;
     slot.info.replaceChildren();
     slot.searchWrapper.hidden = false;
@@ -98,13 +105,14 @@ export class OpponentPartyPanel {
     }
   }
 
-  #renderInfo(slot, species) {
-    const data = this.#loader.getPokemonByName(species);
+  #renderInfo(slot, index) {
+    const species = slot.species;
+    const data = this.#getDisplayedPokemonData(slot);
     slot.info.replaceChildren();
 
     const nameEl = document.createElement('div');
     nameEl.className = 'name';
-    nameEl.textContent = species;
+    nameEl.textContent = data ? data.name : species;
     slot.info.appendChild(nameEl);
 
     if (data) {
@@ -117,8 +125,52 @@ export class OpponentPartyPanel {
       baseStatsEl.className = 'base-stats';
       baseStatsEl.textContent = formatBaseStats(data.baseStats);
       slot.info.appendChild(baseStatsEl);
+
+      // 機能 7: 相手側はメガシンカ可能なポケモンであれば持ち物に関わらず常時切替ボタンを表示
+      const megaInfo = this.#loader.getMegaInfo(species);
+      if (megaInfo) {
+        slot.info.appendChild(this.#createMegaToggleButton(index, megaInfo.megaForms.length));
+      }
     }
     slot.info.hidden = false;
+  }
+
+  #createMegaToggleButton(index, formCount) {
+    const button = document.createElement('button');
+    button.className = 'mega-toggle';
+    button.type = 'button';
+    button.textContent = this.#slots[index].megaIndex === NORMAL_STATE ? 'メガシンカ' : '通常';
+    button.tabIndex = -1;
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.#cycleMegaState(index, formCount);
+    });
+    return button;
+  }
+
+  #cycleMegaState(index, formCount) {
+    const slot = this.#slots[index];
+    const current = slot.megaIndex;
+    slot.megaIndex = current >= formCount - 1 ? NORMAL_STATE : current + 1;
+    this.#renderInfo(slot, index);
+    if (this.#selectedIndex === index) {
+      slot.card.classList.add('selected');
+      this.#notifySelected(index);
+    }
+  }
+
+  #getDisplayedPokemonData(slot) {
+    if (!slot.species) {
+      return null;
+    }
+    if (slot.megaIndex === NORMAL_STATE) {
+      return this.#loader.getPokemonByName(slot.species);
+    }
+    const megaInfo = this.#loader.getMegaInfo(slot.species);
+    if (!megaInfo || slot.megaIndex >= megaInfo.megaForms.length) {
+      return this.#loader.getPokemonByName(slot.species);
+    }
+    return this.#loader.getMegaFormData(megaInfo.megaForms[slot.megaIndex]);
   }
 
   #selectSlot(index) {
@@ -127,6 +179,12 @@ export class OpponentPartyPanel {
     }
     this.#slots[index].card.classList.add('selected');
     this.#selectedIndex = index;
-    this.#onSelect(this.#slots[index].species);
+    this.#notifySelected(index);
+  }
+
+  #notifySelected(index) {
+    const slot = this.#slots[index];
+    const displayed = this.#getDisplayedPokemonData(slot);
+    this.#onSelect(slot.species, displayed);
   }
 }

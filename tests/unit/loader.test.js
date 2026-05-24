@@ -9,6 +9,53 @@ const SAMPLE_POKEDEX = {
     baseStats: { hp: 108, atk: 130, def: 95, spa: 80, spd: 85, spe: 102 },
     abilities: ['さめはだ', 'すながくれ', 'かたやぶり'],
   },
+  // 機能 7 テスト用: production の src/data/mega-evolutions.json のキー（フシギバナ/リザードン）に対応する
+  // pokedex エントリを追加する。loader のメガ関連 API（getMegaInfo / isMegaForm / getMegaFormData /
+  // getPokemonByName の null 返却 / searchByName のメガ除外）の検証で参照される。
+  フシギバナ: {
+    num: 3,
+    name: 'フシギバナ',
+    types: ['Grass', 'Poison'],
+    baseStats: { hp: 80, atk: 82, def: 83, spa: 100, spd: 100, spe: 80 },
+    abilities: ['しんりょく', 'ようりょくそ'],
+  },
+  メガフシギバナ: {
+    num: 3,
+    name: 'メガフシギバナ',
+    types: ['Grass', 'Poison'],
+    baseStats: { hp: 80, atk: 100, def: 123, spa: 122, spd: 120, spe: 80 },
+    abilities: ['あついしぼう'],
+  },
+  リザードン: {
+    num: 6,
+    name: 'リザードン',
+    types: ['Fire', 'Flying'],
+    baseStats: { hp: 78, atk: 84, def: 78, spa: 109, spd: 85, spe: 100 },
+    abilities: ['もうか', 'サンパワー'],
+  },
+  メガリザードンＸ: {
+    num: 6,
+    name: 'メガリザードンＸ',
+    types: ['Fire', 'Dragon'],
+    baseStats: { hp: 78, atk: 130, def: 111, spa: 130, spd: 85, spe: 100 },
+    abilities: ['かたいツメ'],
+  },
+  メガリザードンＹ: {
+    num: 6,
+    name: 'メガリザードンＹ',
+    types: ['Fire', 'Flying'],
+    baseStats: { hp: 78, atk: 104, def: 78, spa: 159, spd: 115, spe: 100 },
+    abilities: ['ひでり'],
+  },
+  // メガシンカ非対応ポケモンの代表として、Champions の mega-evolutions.json に列挙されていない
+  // メタモンを使用する（ガブリアスは Champions データでメガ対応のため不可）
+  メタモン: {
+    num: 132,
+    name: 'メタモン',
+    types: ['Normal'],
+    baseStats: { hp: 48, atk: 48, def: 48, spa: 48, spd: 48, spe: 48 },
+    abilities: ['へんしょく', 'じゅうなん'],
+  },
 };
 
 const SAMPLE_MOVES = {
@@ -355,5 +402,94 @@ describe('DataLoader.getPokemonByName()', () => {
     const loader = new DataLoader();
     await loader.load();
     expect(loader.getPokemonByName('存在しないポケモン')).toBeNull();
+  });
+
+  it('メガフォーム名で null を返す（機能 7: party.json でメガ名指定は不明なポケモン扱い）', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.getPokemonByName('メガフシギバナ')).toBeNull();
+    expect(loader.getPokemonByName('メガリザードンＸ')).toBeNull();
+    expect(loader.getPokemonByName('メガリザードンＹ')).toBeNull();
+  });
+});
+
+describe('DataLoader メガシンカ関連 API（機能 7）', () => {
+  it('getMegaInfo: メガシンカ可能な親ポケモン名で stones / megaForms を返す', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    const info = loader.getMegaInfo('フシギバナ');
+    expect(info).not.toBeNull();
+    expect(info.stones).toEqual(['フシギバナイト']);
+    expect(info.megaForms).toEqual(['メガフシギバナ']);
+  });
+
+  it('getMegaInfo: 複数メガ（リザードン）で stones / megaForms が複数返る', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    const info = loader.getMegaInfo('リザードン');
+    expect(info.stones).toEqual(['リザードナイトＸ', 'リザードナイトＹ']);
+    expect(info.megaForms).toEqual(['メガリザードンＸ', 'メガリザードンＹ']);
+  });
+
+  it('getMegaInfo: メガシンカ不可のポケモン名で null を返す', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.getMegaInfo('メタモン')).toBeNull();
+  });
+
+  it('isMegaForm: メガフォーム名で true', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.isMegaForm('メガフシギバナ')).toBe(true);
+    expect(loader.isMegaForm('メガリザードンＸ')).toBe(true);
+  });
+
+  it('isMegaForm: 通常ポケモン名・未登録名で false', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.isMegaForm('フシギバナ')).toBe(false);
+    expect(loader.isMegaForm('メタモン')).toBe(false);
+    expect(loader.isMegaForm('存在しないポケモン')).toBe(false);
+  });
+
+  it('getMegaFormData: メガフォーム名で PokedexEntry を返す', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    const data = loader.getMegaFormData('メガフシギバナ');
+    expect(data).not.toBeNull();
+    expect(data.name).toBe('メガフシギバナ');
+    expect(data.baseStats.atk).toBe(100);
+    expect(data.abilities).toEqual(['あついしぼう']);
+  });
+
+  it('getMegaFormData: 通常ポケモン名で null（メガフォーム名でないため）', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.getMegaFormData('フシギバナ')).toBeNull();
+    expect(loader.getMegaFormData('メタモン')).toBeNull();
+  });
+
+  it('searchByName: メガフォームはサジェスト候補から除外される', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    const result = loader.searchByName('メガ');
+    expect(result).toEqual([]);
+  });
+
+  it('searchByName: 親ポケモン名はメガシンカ可能でも通常通り候補に含まれる', async () => {
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    const result = loader.searchByName('リザード');
+    expect(result.map((e) => e.name)).toEqual(['リザードン']);
   });
 });
