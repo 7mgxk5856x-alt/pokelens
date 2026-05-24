@@ -95,6 +95,31 @@ export const IRONFIST_FIXTURE = {
 };
 
 /**
+ * おやこあい補正（無条件 atk/spa 1.25 倍）を持つガブリアス。
+ * AET-016b で「無条件 modifier の UI 結合担保」を検証。
+ * ガブリアスは実機でおやこあいを持たないが、party.json は特性名で自由指定でき
+ * `DataLoader.getAbilityModifier('おやこあい')` がマスターデータから補正値を返す挙動を検証する。
+ * 計算: じしん威力100 × atk 実数値 200（いじっぱり HP32 atk32）× STAB 1.5 × おやこあい 1.25 = 37500
+ */
+export const PARENTAL_BOND_FIXTURE = {
+  party: [
+    {
+      species: 'ガブリアス',
+      ability: 'おやこあい',
+      item: null,
+      nature: 'いじっぱり',
+      abilityPoints: { hp: 32, atk: 32, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [
+        { name: 'じしん' },
+        { name: 'げきりん' },
+        { name: 'みがわり' },
+        { name: 'まもる' },
+      ],
+    },
+  ],
+};
+
+/**
  * 変化技・威力不定技・必中技を含む。
  * AET-011（変化技 −）/ AET-012（威力不定技 −）/ AET-013（必中技 −）で使用。
  */

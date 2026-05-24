@@ -129,7 +129,7 @@ function romajiToKatakana(input) {
 
 /**
  * 検索クエリを比較用に正規化する。NFKC で半角カナ・濁点結合・全角英数字を一括処理し、
- * ローマ字をカタカナへ変換、ひらがなを全角カタカナに揃える。
+ * 半角ハイフンを長音記号に変換、ローマ字をカタカナへ変換、ひらがなを全角カタカナに揃える。
  * @param {string} query 入力文字列
  * @returns {string} 正規化後の文字列
  */
@@ -142,9 +142,18 @@ export function normalizeQuery(query) {
   // （個別の対応辞書を持たず Unicode 標準に委ねる）
   const nfkc = query.normalize('NFKC');
 
-  // NFKC 後に ASCII 英字が含まれていればローマ字→カタカナ変換を適用する。
+  // 半角ハイフン `-` を長音記号 `ー` に正規化する。
+  // ローマ字入力中（例: `ri-` → `リー`）にキーボードから長音記号を直接入力できない補完。
+  // 全角ハイフン `－` (U+FF0D) は NFKC で `-` (U+002D) に正規化されるためここで一緒に拾える。
+  // 位置によらず全ての `-` を置換するため `ga-bu` → `ガーブ` のように中間ハイフンも変換されるが、
+  // ポケモン名検索の文脈で中間ハイフン入力のユースケースはなく許容する。
+  const withLongVowel = nfkc.replace(/-/g, 'ー');
+
+  // ASCII 英字が含まれていればローマ字→カタカナ変換を適用する。
   // 元入力に全角英字（'Ａ' 等）があった場合も NFKC で 'A' になりここで拾える
-  const preprocessed = /[a-zA-Z]/.test(nfkc) ? romajiToKatakana(nfkc) : nfkc;
+  const preprocessed = /[a-zA-Z]/.test(withLongVowel)
+    ? romajiToKatakana(withLongVowel)
+    : withLongVowel;
 
   // 残るのはひらがな→カタカナのみ（NFKC はスクリプト変換しない）
   let result = '';

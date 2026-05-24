@@ -8,6 +8,7 @@ import {
   MOVE_VARIANTS_FIXTURE,
   MULTIHIT_FIXTURE,
   IRONFIST_FIXTURE,
+  PARENTAL_BOND_FIXTURE,
 } from './helpers/party-fixtures.js';
 import { SEL } from './helpers/selectors.js';
 
@@ -190,6 +191,20 @@ test.describe('自分ポケモン詳細・火力指数', () => {
     // マッハパンチは 1.2 倍補正があるので、ratio は 1.2 倍大きい
     const ratio = machPerPower / bakajikaraPerPower;
     expect(ratio).toBeCloseTo(1.2, 1);
+  });
+
+  test('AET-016b: おやこあい無条件補正（atk/spa 1.25 倍）が全技に乗る', async ({ page }) => {
+    await mockParty(page, PARENTAL_BOND_FIXTURE);
+    await page.goto('/');
+    await page.locator(SEL.ownCards).first().click({ force: true });
+
+    // ガブリアス（いじっぱり HP32 atk32、atk実数値=200）× じしん威力100 × STAB1.5 × おやこあい1.25 = 37500
+    const jishinRow = page.locator(SEL.ownMoveRows).filter({ hasText: 'じしん' }).first();
+    await expect(jishinRow.locator('td.power-index')).toHaveText('37500');
+
+    // げきりん威力120 × atk200 × STAB1.5 × おやこあい1.25 = 45000（おやこあいは無条件補正）
+    const gekirinRow = page.locator(SEL.ownMoveRows).filter({ hasText: 'げきりん' }).first();
+    await expect(gekirinRow.locator('td.power-index')).toHaveText('45000');
   });
 
   test('AET-017: 特殊技の火力指数 = 17550（元 MET-033）', async ({ page }) => {
