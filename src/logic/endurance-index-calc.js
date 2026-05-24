@@ -1,9 +1,11 @@
-import { calcHp, calcStat } from './calc-actual-stats.js';
-
-const MAX_ABILITY_POINTS = 32;
-const ZERO_ABILITY_POINTS = 0;
-const NATURE_UP = 1.1;
-const NATURE_NEUTRAL = 1.0;
+import {
+  calcHp,
+  calcStat,
+  MAX_ABILITY_POINTS,
+  ZERO_ABILITY_POINTS,
+  NATURE_UP,
+  NATURE_NEUTRAL,
+} from './calc-actual-stats.js';
 
 /**
  * 耐久指数 = HP 実数値 × 防御/特防 実数値。

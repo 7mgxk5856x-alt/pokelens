@@ -893,7 +893,7 @@ DataLoader
 
 **耐久指数計算の責務**: 算出した実数値（HP・防御・特防）を `src/logic/endurance-index-calc.js` の `calcEnduranceIndex(hp, defStat)` に渡して物理耐久指数・特殊耐久指数を計算する。
 
-**依存**: PowerIndexCalc、calcActualStats、calcEnduranceIndex、SCARF_MULTIPLIER（`src/logic/speed-calc.js`）
+**依存**: PowerIndexCalc、calcActualStats、calcEnduranceIndex、`DataLoader.getItemModifier()`（こだわりスカーフ等の素早さ補正倍率をマスターデータから取得）
 
 **condition 解決の責務**: `DataLoader.getItemModifier()` / `DataLoader.getAbilityModifier()` が返す `Modifier` オブジェクトの `condition` 評価は `OwnPokemonDetail` が担う。各技に対して以下の判定を行い、最終倍率（`number`）に変換してから `calcPowerIndex` へ渡す。
 
@@ -1043,7 +1043,7 @@ calcSpeedPatterns(baseSpe) → { fastest, fast, neutral, slowest }
 
 - 引数が `baseSpe`（種族値）のみなのは、「相手ポケモンの取りうる全パターンを一覧表示する」という用途のため。`abilityPoints`（0 or 最大値）、`natureModifier`（0.9 / 1.0 / 1.1）は関数内で固定値として網羅し、外部から渡す必要がない
 - 自分パーティの実際の実数値を算出する `calcActualStats(baseStats, abilityPoints, natureModifiers)` とは目的が異なる（実測値1点 vs 全パターン4点）
-- こだわりスカーフ補正は機能 16（P0.5）で自分側 `OwnPokemonDetail` の素早さ実数値に併記する形に集約済み。本関数は補正後の値を返さないが、倍率定数 `SCARF_MULTIPLIER`（=1.5）はモジュールから export しており `OwnPokemonDetail` が再利用する
+- こだわりスカーフ補正は機能 16（P0.5）で自分側 `OwnPokemonDetail` の素早さ実数値に併記する形に集約済み。本関数は補正後の値を返さない。素早さ補正倍率はマスターデータ（`data/items.json` の `こだわりスカーフ.modifier.spe`）から取得し、`OwnPokemonDetail` が `loader.getItemModifier()` 経由で参照する
 
 ---
 
@@ -1207,7 +1207,7 @@ function calcPowerIndex(move, actualStats, pokemonTypes, abilityModifier, itemMo
 
 > 能力ポイントの範囲は 0〜32。
 >
-> こだわりスカーフ補正（×1.5）は機能 16（P0.5）で自分側 `OwnPokemonDetail` の素早さ実数値に併記する形に集約しており、本関数の戻り値からは除外している（暗算で「最速 × 1.5」「準速 × 1.5」が容易なため）。倍率定数 `SCARF_MULTIPLIER`（=1.5）は `src/logic/speed-calc.js` から export し、`OwnPokemonDetail` が import して再利用する。
+> こだわりスカーフ補正は機能 16（P0.5）で自分側 `OwnPokemonDetail` の素早さ実数値に併記する形に集約しており、本関数の戻り値からは除外している（暗算で「最速 × 1.5」「準速 × 1.5」が容易なため）。倍率値はマスターデータ（`data/items.json` の `こだわりスカーフ.modifier.spe`）から `loader.getItemModifier()` 経由で取得する（ゲーム仕様の倍率変更に追従しやすいよう、UI コードへの定数ハードコードを避ける）。
 
 **実装例**:
 

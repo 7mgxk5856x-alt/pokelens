@@ -1,9 +1,10 @@
 {
-  "_comment_format": "{ <showdown-key>: { \"modifier\": <resolveModifierが解釈するオブジェクト> } } / 火力補正がない持ち物はエントリを作らない / condition の意味は src/logic/resolve-modifier.js を参照",
-  "_comment_policy": "アイテム側 isStab はタイプ一致時のみ補正を掛ける（たつじんのおび等）。素早さ補正のみ・防御系・回復系・1回限りのジュエル系はSKIP。複合条件（ポケモン種族×タイプ）が必要なオーブ系・ブーストエナジーもSKIP。",
+  "_comment_format": "{ <showdown-key>: { \"modifier\": <resolveModifierが解釈するオブジェクト> } } / condition の意味は src/logic/resolve-modifier.js を参照",
+  "_comment_policy": "アイテム側 isStab はタイプ一致時のみ補正を掛ける（たつじんのおび等）。素早さ補正（spe）は火力指数に影響しないが、UI 表示（機能 16: OwnPokemonDetail でのスカーフ補正値併記）で loader.getItemModifier(...).spe を参照するためマスターデータの単一真実源として登録する。防御系・回復系・1回限りのジュエル系はSKIP。複合条件（ポケモン種族×タイプ）が必要なオーブ系・ブーストエナジーもSKIP。",
 
   "choiceband":     { "modifier": { "atk": 1.5 } },
   "choicespecs":    { "modifier": { "spa": 1.5 } },
+  "choicescarf":    { "modifier": { "spe": 1.5 } },
   "lifeorb":        { "modifier": { "atk": 1.3, "spa": 1.3 } },
   "muscleband":     { "modifier": { "atk": 1.1 } },
   "wiseglasses":    { "modifier": { "spa": 1.1 } },

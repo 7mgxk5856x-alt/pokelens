@@ -2,6 +2,14 @@ const HP_OFFSET = 75;
 const STAT_OFFSET = 20;
 const STATS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
 
+// Pokémon Champions のドメイン定数。`calcStat` の引数として 4 パターン集約関数（`calcSpeedPatterns` /
+// `calcEnduranceIndexPatterns`）から共通で使われるため、ここで一元定義して再利用する。
+export const MAX_ABILITY_POINTS = 32;
+export const ZERO_ABILITY_POINTS = 0;
+export const NATURE_UP = 1.1;
+export const NATURE_NEUTRAL = 1.0;
+export const NATURE_DOWN = 0.9;
+
 /**
  * HP 実数値を計算する（Pokémon Champions 式: 種族値 + 努力ポイント + 75）。
  * @param {number} base 種族値（HP）

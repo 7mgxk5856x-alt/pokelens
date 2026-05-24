@@ -1,11 +1,11 @@
-import { calcStat } from './calc-actual-stats.js';
-
-const MAX_ABILITY_POINTS = 32;
-const ZERO_ABILITY_POINTS = 0;
-const NATURE_UP = 1.1;
-const NATURE_NEUTRAL = 1.0;
-const NATURE_DOWN = 0.9;
-export const SCARF_MULTIPLIER = 1.5;
+import {
+  calcStat,
+  MAX_ABILITY_POINTS,
+  ZERO_ABILITY_POINTS,
+  NATURE_UP,
+  NATURE_NEUTRAL,
+  NATURE_DOWN,
+} from './calc-actual-stats.js';
 
 /**
  * 素早さ種族値から代表 4 パターンの実数値を計算する。

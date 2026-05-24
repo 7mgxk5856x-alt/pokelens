@@ -115,7 +115,7 @@ if (lang == LangJa) { /* ... */ }
 **定数の管理方法**（増えた定数を散らかさないための置き場所のルール）:
 
 - **スコープは最小にする**。定数はそれを使う場所に最も近いスコープへ置く。
-  - **1 ファイル内でのみ使う** → そのファイル先頭のモジュールスコープ定数（JS: `const`）／クラスの定数メンバー（C#: `private const` / `private static readonly`）にまとめる。例: `src/logic/speed-calc.js` の `MAX_ABILITY_POINTS` / `SCARF_MULTIPLIER`、`PokeAPIFetcher` の `ConcurrencyLimit`。
+  - **1 ファイル内でのみ使う** → そのファイル先頭のモジュールスコープ定数（JS: `const`）／クラスの定数メンバー（C#: `private const` / `private static readonly`）にまとめる。例: `PokeAPIFetcher` の `ConcurrencyLimit`、`src/logic/resolve-modifier.js` の `POWER_MAX_60_THRESHOLD` 等。
   - **1 関数内でしか使わず意味も局所的** → その関数内の `const` でよい（無理にファイル先頭へ引き上げない）。
 - **共有は「実際に複数箇所で使われている」場合のみ**。「将来使うかもしれない」という理由で共通定数モジュールへ先に集約しない（早すぎる共通化を避ける）。本当に複数ファイルで共有する値が生じたときに初めて、専用モジュール（JS: 例 `src/logic/constants.js`、C#: 専用の `internal static class` の定数置き場）へ切り出す。
 - **ドメインの計算式定数**（種族値オフセット・性格補正・タイプ一致倍率など）は、その計算を担うロジックの近傍に置き、用語は [用語集](./glossary.md) と対応させる。値の出典・式の根拠は WHY コメントで補う（名前だけでは「なぜその値か」までは伝わらないため）。
@@ -178,13 +178,15 @@ if (move.power === null) {
 
 ```js
 // ✅ 良い例: 副作用なし、同じ入力→同じ出力（Pokémon Champions 計算式）
-import { calcStat } from './calc-actual-stats.js';
-const MAX_ABILITY_POINTS = 32;
-const NATURE_UP = 1.1;
-const NATURE_NEUTRAL = 1.0;
-const NATURE_DOWN = 0.9;
-// 機能 16（OwnPokemonDetail のスカーフ補正値併記）が import して再利用する倍率定数
-export const SCARF_MULTIPLIER = 1.5;
+// 能力ポイント上限・性格補正倍率は calc-actual-stats.js でドメイン定数として一元定義し、
+// speed-calc.js / endurance-index-calc.js から共通で import する（二重定義を避ける）
+import {
+  calcStat,
+  MAX_ABILITY_POINTS,
+  NATURE_UP,
+  NATURE_NEUTRAL,
+  NATURE_DOWN,
+} from './calc-actual-stats.js';
 
 export function calcSpeedPatterns(baseSpe) {
   return {

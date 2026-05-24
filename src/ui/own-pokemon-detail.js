@@ -3,14 +3,12 @@ import { calcEnduranceIndex } from '../logic/endurance-index-calc.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
 import { MODIFIER_KIND } from '../logic/constants.js';
-import { SCARF_MULTIPLIER } from '../logic/speed-calc.js';
 import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
 
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 
 const DASH = '−';
-const CHOICE_SCARF_ITEM_NAME = 'こだわりスカーフ';
 const SPE_KEY = 'spe';
 
 /** 自分の選択ポケモンの詳細（実数値・性格・技ごとの火力指数など）を描画するビュー。 */
@@ -104,11 +102,14 @@ export class OwnPokemonDetail {
   }
 
   #buildActualStatsRow(actualStats, item) {
-    const isScarf = item === CHOICE_SCARF_ITEM_NAME;
+    // 素早さ補正倍率（こだわりスカーフ等）はマスターデータ（`data/items.json` 経由）から取得する。
+    // 持ち物の Modifier に `spe` が定義されていれば、その倍率を素早さ実数値に乗じて括弧書きで併記する。
+    // 倍率値の変更は items-modifiers.json パッチの更新だけで完結し、UI コードは変更不要。
+    const speMultiplier = this.#loader.getItemModifier(item)?.spe;
     const text = STAT_LABELS.map(([key, label]) => {
       const value = actualStats[key];
-      if (key === SPE_KEY && isScarf) {
-        return `${label} ${value} (${Math.floor(value * SCARF_MULTIPLIER)})`;
+      if (key === SPE_KEY && speMultiplier) {
+        return `${label} ${value} (${Math.floor(value * speMultiplier)})`;
       }
       return `${label} ${value}`;
     }).join(' / ');
