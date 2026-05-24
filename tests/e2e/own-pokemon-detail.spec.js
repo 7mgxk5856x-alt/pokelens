@@ -207,6 +207,36 @@ test.describe('自分ポケモン詳細・火力指数', () => {
     await expect(gekirinRow.locator('td.power-index')).toHaveText('45000');
   });
 
+  test('AET-035: こだわりスカーフ持ちは S 実数値の右に補正値を併記する', async ({ page }) => {
+    // ガブリアス いじっぱり HP32 atk32 こだわりスカーフ。
+    // 素早さ実数値 = floor((102 + 0 + 20) × 1.0) = 122
+    // スカーフ補正  = floor(122 × 1.5) = 183
+    await mockParty(page, GARCHOMP_PHYSICAL);
+    await page.goto('/');
+    await page.locator(SEL.ownCards).first().click({ force: true });
+
+    const statsRow = page.locator(SEL.ownDetail).locator('.detail-stats', { hasText: '実数値:' });
+    const text = await statsRow.textContent();
+    expect(text).toContain('S 122 (183)');
+    // 素早さ以外には括弧が付かない（H/A/B/C/D に '(' が出ないこと）
+    const beforeS = text.split('S ')[0];
+    expect(beforeS).not.toContain('(');
+  });
+
+  test('AET-036: こだわりスカーフ以外の持ち物では S 実数値のみ表示する', async ({ page }) => {
+    // STANDARD_PARTY の 2 枚目: ピカチュウ おくびょう（spe↑/atk↓）spa32 spe32 いのちのたま
+    // 素早さ実数値 = floor((90 + 32 + 20) × 1.1) = 156
+    await mockParty(page, STANDARD_PARTY);
+    await page.goto('/');
+    await page.locator(SEL.ownCards).nth(1).click({ force: true });
+
+    const statsRow = page.locator(SEL.ownDetail).locator('.detail-stats', { hasText: '実数値:' });
+    const text = await statsRow.textContent();
+    expect(text).toContain('S 156');
+    expect(text).not.toContain('(');
+    expect(text).not.toContain(')');
+  });
+
   test('AET-017: 特殊技の火力指数 = 17550（元 MET-033）', async ({ page }) => {
     await mockParty(page, GARCHOMP_SPECIAL);
     await page.goto('/');
