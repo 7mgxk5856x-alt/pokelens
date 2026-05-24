@@ -3,7 +3,7 @@ import { mockParty } from './helpers/mock-party.js';
 import { STANDARD_PARTY } from './helpers/party-fixtures.js';
 import { SEL } from './helpers/selectors.js';
 
-test.describe('相手ポケモン情報・素早さ 6 パターン', () => {
+test.describe('相手ポケモン情報・素早さ 4 パターン', () => {
   test.beforeEach(async ({ page }) => {
     await mockParty(page, STANDARD_PARTY);
     await page.goto('/');
@@ -34,23 +34,27 @@ test.describe('相手ポケモン情報・素早さ 6 パターン', () => {
     expect(statsText).toContain('S 102');
   });
 
-  test('AET-028: 素早さ 6 パターン表示（元 MET-023）', async ({ page }) => {
+  test('AET-028: 素早さ 4 パターンを表形式・横並びで表示する', async ({ page }) => {
     const firstSlot = page.locator(SEL.opponentCards).first();
     const input = firstSlot.locator(SEL.oppInput);
     await input.fill('ガブ');
     await input.press('Enter');
 
-    const items = page.locator(SEL.speedPatterns);
-    await expect(items).toHaveCount(6);
+    // 表ヘッダ: 左から「最速」「準速」「無振り」「最遅」の順
+    const headers = page.locator(SEL.speedPatternHeaders);
+    await expect(headers).toHaveCount(4);
+    const headerTexts = await headers.allTextContents();
+    expect(headerTexts).toEqual(['最速', '準速', '無振り', '最遅']);
 
-    const expectedLabels = ['最速スカーフ', '準速スカーフ', '最速', '準速', '無振り', '最遅'];
-    for (let i = 0; i < 6; i++) {
-      const labelText = await items.nth(i).locator('.label').textContent();
-      expect(labelText).toContain(expectedLabels[i]);
-      const valueText = await items.nth(i).locator('.value').textContent();
-      // 数値が表示される
-      expect(parseInt(valueText || '0', 10)).toBeGreaterThan(0);
-    }
+    // データ行: ガブリアス（種族値102）の 4 実数値
+    //   最速 = floor((102+32+20)*1.1) = 169
+    //   準速 = (102+32+20)*1.0       = 154
+    //   無振り = (102+0+20)*1.0      = 122
+    //   最遅 = floor((102+0+20)*0.9) = 109
+    const cells = page.locator(SEL.speedPatternCells);
+    await expect(cells).toHaveCount(4);
+    const cellTexts = await cells.allTextContents();
+    expect(cellTexts).toEqual(['169', '154', '122', '109']);
   });
 
   test('AET-029: 相手ポケモン切替時の詳細表示切替（元 MET-032）', async ({ page }) => {

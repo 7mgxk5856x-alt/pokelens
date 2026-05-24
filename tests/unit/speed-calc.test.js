@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calcSpeedPatterns } from '../../src/logic/speed-calc.js';
 
 describe('calcSpeedPatterns', () => {
-  it('種族値90のポケモンで素早さ6パターンを正しく計算する', () => {
+  it('種族値90のポケモンで素早さ4パターンを正しく計算する', () => {
     // Given
     const baseSpe = 90;
 
@@ -10,9 +10,7 @@ describe('calcSpeedPatterns', () => {
     const result = calcSpeedPatterns(baseSpe);
 
     // Then
-    // floor((90 + 能力ポイント + 20) × 性格補正)、スカーフはfloor(実数値 × 1.5)
-    expect(result.fastestScarf).toBe(234); // floor(156 * 1.5)
-    expect(result.fastScarf).toBe(213); // floor(142 * 1.5)
+    // floor((90 + 能力ポイント + 20) × 性格補正)
     expect(result.fastest).toBe(156); // floor((90+32+20)*1.1)
     expect(result.fast).toBe(142); // floor((90+32+20)*1.0)
     expect(result.neutral).toBe(110); // floor((90+0+20)*1.0)
@@ -27,8 +25,6 @@ describe('calcSpeedPatterns', () => {
     const result = calcSpeedPatterns(baseSpe);
 
     // Then
-    expect(result.fastestScarf).toBe(Math.floor(Math.floor((1 + 32 + 20) * 1.1) * 1.5));
-    expect(result.fastScarf).toBe(Math.floor((1 + 32 + 20) * 1.5));
     expect(result.fastest).toBe(Math.floor((1 + 32 + 20) * 1.1));
     expect(result.fast).toBe(1 + 32 + 20);
     expect(result.neutral).toBe(1 + 0 + 20);
@@ -44,37 +40,9 @@ describe('calcSpeedPatterns', () => {
 
     // Then
     expect(result.fastest).toBe(Math.floor((200 + 32 + 20) * 1.1));
-    expect(result.fastestScarf).toBe(Math.floor(result.fastest * 1.5));
-    expect(result.fastScarf).toBe(Math.floor((200 + 32 + 20) * 1.5));
+    expect(result.fast).toBe(200 + 32 + 20);
     expect(result.neutral).toBe(220);
     expect(result.slowest).toBe(Math.floor(220 * 0.9));
-  });
-
-  it('スカーフは「ベース実数値floor」のあとに×1.5してさらにfloorを適用する', () => {
-    // Given
-    // 種族値85 で floor 順序の違いが顕在化する:
-    //   最速ベース = floor((85+32+20)*1.1) = floor(150.7) = 150
-    //   正しい順:   floor(150 * 1.5) = 225
-    //   誤った順:   floor(150.7 * 1.5) = floor(226.05) = 226
-    const baseSpe = 85;
-
-    // When
-    const result = calcSpeedPatterns(baseSpe);
-
-    // Then
-    expect(result.fastestScarf).toBe(225);
-  });
-
-  it('準速スカーフもベース実数値floor後に×1.5してfloorする', () => {
-    // Given
-    // 種族値91: fast = floor((91+32+20)*1.0) = 143、fastScarf = floor(143 * 1.5) = 214
-    const baseSpe = 91;
-
-    // When
-    const result = calcSpeedPatterns(baseSpe);
-
-    // Then
-    expect(result.fastScarf).toBe(214);
   });
 
   it('最遅は性格補正0.9の floor を適用する', () => {
@@ -87,6 +55,20 @@ describe('calcSpeedPatterns', () => {
 
     // Then
     expect(result.slowest).toBe(108);
+  });
+
+  it('スカーフ補正キー（fastestScarf/fastScarf）は戻り値に含まれない', () => {
+    // 機能 15 で 6 パターン→ 4 パターンに簡素化。スカーフ補正は機能 16 で UI 側に集約済み。
+    // Given
+    const baseSpe = 90;
+
+    // When
+    const result = calcSpeedPatterns(baseSpe);
+
+    // Then
+    expect(result).not.toHaveProperty('fastestScarf');
+    expect(result).not.toHaveProperty('fastScarf');
+    expect(Object.keys(result)).toEqual(['fastest', 'fast', 'neutral', 'slowest']);
   });
 
   it('種族値0を渡すと RangeError を投げる', () => {
