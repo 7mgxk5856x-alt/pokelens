@@ -229,19 +229,24 @@
         display: none;
       }
       .speed-patterns {
-        list-style: none;
+        border-collapse: collapse;
         margin: 4px 0 0;
-        padding: 0;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 13px;
       }
-      .speed-patterns li {
-        padding: 2px 0;
-        color: #374151;
+      .speed-patterns th,
+      .speed-patterns td {
+        padding: 4px 10px;
+        text-align: center;
+        border-bottom: 1px solid #e5e7eb;
       }
-      .speed-patterns .label {
+      .speed-patterns th {
         color: #6b7280;
-        margin-right: 8px;
+        font-weight: 600;
+        font-size: 11px;
+      }
+      .speed-patterns td {
+        color: #374151;
       }
       .detail-section-title {
         font-size: 11px;

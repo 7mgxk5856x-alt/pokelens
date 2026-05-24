@@ -92,7 +92,7 @@ src/data/
 
 **配置ファイル**:
 - `power-index-calc.js`: 火力指数計算
-- `speed-calc.js`: 素早さ6パターン計算
+- `speed-calc.js`: 素早さ4パターン計算
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
 - `calc-actual-stats.js`: 実数値計算
 - `resolve-modifier.js`: 特性・持ち物の補正条件解決
@@ -126,7 +126,7 @@ src/logic/
 - `own-party-panel.js` (`OwnPartyPanel`): 自分パーティ6匹のカード一覧表示
 - `own-pokemon-detail.js` (`OwnPokemonDetail`): 自分ポケモン詳細パネル（実数値・技・火力指数）
 - `opponent-party-panel.js` (`OpponentPartyPanel`): 相手パーティ6スロットの管理
-- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ6パターン）
+- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ4パターン）
 - `search-input.js` (`SearchInput`): ポケモン名サジェスト入力
 - `dom-utils.js`: 共通 DOM 操作ヘルパー（`el()` 等）
 - `stat-labels.js`: 種族値・実数値の表示ラベル定義と整形ヘルパー（`STAT_LABELS` / `formatBaseStats`）
@@ -184,7 +184,7 @@ tests/e2e/
 ├── own-party-display.spec.js      # 自分パーティの表示・選択・状態遷移
 ├── own-pokemon-detail.spec.js     # 自分ポケモン詳細・火力指数・性格・技一覧
 ├── opponent-suggest.spec.js       # 相手パーティ入力・サジェスト検索・XSS 耐性
-├── opponent-pokemon-detail.spec.js # 相手ポケモン詳細・素早さ 6 パターン
+├── opponent-pokemon-detail.spec.js # 相手ポケモン詳細・素早さ 4 パターン
 └── error-handling.spec.js         # party.json 構文不正・必須フィールド欠落
 ```
 

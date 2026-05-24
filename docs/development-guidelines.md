@@ -183,16 +183,13 @@ const MAX_ABILITY_POINTS = 32;
 const NATURE_UP = 1.1;
 const NATURE_NEUTRAL = 1.0;
 const NATURE_DOWN = 0.9;
-const SCARF_MULTIPLIER = 1.5;
+// 機能 16（OwnPokemonDetail のスカーフ補正値併記）が import して再利用する倍率定数
+export const SCARF_MULTIPLIER = 1.5;
 
 export function calcSpeedPatterns(baseSpe) {
-  const fastest = calcStat(baseSpe, MAX_ABILITY_POINTS, NATURE_UP);
-  const fast    = calcStat(baseSpe, MAX_ABILITY_POINTS, NATURE_NEUTRAL);
   return {
-    fastestScarf: Math.floor(fastest * SCARF_MULTIPLIER),
-    fastScarf:    Math.floor(fast    * SCARF_MULTIPLIER),
-    fastest,
-    fast,
+    fastest: calcStat(baseSpe, MAX_ABILITY_POINTS, NATURE_UP),
+    fast:    calcStat(baseSpe, MAX_ABILITY_POINTS, NATURE_NEUTRAL),
     neutral: calcStat(baseSpe, 0, NATURE_NEUTRAL),
     slowest: calcStat(baseSpe, 0, NATURE_DOWN),
   };
@@ -364,7 +361,7 @@ import { calcSpeedPatterns } from '../../src/logic/speed-calc.js';
 import { calcPowerIndex } from '../../src/logic/power-index-calc.js';
 
 describe('calcSpeedPatterns', () => {
-  it('種族値90のポケモンで素早さ6パターンを正しく計算する', () => {
+  it('種族値90のポケモンで素早さ4パターンを正しく計算する', () => {
     // Given
     const baseSpe = 90;
 
@@ -372,9 +369,7 @@ describe('calcSpeedPatterns', () => {
     const result = calcSpeedPatterns(baseSpe);
 
     // Then
-    // floor((90 + 能力ポイント + 20) × 性格補正)、スカーフはfloor(実数値 × 1.5)
-    expect(result.fastestScarf).toBe(234); // floor(156 * 1.5)
-    expect(result.fastScarf).toBe(213);    // floor(142 * 1.5)
+    // floor((90 + 能力ポイント + 20) × 性格補正)
     expect(result.fastest).toBe(156);      // floor((90+32+20)*1.1)
     expect(result.fast).toBe(142);         // floor((90+32+20)*1.0)
     expect(result.neutral).toBe(110);      // floor((90+0+20)*1.0)

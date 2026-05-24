@@ -24,5 +24,7 @@ export const SEL = {
   opponentClear: '.opponent-clear',
   opponentInfo: '.opponent-info',
   opponentDetail: '#opponent-detail',
-  speedPatterns: '.speed-patterns li',
+  speedPatterns: '.speed-patterns',
+  speedPatternHeaders: '.speed-patterns thead th',
+  speedPatternCells: '.speed-patterns tbody td',
 };

@@ -3,8 +3,6 @@ import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
 
 const SPEED_PATTERN_LABELS = [
-  ['fastestScarf', '最速スカーフ'],
-  ['fastScarf', '準速スカーフ'],
   ['fastest', '最速'],
   ['fast', '準速'],
   ['neutral', '無振り'],
@@ -13,7 +11,7 @@ const SPEED_PATTERN_LABELS = [
 
 const DASH = '−';
 
-/** 相手の選択ポケモンの詳細（種族値・素早さ 6 パターンなど）を描画するビュー。 */
+/** 相手の選択ポケモンの詳細（種族値・素早さ 4 パターンなど）を描画するビュー。 */
 export class OpponentPokemonDetail {
   #container;
   #loader;
@@ -68,14 +66,24 @@ export class OpponentPokemonDetail {
     wrapper.appendChild(el('div', 'detail-section-title', '素早さ'));
 
     const patterns = calcSpeedPatterns(baseSpe);
-    const list = el('ul', 'speed-patterns');
-    for (const [key, label] of SPEED_PATTERN_LABELS) {
-      const li = document.createElement('li');
-      li.appendChild(el('span', 'label', `${label}:`));
-      li.appendChild(el('span', 'value', String(patterns[key])));
-      list.appendChild(li);
+    const table = el('table', 'speed-patterns');
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    for (const [, label] of SPEED_PATTERN_LABELS) {
+      headerRow.appendChild(el('th', null, label));
     }
-    wrapper.appendChild(list);
+    thead.appendChild(headerRow);
+
+    const tbody = document.createElement('tbody');
+    const dataRow = document.createElement('tr');
+    for (const [key] of SPEED_PATTERN_LABELS) {
+      dataRow.appendChild(el('td', null, String(patterns[key])));
+    }
+    tbody.appendChild(dataRow);
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
     return wrapper;
   }
 }
