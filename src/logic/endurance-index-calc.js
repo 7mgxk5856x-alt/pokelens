@@ -8,12 +8,12 @@ const NATURE_NEUTRAL = 1.0;
 /**
  * 耐久指数 = HP 実数値 × 防御/特防 実数値。
  * 入力検証は省略する。呼び出し側（`OwnPokemonDetail` 経由の `calcActualStats` 結果、
- * または `calcEndurancePatterns` 経由の `calcHp` / `calcStat` 結果）が正の整数を保証するため。
+ * または `calcEnduranceIndexPatterns` 経由の `calcHp` / `calcStat` 結果）が正の整数を保証するため。
  * @param {number} hp HP 実数値
  * @param {number} defStat 防御または特防の実数値
  * @returns {number} 耐久指数
  */
-export function calcEndurance(hp, defStat) {
+export function calcEnduranceIndex(hp, defStat) {
   return hp * defStat;
 }
 
@@ -31,7 +31,7 @@ export function calcEndurance(hp, defStat) {
  *   none:        {physical: number, special: number},
  * }} 各パターンの物理耐久指数・特殊耐久指数
  */
-export function calcEndurancePatterns(baseStats) {
+export function calcEnduranceIndexPatterns(baseStats) {
   const hpMax = calcHp(baseStats.hp, MAX_ABILITY_POINTS);
   const hpMin = calcHp(baseStats.hp, ZERO_ABILITY_POINTS);
   const defUp = calcStat(baseStats.def, MAX_ABILITY_POINTS, NATURE_UP);
@@ -39,9 +39,21 @@ export function calcEndurancePatterns(baseStats) {
   const defNone = calcStat(baseStats.def, ZERO_ABILITY_POINTS, NATURE_NEUTRAL);
   const spdNone = calcStat(baseStats.spd, ZERO_ABILITY_POINTS, NATURE_NEUTRAL);
   return {
-    specialized: { physical: calcEndurance(hpMax, defUp), special: calcEndurance(hpMax, spdUp) },
-    defOnly: { physical: calcEndurance(hpMin, defUp), special: calcEndurance(hpMin, spdUp) },
-    hpOnly: { physical: calcEndurance(hpMax, defNone), special: calcEndurance(hpMax, spdNone) },
-    none: { physical: calcEndurance(hpMin, defNone), special: calcEndurance(hpMin, spdNone) },
+    specialized: {
+      physical: calcEnduranceIndex(hpMax, defUp),
+      special: calcEnduranceIndex(hpMax, spdUp),
+    },
+    defOnly: {
+      physical: calcEnduranceIndex(hpMin, defUp),
+      special: calcEnduranceIndex(hpMin, spdUp),
+    },
+    hpOnly: {
+      physical: calcEnduranceIndex(hpMax, defNone),
+      special: calcEnduranceIndex(hpMax, spdNone),
+    },
+    none: {
+      physical: calcEnduranceIndex(hpMin, defNone),
+      special: calcEnduranceIndex(hpMin, spdNone),
+    },
   };
 }

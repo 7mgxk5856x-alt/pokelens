@@ -1,4 +1,4 @@
-import { calcEndurancePatterns } from '../logic/endurance-calc.js';
+import { calcEnduranceIndexPatterns } from '../logic/endurance-index-calc.js';
 import { calcSpeedPatterns } from '../logic/speed-calc.js';
 import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
@@ -105,7 +105,7 @@ export class OpponentPokemonDetail {
     const wrapper = el('div', 'detail-endurance');
     wrapper.appendChild(el('div', 'detail-section-title', '耐久指数'));
 
-    const patterns = calcEndurancePatterns(baseStats);
+    const patterns = calcEnduranceIndexPatterns(baseStats);
     const table = el('table', 'endurance-patterns');
 
     const thead = document.createElement('thead');

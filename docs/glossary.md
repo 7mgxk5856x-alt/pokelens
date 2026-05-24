@@ -90,7 +90,7 @@
 
 **英語表記**: Endurance Index
 
-**実装**: `src/logic/endurance-calc.js`（`calcEndurance` / `calcEndurancePatterns`）
+**実装**: `src/logic/endurance-index-calc.js`（`calcEnduranceIndex` / `calcEnduranceIndexPatterns`）
 
 **関連用語**: [耐久指数4パターン](#耐久指数4パターン)、[実数値](#実数値)
 
@@ -115,7 +115,7 @@
 
 **関連用語**: [耐久指数](#耐久指数)、[種族値](#種族値)、[能力ポイント](#能力ポイント)
 
-**実装**: `src/logic/endurance-calc.js` の `calcEndurancePatterns(baseStats)`
+**実装**: `src/logic/endurance-index-calc.js` の `calcEnduranceIndexPatterns(baseStats)`
 
 ---
 

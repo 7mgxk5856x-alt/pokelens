@@ -1,25 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { calcEndurance, calcEndurancePatterns } from '../../src/logic/endurance-calc.js';
+import {
+  calcEnduranceIndex,
+  calcEnduranceIndexPatterns,
+} from '../../src/logic/endurance-index-calc.js';
 
-describe('calcEndurance', () => {
+describe('calcEnduranceIndex', () => {
   it('HP × 防御 を積で返す', () => {
-    expect(calcEndurance(215, 115)).toBe(24725);
+    expect(calcEnduranceIndex(215, 115)).toBe(24725);
   });
 
   it('特殊側（HP × 特防）も同じ式で算出する', () => {
-    expect(calcEndurance(215, 105)).toBe(22575);
+    expect(calcEnduranceIndex(215, 105)).toBe(22575);
   });
 
   it('境界値 1×1 でも破綻しない', () => {
-    expect(calcEndurance(1, 1)).toBe(1);
+    expect(calcEnduranceIndex(1, 1)).toBe(1);
   });
 
   it('大きい値（999 × 999）でも整数として算出', () => {
-    expect(calcEndurance(999, 999)).toBe(998001);
+    expect(calcEnduranceIndex(999, 999)).toBe(998001);
   });
 });
 
-describe('calcEndurancePatterns', () => {
+describe('calcEnduranceIndexPatterns', () => {
   // ガブリアスの種族値: HP=108, A=130, B=95, C=80, D=85, S=102
   // HP実数値: H32=108+32+75=215 / H0=108+0+75=183
   // B実数値:
@@ -31,7 +34,7 @@ describe('calcEndurancePatterns', () => {
   const garchompBaseStats = { hp: 108, atk: 130, def: 95, spa: 80, spd: 85, spe: 102 };
 
   it('ガブリアスの 4 パターン × 2 種類（物理・特殊）= 8 値を完全列挙', () => {
-    const result = calcEndurancePatterns(garchompBaseStats);
+    const result = calcEnduranceIndexPatterns(garchompBaseStats);
 
     // 耐久特化: H32 × (B32+補正 / D32+補正)
     expect(result.specialized.physical).toBe(215 * 161); // 34615
@@ -51,12 +54,12 @@ describe('calcEndurancePatterns', () => {
   });
 
   it('戻り値は 4 パターンキー（specialized / defOnly / hpOnly / none）を持つ', () => {
-    const result = calcEndurancePatterns(garchompBaseStats);
+    const result = calcEnduranceIndexPatterns(garchompBaseStats);
     expect(Object.keys(result)).toEqual(['specialized', 'defOnly', 'hpOnly', 'none']);
   });
 
   it('各パターンは physical / special の 2 キーを持つ', () => {
-    const result = calcEndurancePatterns(garchompBaseStats);
+    const result = calcEnduranceIndexPatterns(garchompBaseStats);
     for (const patternKey of ['specialized', 'defOnly', 'hpOnly', 'none']) {
       expect(Object.keys(result[patternKey])).toEqual(['physical', 'special']);
     }
@@ -64,7 +67,7 @@ describe('calcEndurancePatterns', () => {
 
   it('種族値最小（HP=1, B=1, D=1）でも算出が破綻しない', () => {
     const minStats = { hp: 1, atk: 1, def: 1, spa: 1, spd: 1, spe: 1 };
-    const result = calcEndurancePatterns(minStats);
+    const result = calcEnduranceIndexPatterns(minStats);
     // hpMax=1+32+75=108, hpMin=1+0+75=76
     // defUp=floor((1+32+20)×1.1)=floor(58.3)=58, defNone=1+0+20=21
     expect(result.specialized.physical).toBe(108 * 58);

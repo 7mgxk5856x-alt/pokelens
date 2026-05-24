@@ -93,7 +93,7 @@ src/data/
 **配置ファイル**:
 - `power-index-calc.js`: 火力指数計算
 - `speed-calc.js`: 素早さ4パターン計算
-- `endurance-calc.js`: 耐久指数計算（物理 = HP × 防御、特殊 = HP × 特防）
+- `endurance-index-calc.js`: 耐久指数計算（物理 = HP × 防御、特殊 = HP × 特防）
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
 - `calc-actual-stats.js`: 実数値計算
 - `resolve-modifier.js`: 特性・持ち物の補正条件解決
