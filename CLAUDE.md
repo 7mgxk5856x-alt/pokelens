@@ -50,8 +50,12 @@ lint / format はコミットフックでは走らない。必要に応じて `n
 
 - `/setup-project` — `docs/ideas/` を元に **PRD（`docs/product-requirements.md`）のみ** を対話的に作成。承認されたら完了。レビュー(`/review-doc`)・改訂を経て PRD を固めてから `/setup-docs` へ。
 - `/setup-docs` — 承認済み PRD を元に残り5ドキュメント（機能設計・アーキテクチャ・リポジトリ構造・開発ガイドライン・用語集）をまとめて自動生成。PRD が無ければ `/setup-project` を案内して終了。
-- `/add-feature <機能名>` — 完全自動実行。`.steering/YYYYMMDD-<機能名>/` 配下にステアリングファイルを作成し、タスクを全実装、`test`・`lint` の全パスを確認、`implementation-validator`サブエージェントで品質検証、追加した自動テストを `docs/testing/` の一覧へ反映、アーキテクチャに影響がある場合は永続ドキュメントを更新。
-- `/fix-code <修正内容>` — 完全自動実行。既存ソースの修正（バグ修正・リファクタ・`/review-code` 指摘の反映）を実装し、対応する自動テストを追加・更新、`implementation-validator`で検証、`test`・`lint`の全パスを確認、変更した自動テストを `docs/testing/` の一覧へ反映。新機能追加は `/add-feature` を使う。
+- `/update-docs ["<機能の意図文>" or <機能名>]` — **docs を設計の単一真実源として扱うコマンド**。git 状態で 2 モードを自動切替する。
+  - **Phase 1（設計記述 / pre-impl）— 主モード**: 引数に機能の意図文を渡し、PRD・機能設計書・アーキテクチャ・リポジトリ構造・用語集・開発ガイドラインへの設計記述をカテゴリ別ユーザー承認サイクルで進める。**`/add-feature` の前** に実行する。
+  - **Phase 3（事後反映 / post-impl）**: 実装完了後の PRD チェックボックス更新・テスト一覧反映・docs 細部追従。`src/`/`tests/`/`tools/` の git 差分検出時に自動で本モードに入る。
+  - 自動判定の上書き: `phase1:"..."` / `phase3:"..."` の接頭辞で強制可。`git commit` は実行しない。
+- `/add-feature <機能名>` — **docs を仕様として実装する実装専念モード**。設計フェーズは含まない（`/update-docs` Phase 1 で先に docs に設計を固定する前提）。ステアリング上の `design.md` は実装計画に縮退し、新たな設計判断はしない。実装ループ中に docs に書かれていない判断が必要になったら **ルールD で中断してユーザーへエスカレーション**（`/update-docs phase1:` で docs を更新してから再開）。完了後は `/update-docs`（Phase 3 自動検出）を案内する。
+- `/fix-code <修正内容>` — 完全自動実行。既存ソースの修正（バグ修正・リファクタ・`/review-code` 指摘の反映）を実装し、対応する自動テストを追加・更新、`implementation-validator`で検証、`test`・`lint`の全パスを確認、変更した自動テストを `docs/testing/` の一覧へ反映。永続ドキュメント波及がある修正後は `/update-docs` を案内。新機能追加は `/add-feature` を使う。
 - `/review-doc <パス>` — `doc-reviewer`サブエージェントでドキュメントをレビュー。
 - `/review-code [<パス>]` — `code-reviewer`サブエージェントでコードをレビュー。可読性・設計・テスト・セキュリティ・仕様整合性・ドメイン妥当性・解析性・資源管理性の8観点で評価。引数を省略した場合は `git diff HEAD`(ステージ済み + 未ステージ)を対象にする。修正は自動で行わない。
 - `/write-e2e-cases [<機能>]` — 完全自動実行。`docs/product-requirements.md` の受け入れ条件から手動・E2E テスト仕様書(`docs/testing/e2e/manual-test-cases.md`)を生成・更新。既存ファイルがあれば未カバー条件のみ追記(冪等)。コード由来の自動テスト一覧は対象外(`/add-feature`・`/fix-code` が担当)。`git commit` は実行しない。
