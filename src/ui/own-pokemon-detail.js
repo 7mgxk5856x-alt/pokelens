@@ -2,12 +2,15 @@ import { calcActualStats } from '../logic/calc-actual-stats.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
 import { MODIFIER_KIND } from '../logic/constants.js';
+import { SCARF_MULTIPLIER } from '../logic/speed-calc.js';
 import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
 
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 
 const DASH = '−';
+const CHOICE_SCARF_ITEM_NAME = 'こだわりスカーフ';
+const SPE_KEY = 'spe';
 
 /** 自分の選択ポケモンの詳細（実数値・性格・技ごとの火力指数など）を描画するビュー。 */
 export class OwnPokemonDetail {
@@ -38,7 +41,7 @@ export class OwnPokemonDetail {
       this.#buildItemRow(entry.item),
       this.#buildNatureRow(entry.nature, natureModifiers),
       this.#buildBaseStatsRow(pokemonData.baseStats),
-      this.#buildActualStatsRow(actualStats),
+      this.#buildActualStatsRow(actualStats, entry.item),
       this.#buildMovesTable(entry, pokemonData, actualStats)
     );
     this.#container.style.display = 'block';
@@ -87,8 +90,15 @@ export class OwnPokemonDetail {
     return el('div', 'detail-stats', `種族値: ${text}`);
   }
 
-  #buildActualStatsRow(actualStats) {
-    const text = STAT_LABELS.map(([key, label]) => `${label} ${actualStats[key]}`).join(' / ');
+  #buildActualStatsRow(actualStats, item) {
+    const isScarf = item === CHOICE_SCARF_ITEM_NAME;
+    const text = STAT_LABELS.map(([key, label]) => {
+      const value = actualStats[key];
+      if (key === SPE_KEY && isScarf) {
+        return `${label} ${value} (${Math.floor(value * SCARF_MULTIPLIER)})`;
+      }
+      return `${label} ${value}`;
+    }).join(' / ');
     return el('div', 'detail-stats', `実数値: ${text}`);
   }
 

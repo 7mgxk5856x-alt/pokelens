@@ -5,7 +5,7 @@ const ZERO_ABILITY_POINTS = 0;
 const NATURE_UP = 1.1;
 const NATURE_NEUTRAL = 1.0;
 const NATURE_DOWN = 0.9;
-const SCARF_MULTIPLIER = 1.5;
+export const SCARF_MULTIPLIER = 1.5;
 
 /**
  * 素早さ種族値から代表 6 パターンの実数値を計算する。
