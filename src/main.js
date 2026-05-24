@@ -1,3 +1,4 @@
+import './styles.css';
 import { DataLoader } from './data/loader.js';
 import { OwnPartyPanel } from './ui/own-party-panel.js';
 import { OwnPokemonDetail } from './ui/own-pokemon-detail.js';

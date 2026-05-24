@@ -178,11 +178,13 @@ sequenceDiagram
 ```
 src/
 ├── main.js                # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
+├── styles.css             # 全 UI のスタイルシート（main.js から import、Vite がバンドル）
 ├── data/
 │   └── loader.js          # JSON読み込み・キャッシュ
 ├── logic/
 │   ├── power-index-calc.js   # 火力指数計算（純粋関数）
 │   ├── speed-calc.js         # 素早さ4パターン計算（純粋関数）
+│   ├── endurance-index-calc.js  # 耐久指数計算（純粋関数）
 │   ├── name-search.js        # ひらがな/カタカナ正規化・前方一致検索
 │   ├── calc-actual-stats.js  # 実数値計算（純粋関数）
 │   ├── resolve-modifier.js   # 特性・持ち物の補正条件解決（純粋関数）
@@ -228,7 +230,7 @@ data/
 ├── natures.json           # 手書き管理: 性格補正倍率マップ
 └── party.json             # ユーザー手編集
 
-index.html                 # エントリーポイント
+index.html                 # エントリーポイント（DOM 構造のみ。スタイルは src/styles.css）
 ```
 
 ---

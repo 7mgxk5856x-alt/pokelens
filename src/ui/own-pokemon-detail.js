@@ -1,15 +1,14 @@
 import { calcActualStats } from '../logic/calc-actual-stats.js';
+import { calcEnduranceIndex } from '../logic/endurance-index-calc.js';
 import { calcPowerIndex } from '../logic/power-index-calc.js';
 import { resolveModifier } from '../logic/resolve-modifier.js';
 import { MODIFIER_KIND } from '../logic/constants.js';
-import { SCARF_MULTIPLIER } from '../logic/speed-calc.js';
 import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
 
 const MOVE_COLUMNS = ['技名', 'タイプ', '威力', '分類', '命中', '火力指数'];
 
 const DASH = '−';
-const CHOICE_SCARF_ITEM_NAME = 'こだわりスカーフ';
 const SPE_KEY = 'spe';
 
 /** 自分の選択ポケモンの詳細（実数値・性格・技ごとの火力指数など）を描画するビュー。 */
@@ -37,11 +36,8 @@ export class OwnPokemonDetail {
 
     this.#container.replaceChildren(
       this.#buildHeader(pokemonData),
-      this.#buildAbilityRow(entry.ability),
-      this.#buildItemRow(entry.item),
-      this.#buildNatureRow(entry.nature, natureModifiers),
-      this.#buildBaseStatsRow(pokemonData.baseStats),
-      this.#buildActualStatsRow(actualStats, entry.item),
+      this.#buildAbilityItemNatureRow(entry, natureModifiers),
+      this.#buildStatsGrid(pokemonData, actualStats, entry.item),
       this.#buildMovesTable(entry, pokemonData, actualStats)
     );
     this.#container.style.display = 'block';
@@ -53,6 +49,16 @@ export class OwnPokemonDetail {
     const typeText = pokemonData.types.map((t) => this.#loader.getTypeName(t)).join(' / ');
     header.appendChild(el('span', 'types', typeText));
     return header;
+  }
+
+  #buildAbilityItemNatureRow(entry, natureModifiers) {
+    // 特性・持ち物・性格を 1 行に横並びで表示する（CSS Grid / flex で各行の左右余白を統一）。
+    // 各子要素は従来通り `.detail-row` クラスを維持し、E2E テストの locator 互換性を保つ。
+    const group = el('div', 'detail-row-inline-group');
+    group.appendChild(this.#buildAbilityRow(entry.ability));
+    group.appendChild(this.#buildItemRow(entry.item));
+    group.appendChild(this.#buildNatureRow(entry.nature, natureModifiers));
+    return group;
   }
 
   #buildAbilityRow(ability) {
@@ -85,21 +91,41 @@ export class OwnPokemonDetail {
     return el('div', 'detail-row', `性格: ${nature}${suffix}`);
   }
 
+  #buildStatsGrid(pokemonData, actualStats, item) {
+    // 種族値行・実数値行を CSS Grid（2 列）に並べ、各行の右隣に耐久指数セルを配置する。
+    // 同一 grid 配下の 1 列目はカラム幅自動算出で揃うため、2 列目（耐久指数）の左端も縦に揃う。
+    const physical = calcEnduranceIndex(actualStats.hp, actualStats.def);
+    const special = calcEnduranceIndex(actualStats.hp, actualStats.spd);
+    const grid = el('div', 'detail-stats-grid');
+    grid.appendChild(this.#buildBaseStatsRow(pokemonData.baseStats));
+    grid.appendChild(this.#buildEnduranceCell('物理耐久指数', physical));
+    grid.appendChild(this.#buildActualStatsRow(actualStats, item));
+    grid.appendChild(this.#buildEnduranceCell('特殊耐久指数', special));
+    return grid;
+  }
+
   #buildBaseStatsRow(baseStats) {
     const text = STAT_LABELS.map(([key, label]) => `${label} ${baseStats[key]}`).join(' / ');
     return el('div', 'detail-stats', `種族値: ${text}`);
   }
 
   #buildActualStatsRow(actualStats, item) {
-    const isScarf = item === CHOICE_SCARF_ITEM_NAME;
+    // 素早さ補正倍率（こだわりスカーフ等）はマスターデータ（`data/items.json` 経由）から取得する。
+    // 持ち物の Modifier に `spe` が定義されていれば、その倍率を素早さ実数値に乗じて括弧書きで併記する。
+    // 倍率値の変更は items-modifiers.json パッチの更新だけで完結し、UI コードは変更不要。
+    const speMultiplier = this.#loader.getItemModifier(item)?.spe;
     const text = STAT_LABELS.map(([key, label]) => {
       const value = actualStats[key];
-      if (key === SPE_KEY && isScarf) {
-        return `${label} ${value} (${Math.floor(value * SCARF_MULTIPLIER)})`;
+      if (key === SPE_KEY && speMultiplier) {
+        return `${label} ${value} (${Math.floor(value * speMultiplier)})`;
       }
       return `${label} ${value}`;
     }).join(' / ');
     return el('div', 'detail-stats', `実数値: ${text}`);
+  }
+
+  #buildEnduranceCell(label, value) {
+    return el('div', 'detail-endurance-cell', `${label}: ${value}`);
   }
 
   #buildMovesTable(entry, pokemonData, actualStats) {

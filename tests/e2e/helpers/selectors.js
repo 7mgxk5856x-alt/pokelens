@@ -27,4 +27,11 @@ export const SEL = {
   speedPatterns: '.speed-patterns',
   speedPatternHeaders: '.speed-patterns thead th',
   speedPatternCells: '.speed-patterns tbody td',
+
+  ownStatsGrid: '#own-detail .detail-stats-grid',
+  ownEnduranceCells: '#own-detail .detail-stats-grid .detail-endurance-cell',
+  enduranceTable: '#opponent-detail .endurance-patterns',
+  enduranceHeaders: '#opponent-detail .endurance-patterns thead th',
+  enduranceRowHeaders: '#opponent-detail .endurance-patterns tbody th',
+  enduranceCells: '#opponent-detail .endurance-patterns tbody td',
 };

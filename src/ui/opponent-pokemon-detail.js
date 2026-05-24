@@ -1,3 +1,4 @@
+import { calcEnduranceIndexPatterns } from '../logic/endurance-index-calc.js';
 import { calcSpeedPatterns } from '../logic/speed-calc.js';
 import { el } from './dom-utils.js';
 import { STAT_LABELS } from './stat-labels.js';
@@ -9,9 +10,21 @@ const SPEED_PATTERN_LABELS = [
   ['slowest', '最遅'],
 ];
 
+const ENDURANCE_PATTERN_LABELS = [
+  ['specialized', '耐久特化'],
+  ['defOnly', '耐久極振'],
+  ['hpOnly', 'H極振'],
+  ['none', '無振り'],
+];
+
+const ENDURANCE_ROW_LABELS = [
+  ['physical', '物理耐久指数'],
+  ['special', '特殊耐久指数'],
+];
+
 const DASH = '−';
 
-/** 相手の選択ポケモンの詳細（種族値・素早さ 4 パターンなど）を描画するビュー。 */
+/** 相手の選択ポケモンの詳細（種族値・素早さ 4 パターン・耐久指数 4 パターンなど）を描画するビュー。 */
 export class OpponentPokemonDetail {
   #container;
   #loader;
@@ -33,6 +46,7 @@ export class OpponentPokemonDetail {
       this.#buildHeader(pokemonData),
       this.#buildAbilitiesRow(pokemonData.abilities),
       this.#buildBaseStatsRow(pokemonData.baseStats),
+      this.#buildEnduranceSection(pokemonData.baseStats),
       this.#buildSpeedSection(pokemonData.baseStats.spe)
     );
     this.#container.style.display = 'block';
@@ -80,6 +94,37 @@ export class OpponentPokemonDetail {
       dataRow.appendChild(el('td', null, String(patterns[key])));
     }
     tbody.appendChild(dataRow);
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
+    return wrapper;
+  }
+
+  #buildEnduranceSection(baseStats) {
+    const wrapper = el('div', 'detail-endurance');
+    wrapper.appendChild(el('div', 'detail-section-title', '耐久指数'));
+
+    const patterns = calcEnduranceIndexPatterns(baseStats);
+    const table = el('table', 'endurance-patterns');
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.appendChild(el('th', null, ''));
+    for (const [, label] of ENDURANCE_PATTERN_LABELS) {
+      headerRow.appendChild(el('th', null, label));
+    }
+    thead.appendChild(headerRow);
+
+    const tbody = document.createElement('tbody');
+    for (const [rowKey, rowLabel] of ENDURANCE_ROW_LABELS) {
+      const tr = document.createElement('tr');
+      tr.appendChild(el('th', null, rowLabel));
+      for (const [patternKey] of ENDURANCE_PATTERN_LABELS) {
+        tr.appendChild(el('td', null, String(patterns[patternKey][rowKey])));
+      }
+      tbody.appendChild(tr);
+    }
 
     table.appendChild(thead);
     table.appendChild(tbody);

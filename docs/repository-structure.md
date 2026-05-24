@@ -7,6 +7,7 @@ pokelens/
 ├── README.md                       # プロジェクト概要・セットアップ手順
 ├── src/                            # JavaScript フロントエンド ソースコード
 │   ├── main.js                     # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
+│   ├── styles.css                  # 全 UI のスタイルシート（main.js が import、Vite がバンドル）
 │   ├── data/                       # データ読み込みレイヤー
 │   ├── logic/                      # ロジックレイヤー（純粋関数）
 │   └── ui/                         # UIレイヤー（DOM操作）
@@ -43,7 +44,7 @@ pokelens/
 ├── .claude/                        # Claude Code 設定
 ├── .devcontainer/                  # 開発コンテナ設定
 ├── .steering/                      # 作業タスク管理（gitignore済み）
-├── index.html                      # アプリエントリーポイント
+├── index.html                      # アプリエントリーポイント（DOM 構造のみ。CSS は src/styles.css）
 ├── vite.config.js                  # Vite 設定
 ├── vitest.config.js                # Vitest 設定
 ├── playwright.config.js            # Playwright（E2E）設定
@@ -60,8 +61,19 @@ pokelens/
 **役割**: アプリ起動時に DataLoader を初期化し、各 UI コンポーネントをマウントする
 
 **依存関係**:
-- 依存可能: `src/ui/`、`src/data/`
+- 依存可能: `src/ui/`、`src/data/`、`src/styles.css`（スタイルシートを `import './styles.css'` で取り込み、Vite に CSS バンドル処理を委ねる）
 - 直接 import 禁止: `src/logic/`（`src/logic/` の関数は `src/ui/` が import して使用する。`main.js` が直接 import しないことで、ロジック呼び出しの起点を UI レイヤーに統一する）
+
+---
+
+### src/styles.css (スタイルシート)
+
+**役割**: 全 UI コンポーネントの CSS を一元管理する。`main.js` が `import './styles.css'` で取り込み、Vite がバンドル時に処理する（dev サーバー時は HMR が効く）
+
+**配置方針**:
+- 単一ファイルで運用（〜500 行規模）。コンポーネント別の CSS Modules / 別ファイル分割は採用しない
+- セレクタは BEM 等の規約には従わず、コンポーネントクラス名（`.detail-stats-grid` / `.speed-patterns` 等）と ID（`#own-detail` / `#opponent-detail` 等）を直接使う
+- 色・余白・フォントの値はファイル内で直書き（CSS 変数は現状未導入。トークン化は規模が増えた時点で検討）
 
 ---
 
@@ -93,6 +105,7 @@ src/data/
 **配置ファイル**:
 - `power-index-calc.js`: 火力指数計算
 - `speed-calc.js`: 素早さ4パターン計算
+- `endurance-index-calc.js`: 耐久指数計算（物理 = HP × 防御、特殊 = HP × 特防）
 - `name-search.js`: ひらがな/カタカナ正規化・前方一致検索
 - `calc-actual-stats.js`: 実数値計算
 - `resolve-modifier.js`: 特性・持ち物の補正条件解決
@@ -124,9 +137,9 @@ src/logic/
 
 **配置ファイル**:
 - `own-party-panel.js` (`OwnPartyPanel`): 自分パーティ6匹のカード一覧表示
-- `own-pokemon-detail.js` (`OwnPokemonDetail`): 自分ポケモン詳細パネル（実数値・技・火力指数）
+- `own-pokemon-detail.js` (`OwnPokemonDetail`): 自分ポケモン詳細パネル（実数値・技・火力指数・耐久指数）
 - `opponent-party-panel.js` (`OpponentPartyPanel`): 相手パーティ6スロットの管理
-- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ4パターン）
+- `opponent-pokemon-detail.js` (`OpponentPokemonDetail`): 相手ポケモン詳細パネル（種族値・素早さ4パターン・耐久指数4パターン）
 - `search-input.js` (`SearchInput`): ポケモン名サジェスト入力
 - `dom-utils.js`: 共通 DOM 操作ヘルパー（`el()` 等）
 - `stat-labels.js`: 種族値・実数値の表示ラベル定義と整形ヘルパー（`STAT_LABELS` / `formatBaseStats`）
