@@ -178,6 +178,7 @@ sequenceDiagram
 ```
 src/
 ├── main.js                # エントリーポイント（UIコンポーネント初期化・DataLoader起動）
+├── styles.css             # 全 UI のスタイルシート（main.js から import、Vite がバンドル）
 ├── data/
 │   └── loader.js          # JSON読み込み・キャッシュ
 ├── logic/
@@ -229,7 +230,7 @@ data/
 ├── natures.json           # 手書き管理: 性格補正倍率マップ
 └── party.json             # ユーザー手編集
 
-index.html                 # エントリーポイント
+index.html                 # エントリーポイント（DOM 構造のみ。スタイルは src/styles.css）
 ```
 
 ---
