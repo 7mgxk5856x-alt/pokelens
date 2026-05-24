@@ -868,9 +868,9 @@ DataLoader
 **責務**: 選択した自分ポケモンの詳細と火力指数を表示する
 
 **表示項目**:
-- ポケモン名 / タイプ / 特性 / 持ち物
+- ポケモン名 / タイプ
   - タイプ: `DataLoader.getTypeName()` で日本語変換して表示
-- 性格（`party.json` の `nature`）
+- 特性 / 持ち物 / 性格を 1 行に横並びで表示する（flex container の `.detail-row-inline-group` で各セルを `column-gap: 24px` で並べる）
   - 性格名のあとに上昇/下降ステータスを `↑`/`↓` 付きで表記する（例: `いじっぱり (A↑ / C↓)`）。補正なし性格（がんばりや等）は `(補正なし)` と表記
   - 上昇/下降判定は `DataLoader.getNatureModifiers()` の戻り値で `mod > 1` を `↑`、`mod < 1` を `↓` として判定
 - 種族値（H-A-B-C-D-S）
@@ -991,14 +991,14 @@ const powerIndex = calcPowerIndex(move, actualStats, typesForCalc, abilityModifi
 
 ### OpponentPokemonDetail
 
-**責務**: 選択した相手ポケモンの基本情報・素早さ4パターン・耐久指数4パターンを表示する
+**責務**: 選択した相手ポケモンの基本情報・耐久指数4パターン・素早さ4パターンを表示する
 
-**表示項目**:
+**表示項目**（上から順）:
 - ポケモン名 / タイプ / 特性候補一覧
   - タイプ: `DataLoader.getTypeName()` で日本語変換して表示
 - 種族値（H-A-B-C-D-S）
-- 素早さ4パターン（SpeedCalc が計算）: 表形式・横並びで表示する（ヘッダ「最速 / 準速 / 無振り / 最遅」、データ行に各パターンの実数値）
 - 耐久指数4パターン × 2 種類（EnduranceIndexCalc が計算）: 表形式・横並びで表示する（列ヘッダ「耐久特化 / 耐久極振 / H極振 / 無振り」、行ヘッダ「物理耐久指数 / 特殊耐久指数」）
+- 素早さ4パターン（SpeedCalc が計算）: 表形式・横並びで表示する（ヘッダ「最速 / 準速 / 無振り / 最遅」、データ行に各パターンの実数値）
 
 **依存**: SpeedCalc、EnduranceIndexCalc
 

@@ -46,8 +46,8 @@ export class OpponentPokemonDetail {
       this.#buildHeader(pokemonData),
       this.#buildAbilitiesRow(pokemonData.abilities),
       this.#buildBaseStatsRow(pokemonData.baseStats),
-      this.#buildSpeedSection(pokemonData.baseStats.spe),
-      this.#buildEnduranceSection(pokemonData.baseStats)
+      this.#buildEnduranceSection(pokemonData.baseStats),
+      this.#buildSpeedSection(pokemonData.baseStats.spe)
     );
     this.#container.style.display = 'block';
   }

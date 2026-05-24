@@ -36,9 +36,7 @@ export class OwnPokemonDetail {
 
     this.#container.replaceChildren(
       this.#buildHeader(pokemonData),
-      this.#buildAbilityRow(entry.ability),
-      this.#buildItemRow(entry.item),
-      this.#buildNatureRow(entry.nature, natureModifiers),
+      this.#buildAbilityItemNatureRow(entry, natureModifiers),
       this.#buildStatsGrid(pokemonData, actualStats, entry.item),
       this.#buildMovesTable(entry, pokemonData, actualStats)
     );
@@ -51,6 +49,16 @@ export class OwnPokemonDetail {
     const typeText = pokemonData.types.map((t) => this.#loader.getTypeName(t)).join(' / ');
     header.appendChild(el('span', 'types', typeText));
     return header;
+  }
+
+  #buildAbilityItemNatureRow(entry, natureModifiers) {
+    // 特性・持ち物・性格を 1 行に横並びで表示する（CSS Grid / flex で各行の左右余白を統一）。
+    // 各子要素は従来通り `.detail-row` クラスを維持し、E2E テストの locator 互換性を保つ。
+    const group = el('div', 'detail-row-inline-group');
+    group.appendChild(this.#buildAbilityRow(entry.ability));
+    group.appendChild(this.#buildItemRow(entry.item));
+    group.appendChild(this.#buildNatureRow(entry.nature, natureModifiers));
+    return group;
   }
 
   #buildAbilityRow(ability) {
