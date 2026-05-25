@@ -7,15 +7,30 @@
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="120,*">
             <!-- ポケモン名 -->
             <TextBlock Grid.Row="0" Grid.Column="0" Text="ポケモン" VerticalAlignment="Center" />
-            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Species}" Margin="0,2" />
+            <AutoCompleteBox Grid.Row="0" Grid.Column="1"
+                             Text="{Binding Species, Mode=TwoWay}"
+                             AsyncPopulator="{Binding SuggestSpeciesAsync}"
+                             FilterMode="None"
+                             MinimumPrefixLength="1"
+                             Margin="0,2" />
 
             <!-- 特性 -->
             <TextBlock Grid.Row="1" Grid.Column="0" Text="特性" VerticalAlignment="Center" />
-            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Ability}" Margin="0,2" />
+            <AutoCompleteBox Grid.Row="1" Grid.Column="1"
+                             Text="{Binding Ability, Mode=TwoWay}"
+                             AsyncPopulator="{Binding SuggestAbilityAsync}"
+                             FilterMode="None"
+                             MinimumPrefixLength="1"
+                             Margin="0,2" />
 
             <!-- アイテム -->
             <TextBlock Grid.Row="2" Grid.Column="0" Text="アイテム" VerticalAlignment="Center" />
-            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Item}" Margin="0,2" />
+            <AutoCompleteBox Grid.Row="2" Grid.Column="1"
+                             Text="{Binding Item, Mode=TwoWay}"
+                             AsyncPopulator="{Binding SuggestItemAsync}"
+                             FilterMode="None"
+                             MinimumPrefixLength="1"
+                             Margin="0,2" />
 
             <!-- 性格 -->
             <TextBlock Grid.Row="3" Grid.Column="0" Text="性格" VerticalAlignment="Center" />
@@ -86,7 +101,11 @@
             <ItemsControl Grid.Row="5" Grid.Column="1" ItemsSource="{Binding Moves}" Margin="0,2">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:MoveSlotViewModel">
-                        <TextBox Text="{Binding Name}" Margin="0,2" />
+                        <AutoCompleteBox Text="{Binding Name, Mode=TwoWay}"
+                                         AsyncPopulator="{Binding SuggestAsync}"
+                                         FilterMode="None"
+                                         MinimumPrefixLength="1"
+                                         Margin="0,2" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

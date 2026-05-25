@@ -47,6 +47,20 @@ public sealed partial class PokemonEntryViewModel : ObservableObject
     public IReadOnlyList<NatureChoice> NatureChoices { get; }
     public IReadOnlyList<MoveSlotViewModel> Moves { get; }
 
+    // AutoCompleteBox.AsyncPopulator は Func<string, CancellationToken, Task<IEnumerable<object>>> を期待する。
+    // 4 種類の入力欄ぞれぞれに別 Populator を XAML からバインドする（Suggest{Species,Ability,Item}Async）。
+    public Func<string, CancellationToken, Task<IEnumerable<object>>> SuggestSpeciesAsync =>
+        (q, _) => Task.FromResult<IEnumerable<object>>(_suggest.SuggestPokemon(q ?? string.Empty));
+
+    public Func<string, CancellationToken, Task<IEnumerable<object>>> SuggestAbilityAsync =>
+        (q, _) => Task.FromResult<IEnumerable<object>>(_suggest.SuggestAbility(q ?? string.Empty));
+
+    public Func<string, CancellationToken, Task<IEnumerable<object>>> SuggestItemAsync =>
+        (q, _) => Task.FromResult<IEnumerable<object>>(_suggest.SuggestItem(q ?? string.Empty));
+
+    // 技は MoveSlotViewModel が個別に保持（共通の Populator を子に提供する）。
+    internal IReadOnlyList<string> SuggestMove(string query) => _suggest.SuggestMove(query);
+
     private static string FormatNatureLabel(string name, IReadOnlyDictionary<string, NatureModifiers> mods)
     {
         if (!mods.TryGetValue(name, out var m) || (m.UpStat is null && m.DownStat is null))
@@ -290,5 +304,7 @@ public sealed partial class MoveSlotViewModel : ObservableObject
 
     [ObservableProperty] private string _name = string.Empty;
 
-    public IReadOnlyList<string> Suggest(string query) => _parent.SuggestFor("move", query);
+    /// <summary>AutoCompleteBox.AsyncPopulator にバインドする技サジェスト。親 ViewModel の <c>SuggestMove</c> に委譲。</summary>
+    public Func<string, CancellationToken, Task<IEnumerable<object>>> SuggestAsync =>
+        (q, _) => Task.FromResult<IEnumerable<object>>(_parent.SuggestMove(q ?? string.Empty));
 }
