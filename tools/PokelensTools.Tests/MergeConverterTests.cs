@@ -375,4 +375,291 @@ public class MergeConverterTests
         var result = MergeConverter.ConvertAbilities(modifiers, new JsonObject());
         Assert.Empty(result);
     }
+
+    // ---------- NestMegaForms (機能 7) ----------
+
+    // 親 + メガ独立エントリを併せ持つフラットな pokedex を返す。
+    // ConvertPokedex 完了後の状態を模擬する。
+    private static JsonObject MakeFlatPokedexWithMega() => new()
+    {
+        ["venusaur"] = new JsonObject
+        {
+            ["num"] = 3,
+            ["name"] = "フシギバナ",
+            ["types"] = new JsonArray { "Grass", "Poison" },
+            ["baseStats"] = new JsonObject { ["hp"]=80,["atk"]=82,["def"]=83,["spa"]=100,["spd"]=100,["spe"]=80 },
+            ["abilities"] = new JsonArray { "しんりょく", "ようりょくそ" },
+        },
+        ["venusaurmega"] = new JsonObject
+        {
+            ["num"] = 3,
+            ["name"] = "メガフシギバナ",
+            ["types"] = new JsonArray { "Grass", "Poison" },
+            ["baseStats"] = new JsonObject { ["hp"]=80,["atk"]=100,["def"]=123,["spa"]=122,["spd"]=120,["spe"]=80 },
+            ["abilities"] = new JsonArray { "あついしぼう" },
+        },
+        ["charizard"] = new JsonObject
+        {
+            ["num"] = 6,
+            ["name"] = "リザードン",
+            ["types"] = new JsonArray { "Fire", "Flying" },
+            ["baseStats"] = new JsonObject { ["hp"]=78,["atk"]=84,["def"]=78,["spa"]=109,["spd"]=85,["spe"]=100 },
+            ["abilities"] = new JsonArray { "もうか", "サンパワー" },
+        },
+        ["charizardmegax"] = new JsonObject
+        {
+            ["num"] = 6,
+            ["name"] = "メガリザードンＸ",
+            ["types"] = new JsonArray { "Fire", "Dragon" },
+            ["baseStats"] = new JsonObject { ["hp"]=78,["atk"]=130,["def"]=111,["spa"]=130,["spd"]=85,["spe"]=100 },
+            ["abilities"] = new JsonArray { "かたいツメ" },
+        },
+        ["charizardmegay"] = new JsonObject
+        {
+            ["num"] = 6,
+            // 半角 X/Y の例として Y を含むメガ名を意図的に半角で記載し、D-8 の全角正規化を検証
+            ["name"] = "メガリザードンY",
+            ["types"] = new JsonArray { "Fire", "Flying" },
+            ["baseStats"] = new JsonObject { ["hp"]=78,["atk"]=104,["def"]=78,["spa"]=159,["spd"]=115,["spe"]=100 },
+            ["abilities"] = new JsonArray { "ひでり" },
+        },
+        ["raichu"] = new JsonObject
+        {
+            ["num"] = 26,
+            ["name"] = "ライチュウ",
+            ["types"] = new JsonArray { "Electric" },
+            ["baseStats"] = new JsonObject { ["hp"]=60,["atk"]=90,["def"]=55,["spa"]=90,["spd"]=80,["spe"]=110 },
+            ["abilities"] = new JsonArray { "せいでんき", "ひらいしん" },
+        },
+    };
+
+    // megaStone フィールドを持つアイテムを含む showdown-items のフラット表現
+    private static JsonObject MakeShowdownItemsWithMegaStones() => new()
+    {
+        ["venusaurite"] = new JsonObject
+        {
+            ["num"] = 659,
+            ["name"] = "Venusaurite",
+            ["megaStone"] = new JsonObject { ["Venusaur"] = "Venusaur-Mega" },
+        },
+        ["charizarditex"] = new JsonObject
+        {
+            ["num"] = 660,
+            ["name"] = "Charizardite X",
+            ["megaStone"] = new JsonObject { ["Charizard"] = "Charizard-Mega-X" },
+        },
+        ["charizarditey"] = new JsonObject
+        {
+            ["num"] = 661,
+            ["name"] = "Charizardite Y",
+            ["megaStone"] = new JsonObject { ["Charizard"] = "Charizard-Mega-Y" },
+        },
+    };
+
+    private static JsonObject MakeItemNamesForMegas() => new()
+    {
+        ["venusaurite"] = "フシギバナイト",
+        // 半角 X/Y の翻訳が来るケースを再現
+        ["charizarditex"] = "リザードナイトX",
+        ["charizarditey"] = "リザードナイトY",
+    };
+
+    [Fact]
+    public void NestMegaForms_NestsMegaIntoParent_WithKeyAndItem()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        var megaForms = result["venusaur"]!["megaForms"]!.AsArray();
+        Assert.Single(megaForms);
+        Assert.Equal("venusaurmega", megaForms[0]!["key"]!.GetValue<string>());
+        Assert.Equal("フシギバナイト", megaForms[0]!["item"]!.GetValue<string>());
+        Assert.Equal("メガフシギバナ", megaForms[0]!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void NestMegaForms_RemovesMegaFromTopLevel()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        Assert.False(result.ContainsKey("venusaurmega"));
+        Assert.False(result.ContainsKey("charizardmegax"));
+        Assert.False(result.ContainsKey("charizardmegay"));
+    }
+
+    [Fact]
+    public void NestMegaForms_DualForm_NestsMultipleMegasIntoSameParent()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        var charizardMegas = result["charizard"]!["megaForms"]!.AsArray();
+        Assert.Equal(2, charizardMegas.Count);
+        var keys = charizardMegas.Select(m => m!["key"]!.GetValue<string>()).ToList();
+        Assert.Contains("charizardmegax", keys);
+        Assert.Contains("charizardmegay", keys);
+    }
+
+    [Fact]
+    public void NestMegaForms_NormalizesHalfWidthXYToFullWidth_OnMegaName()
+    {
+        // 入力 fixture では charizardmegay の name を意図的に半角 Y で記述している
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        var charizardMegas = result["charizard"]!["megaForms"]!.AsArray();
+        var megaY = charizardMegas.First(m => m!["key"]!.GetValue<string>() == "charizardmegay")!;
+        Assert.Equal("メガリザードンＹ", megaY["name"]!.GetValue<string>());
+        Assert.DoesNotContain("Y", megaY["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void NestMegaForms_NormalizesHalfWidthXYToFullWidth_OnItemName()
+    {
+        // 入力 fixture では itemNames に "リザードナイトX" / "リザードナイトY" (半角) を渡す
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        var charizardMegas = result["charizard"]!["megaForms"]!.AsArray();
+        var megaX = charizardMegas.First(m => m!["key"]!.GetValue<string>() == "charizardmegax")!;
+        var megaY = charizardMegas.First(m => m!["key"]!.GetValue<string>() == "charizardmegay")!;
+        Assert.Equal("リザードナイトＸ", megaX["item"]!.GetValue<string>());
+        Assert.Equal("リザードナイトＹ", megaY["item"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void NestMegaForms_PreservesMegaTypesAndBaseStatsAndAbilities()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        var venusaurMega = result["venusaur"]!["megaForms"]!.AsArray()[0]!;
+        Assert.Equal(100, venusaurMega["baseStats"]!["atk"]!.GetValue<int>());
+        Assert.Equal(123, venusaurMega["baseStats"]!["def"]!.GetValue<int>());
+        Assert.Equal("あついしぼう", venusaurMega["abilities"]!.AsArray()[0]!.GetValue<string>());
+        var types = venusaurMega["types"]!.AsArray().Select(t => t!.GetValue<string>()).ToList();
+        Assert.Equal(new[] { "Grass", "Poison" }, types);
+    }
+
+    [Fact]
+    public void NestMegaForms_NonMegaPokemon_RemainsUntouched()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        // ライチュウは itemNames に対応するメガストーンが無いため megaForms を持たない
+        Assert.True(result.ContainsKey("raichu"));
+        Assert.Null(result["raichu"]!["megaForms"]);
+    }
+
+    [Fact]
+    public void NestMegaForms_MegaWithoutEntryInPokedex_Skipped()
+    {
+        // mega が pokedex 側に存在しないケース (例: gyaradosmega を items に登録するが pokedex にエントリ無し)
+        var flat = MakeFlatPokedexWithMega();
+        var items = new JsonObject
+        {
+            ["gyaradosite"] = new JsonObject
+            {
+                ["num"] = 676,
+                ["name"] = "Gyaradosite",
+                ["megaStone"] = new JsonObject { ["Gyarados"] = "Gyarados-Mega" },
+            },
+        };
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), items, MakeItemNamesForMegas(), new JsonObject());
+
+        // 親 gyarados も無いし、メガ独立エントリも無いので何も追加されない
+        Assert.False(result.ContainsKey("gyarados"));
+        Assert.False(result.ContainsKey("gyaradosmega"));
+    }
+
+    [Fact]
+    public void NestMegaForms_ItemNamePatch_OverridesTranslation()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var patch = new JsonObject { ["venusaurite"] = "パッチ済みフシギバナイト" };
+        var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), patch);
+
+        var venusaurMega = result["venusaur"]!["megaForms"]!.AsArray()[0]!;
+        Assert.Equal("パッチ済みフシギバナイト", venusaurMega["item"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void NestMegaForms_DoesNotMutateInput()
+    {
+        var flat = MakeFlatPokedexWithMega();
+        var beforeCount = flat.Count;
+        Assert.True(flat.ContainsKey("venusaurmega"));
+
+        MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        // 入力 flatPokedex は変更されない（ディープクローンして作業）
+        Assert.Equal(beforeCount, flat.Count);
+        Assert.True(flat.ContainsKey("venusaurmega"));
+        Assert.Null(flat["venusaur"]!["megaForms"]);
+    }
+
+    [Fact]
+    public void NestMegaForms_OrphanMegaWithoutMegaStone_RemovedFromTopLevel()
+    {
+        // メガストーンが存在しないメガ（例: rayquazamega は Dragon Ascent 仕様）は
+        // Showdown 側で forme = "Mega" を持つことを利用してトップレベルから除去する
+        var flat = MakeFlatPokedexWithMega();
+        flat["rayquaza"] = new JsonObject
+        {
+            ["num"] = 384,
+            ["name"] = "レックウザ",
+            ["types"] = new JsonArray { "Dragon", "Flying" },
+            ["baseStats"] = new JsonObject { ["hp"]=105,["atk"]=150,["def"]=90,["spa"]=150,["spd"]=90,["spe"]=95 },
+            ["abilities"] = new JsonArray { "エアロック" },
+        };
+        flat["rayquazamega"] = new JsonObject
+        {
+            ["num"] = 384,
+            ["name"] = "メガレックウザ",
+            ["types"] = new JsonArray { "Dragon", "Flying" },
+            ["baseStats"] = new JsonObject { ["hp"]=105,["atk"]=180,["def"]=100,["spa"]=180,["spd"]=100,["spe"]=115 },
+            ["abilities"] = new JsonArray { "デルタストリーム" },
+        };
+
+        var showdownPokedex = new JsonObject
+        {
+            // forme: "Mega" を持つ rayquazamega は orphan として除去対象
+            ["rayquazamega"] = new JsonObject { ["forme"] = "Mega" },
+            // 通常ポケモン rayquaza は forme なし → 残る
+            ["rayquaza"] = new JsonObject(),
+        };
+
+        var result = MergeConverter.NestMegaForms(flat, showdownPokedex, MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
+
+        Assert.True(result.ContainsKey("rayquaza"));
+        Assert.False(result.ContainsKey("rayquazamega"));
+        Assert.Null(result["rayquaza"]!["megaForms"]);
+    }
+
+    [Fact]
+    public void NestMegaForms_NonMegaFormeName_NotRemoved()
+    {
+        // forme フィールドの値が "Mega" で始まらない場合 (例: "Galar", "Alola") は除去対象外
+        var flat = new JsonObject
+        {
+            ["mrmimegalar"] = new JsonObject
+            {
+                ["num"] = 122,
+                ["name"] = "バリヤード (ガラルのすがた)",
+                ["types"] = new JsonArray { "Ice", "Psychic" },
+                ["baseStats"] = new JsonObject { ["hp"]=50,["atk"]=65,["def"]=65,["spa"]=90,["spd"]=90,["spe"]=100 },
+                ["abilities"] = new JsonArray { "バリアフリー" },
+            },
+        };
+        var showdownPokedex = new JsonObject
+        {
+            ["mrmimegalar"] = new JsonObject { ["forme"] = "Galar" },
+        };
+
+        var result = MergeConverter.NestMegaForms(flat, showdownPokedex, new JsonObject(), new JsonObject(), new JsonObject());
+
+        Assert.True(result.ContainsKey("mrmimegalar"));
+    }
 }

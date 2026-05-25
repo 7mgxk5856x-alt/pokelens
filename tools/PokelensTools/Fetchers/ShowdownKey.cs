@@ -17,6 +17,10 @@ internal static class ShowdownKey
     /// <summary>非標準（Past / Future / CAP 由来）を示す除外フラグ。アイテム・特性で使用する。</summary>
     internal const string IsNonstandard = "isNonstandard";
 
+    /// <summary>メガストーン専用フィールド: <c>{ "親英語名": "メガ英語名" }</c> マップ（機能 7）。</summary>
+    /// <remarks>このフィールドを持つアイテムは <c>isNonstandard: "Past"</c> でも MergeConverter のメガネスト処理で必要なため、ShowdownFetcher は出力から除外しない。</remarks>
+    internal const string MegaStone = "megaStone";
+
     /// <summary>ポケモン（pokedex）エントリ固有のキー。</summary>
     /// <remarks>共通の num / name は親クラスの定数を使う。能力値の内訳キーは <see cref="Stat"/> 側にまとめる。</remarks>
     internal static class Pokedex

@@ -17,6 +17,24 @@ internal static class MasterKey
         internal const string Types = "types";
         internal const string BaseStats = "baseStats";
         internal const string Abilities = "abilities";
+
+        /// <summary>メガシンカ可能なポケモンが持つメガフォーム配列フィールド（機能 7）。</summary>
+        /// <remarks>配列要素のスキーマは <see cref="MegaForm"/> 参照。</remarks>
+        internal const string MegaForms = "megaForms";
+    }
+
+    /// <summary>pokedex.json の megaForms 配列要素のキー（機能 7）。</summary>
+    /// <remarks>
+    /// 親と同じ <see cref="Pokedex.Name"/> / <see cref="Pokedex.Types"/> / <see cref="Pokedex.BaseStats"/> /
+    /// <see cref="Pokedex.Abilities"/> に加え、メガ独立識別子 <see cref="Key"/> と対応メガストーン名 <see cref="Item"/> を持つ。
+    /// </remarks>
+    internal static class MegaForm
+    {
+        /// <summary>メガフォームの内部キー（旧トップレベルキー、例: "venusaurmega", "charizardmegax"）。</summary>
+        internal const string Key = "key";
+
+        /// <summary>対応するメガストーンの日本語名（X/Y は全角 Ｘ/Ｙ。例: "フシギバナイト", "リザードナイトＸ"）。</summary>
+        internal const string Item = "item";
     }
 
     /// <summary>moves.json のエントリ内キー。</summary>
