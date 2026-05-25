@@ -14,6 +14,15 @@ internal static class MergeConverter
         ["slicing"] = MasterTag.IsSlice,
     };
 
+    // メガストーン不要メガ（持ち物無しでメガシンカ可能なメガフォーム）の (megaKey → parentKey) マップ。
+    // Q-7 ルール「データは data/ または tools/Patches/」の限定的例外として、Showdown データの構造的欠落
+    // （megaStone を持たないメガ）を MergeConverter 内で補正するためにハードコードする。
+    // 将来「持ち物不要メガ」が 2 件以上に増えた場合は tools/PokelensTools/Patches/mega-itemless-patch.json への昇格を検討する。
+    private static readonly Dictionary<string, string> ItemlessMegas = new(StringComparer.Ordinal)
+    {
+        ["rayquazamega"] = "rayquaza",   // メガレックウザ: Dragon Ascent 仕様で持ち物不要
+    };
+
     /// <summary>Showdown の flag キーを成果物のタグ名（例: "isSlice"）に変換する。</summary>
     /// <remarks>例外的な対応を持つ flag は対応表を優先し、無ければ "is" + 先頭大文字化の汎用ルールを適用する。</remarks>
     /// <param name="flag">Showdown の flag キー。</param>
@@ -53,9 +62,11 @@ internal static class MergeConverter
         JsonObject abilityNames = translations[TranslationKey.Abilities]?.AsObject() ?? new JsonObject();
         JsonObject itemNames = translations[TranslationKey.Items]?.AsObject() ?? new JsonObject();
 
+        JsonObject flatPokedex = ConvertPokedex(pokedex, pokemonNames, abilityNames, pokemonNamePatch);
+        JsonObject nestedPokedex = NestMegaForms(flatPokedex, pokedex, items, itemNames, itemNamePatch);
         File.WriteAllText(
             DataPaths.Master.Pokedex(),
-            JsonHelpers.ToIndentedJson(ConvertPokedex(pokedex, pokemonNames, abilityNames, pokemonNamePatch)));
+            JsonHelpers.ToIndentedJson(nestedPokedex));
 
         File.WriteAllText(
             DataPaths.Master.Moves(),
@@ -75,6 +86,205 @@ internal static class MergeConverter
         => File.Exists(path)
             ? JsonNode.Parse(File.ReadAllText(path))?.AsObject() ?? new JsonObject()
             : new JsonObject();
+
+    /// <summary>flat な pokedex のメガ独立エントリを親エントリの <c>megaForms[]</c> にネストし、トップレベルから削除する（機能 7）。</summary>
+    /// <remarks>
+    /// items.ts の <c>megaStone</c> フィールドを真実源として (親, メガ, メガストーン) の 3 つ組を抽出し、
+    /// 各メガを親に物理ネストする。メガ独立エントリ・対応アイテムが Showdown 側に揃っていない場合はネストをスキップする
+    /// （メガ側エントリはトップレベルに残らないが、見つからなかった親はメガ追加なしで残る）。
+    /// メガ名・メガストーン名の半角 X/Y は全角 Ｘ/Ｙ に正規化する（D-8）。
+    /// <c>megaStone</c> を持たないが <see cref="ItemlessMegas"/> に登録されたメガ（現状はメガレックウザのみ）は、
+    /// 親エントリの <c>megaForms[]</c> に <c>item: null</c> でネストし、トップレベルから削除する（D-4）。
+    /// <see cref="ItemlessMegas"/> にも該当しない残余の孤立メガは Showdown 側の <c>forme</c> フィールドで
+    /// 判別してトップレベルから除去する（新スキーマ不変条件「トップレベルにメガキー無し」を維持）。
+    /// </remarks>
+    /// <param name="flatPokedex"><see cref="ConvertPokedex"/> の戻り値（メガフォームはまだトップレベル）。</param>
+    /// <param name="showdownPokedex">Showdown 由来の元データ。<c>forme</c> フィールドで <c>megaStone</c> 無しの孤立メガを判別するために使う。</param>
+    /// <param name="showdownItems">cache/showdown-items.json（<c>megaStone</c> フィールドを持つアイテムを含む）。</param>
+    /// <param name="itemNames">アイテムの日本語名辞書（翻訳）。</param>
+    /// <param name="itemNamePatch">アイテム日本語名の上書きパッチ。</param>
+    /// <returns>メガを親にネストし、メガ独立エントリをトップレベルから削除したポケデックス。</returns>
+    internal static JsonObject NestMegaForms(
+        JsonObject flatPokedex,
+        JsonObject showdownPokedex,
+        JsonObject showdownItems,
+        JsonObject itemNames,
+        JsonObject itemNamePatch)
+    {
+        // 元の flatPokedex を変更せず作業用にディープクローンする（テスト容易性 + 純粋関数化）
+        var result = JsonNode.Parse(flatPokedex.ToJsonString())!.AsObject();
+
+        // megaStone を持つアイテムから (親キー → List<(メガキー, アイテム日本語名)>) を構築する
+        var parentToMegas = new Dictionary<string, List<(string megaKey, string itemName)>>();
+        foreach (var (itemKey, itemNode) in showdownItems)
+        {
+            if (itemNode is not JsonObject itemEntry)
+            {
+                continue;
+            }
+            if (itemEntry[ShowdownKey.MegaStone] is not JsonObject megaStone)
+            {
+                continue;
+            }
+
+            string itemJaName = ResolveItemJapaneseName(itemKey, itemEntry, itemNames, itemNamePatch);
+            itemJaName = NormalizeFullWidthXY(itemJaName);
+
+            foreach (var (parentEnglish, megaEnglishNode) in megaStone)
+            {
+                string? megaEnglish = megaEnglishNode?.GetValue<string>();
+                if (string.IsNullOrEmpty(megaEnglish))
+                {
+                    continue;
+                }
+                string parentKey = ShowdownInternalKey.ForPokemon(parentEnglish);
+                string megaKey = ShowdownInternalKey.ForPokemon(megaEnglish);
+
+                if (!parentToMegas.TryGetValue(parentKey, out var list))
+                {
+                    list = [];
+                    parentToMegas[parentKey] = list;
+                }
+                list.Add((megaKey, itemJaName));
+            }
+        }
+
+        // 各 (親, メガ, アイテム) について、メガ独立エントリを親の megaForms[] にネストし、トップレベルから削除する
+        var megaKeysToRemove = new HashSet<string>();
+        foreach (var (parentKey, megas) in parentToMegas)
+        {
+            if (result[parentKey] is not JsonObject parentEntry)
+            {
+                continue;
+            }
+
+            var megaForms = new JsonArray();
+            foreach (var (megaKey, itemName) in megas)
+            {
+                if (result[megaKey] is not JsonObject megaEntry)
+                {
+                    continue;
+                }
+
+                string normalizedMegaName = NormalizeFullWidthXY(
+                    megaEntry[MasterKey.Pokedex.Name]?.GetValue<string>() ?? string.Empty);
+
+                var nested = new JsonObject
+                {
+                    [MasterKey.MegaForm.Key] = megaKey,
+                    [MasterKey.Pokedex.Name] = normalizedMegaName,
+                    [MasterKey.MegaForm.Item] = itemName,
+                    [MasterKey.Pokedex.Types] = megaEntry[MasterKey.Pokedex.Types]?.DeepClone(),
+                    [MasterKey.Pokedex.BaseStats] = megaEntry[MasterKey.Pokedex.BaseStats]?.DeepClone(),
+                    [MasterKey.Pokedex.Abilities] = megaEntry[MasterKey.Pokedex.Abilities]?.DeepClone(),
+                };
+                megaForms.Add(nested);
+                megaKeysToRemove.Add(megaKey);
+            }
+
+            if (megaForms.Count > 0)
+            {
+                parentEntry[MasterKey.Pokedex.MegaForms] = megaForms;
+            }
+        }
+
+        foreach (string megaKey in megaKeysToRemove)
+        {
+            result.Remove(megaKey);
+        }
+
+        // メガストーン不要メガ (現状レックウザのみ) を item: null でネストする (D-4)。
+        // ItemlessMegas は Showdown の megaStone 経由ではネストされない特例メガを補正する。
+        // 親に既に megaForms[] が存在する場合は末尾に追加、無ければ新規作成する。
+        foreach (var (megaKey, parentKey) in ItemlessMegas)
+        {
+            if (result[parentKey] is not JsonObject parentEntry || result[megaKey] is not JsonObject megaEntry)
+            {
+                continue;
+            }
+
+            string normalizedMegaName = NormalizeFullWidthXY(
+                megaEntry[MasterKey.Pokedex.Name]?.GetValue<string>() ?? string.Empty);
+
+            var nested = new JsonObject
+            {
+                [MasterKey.MegaForm.Key] = megaKey,
+                [MasterKey.Pokedex.Name] = normalizedMegaName,
+                [MasterKey.MegaForm.Item] = null,
+                [MasterKey.Pokedex.Types] = megaEntry[MasterKey.Pokedex.Types]?.DeepClone(),
+                [MasterKey.Pokedex.BaseStats] = megaEntry[MasterKey.Pokedex.BaseStats]?.DeepClone(),
+                [MasterKey.Pokedex.Abilities] = megaEntry[MasterKey.Pokedex.Abilities]?.DeepClone(),
+            };
+
+            if (parentEntry[MasterKey.Pokedex.MegaForms] is JsonArray existingMegaForms)
+            {
+                existingMegaForms.Add(nested);
+            }
+            else
+            {
+                parentEntry[MasterKey.Pokedex.MegaForms] = new JsonArray { nested };
+            }
+            result.Remove(megaKey);
+        }
+
+        // メガストーンを持たず ItemlessMegas にも該当しない孤立メガを Showdown の forme フィールドで判別して除去する。
+        // 「トップレベルにメガキーは存在しない」という新スキーマ不変条件を維持するため。
+        // ItemlessMegas で処理されたメガは既に result から削除済みのため、本ループは到達しない。
+        var orphanMegaKeys = new List<string>();
+        foreach (var (key, _) in result)
+        {
+            if (showdownPokedex[key] is JsonObject showdownEntry
+                && showdownEntry[ShowdownKey.Pokedex.Forme]?.GetValue<string>() is string forme
+                && forme.StartsWith("Mega", StringComparison.Ordinal))
+            {
+                orphanMegaKeys.Add(key);
+            }
+        }
+        foreach (string orphanKey in orphanMegaKeys)
+        {
+            result.Remove(orphanKey);
+        }
+
+        return result;
+    }
+
+    /// <summary>アイテムの日本語名を解決する。item-name-patch.json を優先し、無ければ翻訳辞書、それも無ければ Showdown 英語名にフォールバックする。</summary>
+    /// <remarks>
+    /// メガストーンは items-modifiers.json には登録されないため <see cref="ConvertItems"/> 経由では日本語化されない。本ヘルパーは翻訳辞書・パッチを直接引いて解決する。
+    /// 英語名フォールバック時は呼び出し側で <see cref="NormalizeFullWidthXY"/> が適用されると意図しない文字列（例: <c>"CharizarditeＸ"</c>）が生成される可能性があるため、Warning ログで早期検知する。
+    /// </remarks>
+    private static string ResolveItemJapaneseName(
+        string itemKey,
+        JsonObject itemEntry,
+        JsonObject itemNames,
+        JsonObject itemNamePatch)
+    {
+        if (itemNamePatch.TryGetPropertyValue(itemKey, out JsonNode? patchNode)
+            && patchNode is JsonValue patchVal
+            && patchVal.TryGetValue<string>(out string? patchName)
+            && !string.IsNullOrEmpty(patchName))
+        {
+            return patchName;
+        }
+        if (itemNames.TryGetPropertyValue(itemKey, out JsonNode? nameNode)
+            && nameNode is JsonValue nameVal
+            && nameVal.TryGetValue<string>(out string? jaName)
+            && !string.IsNullOrEmpty(jaName))
+        {
+            return jaName;
+        }
+        string englishName = itemEntry[ShowdownKey.Name]?.GetValue<string>() ?? itemKey;
+        Console.WriteLine($"    Warning: no Japanese name for mega stone items/{itemKey}, falling back to English '{englishName}' (item-name-patch.json での補完を検討)");
+        return englishName;
+    }
+
+    /// <summary>メガ名・メガストーン名の半角 X/Y を全角 Ｘ/Ｙ に正規化する（D-8）。</summary>
+    /// <remarks>
+    /// 現状の Showdown / PokéAPI 翻訳由来データは X/Y 表記が揺れている（リザードン・ミュウツーは全角、ライチュウは半角）。
+    /// pokedex.json の出力では全角統一が規約のため、本ヘルパーで一括正規化する。
+    /// </remarks>
+    private static string NormalizeFullWidthXY(string s)
+        => s.Replace('X', 'Ｘ').Replace('Y', 'Ｙ');
 
     /// <summary>Showdown ポケデックスに日本語名（翻訳＋ name-patch 上書き）と日本語特性名を当て、成果物形式に変換する。</summary>
     /// <remarks>翻訳が無いエントリは出力から除外する。name-patch は翻訳由来の名前を上書きする。</remarks>

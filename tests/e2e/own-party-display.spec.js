@@ -4,6 +4,8 @@ import {
   STANDARD_PARTY,
   UNKNOWN_SPECIES_FIXTURE,
   NATURE_MIX,
+  MEGA_FIXTURE,
+  RAYQUAZA_FIXTURE,
 } from './helpers/party-fixtures.js';
 import { SEL } from './helpers/selectors.js';
 
@@ -116,5 +118,125 @@ test.describe('自分パーティ表示', () => {
     // 1 枚目の選択状態は解除されている
     await expect(cards.nth(0)).not.toHaveClass(/selected/);
     await expect(cards.nth(1)).toHaveClass(/selected/);
+  });
+
+  test('AET-039: 自分側メガ切替ボタンは対応メガストーン持ちのときだけ表示・切替後にカード表示が更新される', async ({
+    page,
+  }) => {
+    // MEGA_FIXTURE: 0=フシギバナ+フシギバナイト, 1=フシギバナ+カメックスナイト,
+    //              2=フシギバナ+こだわりハチマキ, 3=リザードン+リザードナイトＸ,
+    //              4=ガブリアス+こだわりスカーフ, 5=リザードン+持ち物なし
+    await mockParty(page, MEGA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+
+    // 0: フシギバナ + フシギバナイト → ボタン表示
+    await expect(cards.nth(0).locator('.mega-toggle')).toHaveCount(1);
+    // 1: フシギバナ + カメックスナイト → ボタン非表示（対応アイテム不一致）
+    await expect(cards.nth(1).locator('.mega-toggle')).toHaveCount(0);
+    // 2: フシギバナ + こだわりハチマキ → ボタン非表示（メガストーンでない）
+    await expect(cards.nth(2).locator('.mega-toggle')).toHaveCount(0);
+    // 3: リザードン + リザードナイトＸ → ボタン表示
+    await expect(cards.nth(3).locator('.mega-toggle')).toHaveCount(1);
+    // 4: ガブリアス → ボタン非表示（メガ不可ポケモン）
+    await expect(cards.nth(4).locator('.mega-toggle')).toHaveCount(0);
+    // 5: リザードン + 持ち物なし → ボタン非表示
+    await expect(cards.nth(5).locator('.mega-toggle')).toHaveCount(0);
+
+    // フシギバナを切替: 通常 "フシギバナ" → メガ "メガフシギバナ"
+    await expect(cards.nth(0).locator('.name')).toHaveText('フシギバナ');
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('メガフシギバナ');
+    // 再度押して通常に戻る
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('フシギバナ');
+  });
+
+  test('AET-042: 選択済みカードでメガ切替時、自分ポケモン詳細パネルが連動して再描画される', async ({
+    page,
+  }) => {
+    await mockParty(page, MEGA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+    const detail = page.locator(SEL.ownDetail);
+
+    // フシギバナカード（index 0）を選択
+    await cards.nth(0).click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('フシギバナ');
+    // 通常特性「しんりょく」が詳細パネルに表示される
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('しんりょく');
+
+    // メガ切替を押す
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    // 詳細パネルの名前・特性がメガフォームのものに更新される（メガフシギバナ・特性「あついしぼう」）
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガフシギバナ');
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('あついしぼう');
+  });
+
+  test('AET-043: メガストーン不要メガ（メガレックウザ）は持ち物に関わらず自分側でも切替ボタンが表示される', async ({
+    page,
+  }) => {
+    // メガストーン不要メガ (megaForms[].item === null) は持ち物の有無・種類に関わらず
+    // 「メガシンカ発動条件と切替ボタン表示」が満たされる（PRD 機能 7）。
+    // 簡略仕様のため、本ツールでは技習得（ガリョウテンセイ）チェックは行わない。
+    await mockParty(page, RAYQUAZA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+
+    // 0: レックウザ + いのちのたま → メガ切替ボタン表示
+    await expect(cards.nth(0).locator('.mega-toggle')).toHaveCount(1);
+    // 1: レックウザ + 持ち物なし → メガ切替ボタン表示（item: null フォールバック）
+    await expect(cards.nth(1).locator('.mega-toggle')).toHaveCount(1);
+
+    // 通常 → メガレックウザ → 通常 を循環
+    await expect(cards.nth(0).locator('.name')).toHaveText('レックウザ');
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('メガレックウザ');
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('レックウザ');
+  });
+
+  test('AET-044: メガレックウザ切替時に自分ポケモン詳細パネルが連動更新される（item: null メガの詳細表示）', async ({
+    page,
+  }) => {
+    await mockParty(page, RAYQUAZA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+    const detail = page.locator(SEL.ownDetail);
+
+    await cards.nth(0).click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('レックウザ');
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('エアロック');
+
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    // メガレックウザの種族値・特性に連動更新（デルタストリーム）
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガレックウザ');
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText(
+      'デルタストリーム',
+    );
+  });
+
+  test('AET-040: 自分側は持ち物に対応するメガのみ循環する（D-10: リザードン + リザードナイトＸ は 通常 ↔ メガリザードンＸ）', async ({ page }) => {
+    // D-10「自分側のメガシンカ循環は持ち物にマッチするメガのみ」: メガリザードンＹ は循環に登場しない。
+    // 相手側は持ち物未知のため全形態循環するが、自分側は持ち物既知でユーザーストーリー「正確に参照」を優先する。
+    await mockParty(page, MEGA_FIXTURE);
+    await page.goto('/');
+
+    const card = page.locator(SEL.ownCards).nth(3); // リザードン + リザードナイトＸ
+    const toggle = card.locator('.mega-toggle');
+
+    await expect(card.locator('.name')).toHaveText('リザードン');
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('メガリザードンＸ');
+    // もう一度押すと通常に戻る（メガリザードンＹ には到達しない）
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('リザードン');
+    // さらに押すと再びメガリザードンＸ
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('メガリザードンＸ');
   });
 });

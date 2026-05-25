@@ -181,7 +181,7 @@ public class ShowdownFetcherTests
     // ---------- BuildItemEntry / BuildAbilityEntry: isNonstandard exclusion ----------
 
     [Fact]
-    public void BuildItemEntry_IsNonstandard_ReturnsNull()
+    public void BuildItemEntry_IsNonstandard_WithoutMegaStone_ReturnsNull()
     {
         var entry = new JsonObject
         {
@@ -203,6 +203,91 @@ public class ShowdownFetcherTests
         var built = ShowdownFetcher.BuildItemEntry(entry);
         Assert.NotNull(built);
         Assert.Equal("Choice Scarf", built!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void BuildItemEntry_MegaStone_WithPastNonstandard_PreservesEntry()
+    {
+        // メガストーンは Gen 6/7 のため isNonstandard: "Past" でマークされるが、
+        // 機能 7 のため例外通過させる必要がある（D-6）
+        var entry = new JsonObject
+        {
+            ["num"] = 677,
+            ["name"] = "Absolite",
+            ["megaStone"] = new JsonObject { ["Absol"] = "Absol-Mega" },
+            ["isNonstandard"] = "Past",
+        };
+        var built = ShowdownFetcher.BuildItemEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal("Absolite", built!["name"]!.GetValue<string>());
+        var megaStone = built["megaStone"]!.AsObject();
+        Assert.Equal("Absol-Mega", megaStone["Absol"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void BuildItemEntry_MegaStone_DualForm_PreservesAllMappings()
+    {
+        // 複数メガを持つアイテム（リザードナイトX/Y のような形）の例として、
+        // megaStone マップに 2 つのエントリがあるケースを検証する
+        var entry = new JsonObject
+        {
+            ["num"] = 660,
+            ["name"] = "Charizardite X",
+            ["megaStone"] = new JsonObject { ["Charizard"] = "Charizard-Mega-X" },
+            ["isNonstandard"] = "Past",
+        };
+        var built = ShowdownFetcher.BuildItemEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal("Charizard-Mega-X", built!["megaStone"]!.AsObject()["Charizard"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void BuildItemEntry_IsNonstandardUnobtainable_WithoutMegaStone_ReturnsNull()
+    {
+        // D-6 の同値分割: Past 以外の isNonstandard 値 (Future / Unobtainable / CAP) も
+        // megaStone 持ちでなければ除外対象であることを担保する。
+        var entry = new JsonObject
+        {
+            ["num"] = 4,
+            ["name"] = "Cherish Ball",
+            ["isNonstandard"] = "Unobtainable",
+        };
+        Assert.Null(ShowdownFetcher.BuildItemEntry(entry));
+    }
+
+    [Fact]
+    public void BuildItemEntry_IsNonstandardFuture_WithMegaStone_PreservesEntry()
+    {
+        // D-6 境界値: megaStone を持つアイテムは isNonstandard が Past 以外（Future 等）でも例外通過する。
+        // 現状の Showdown データでメガストーンは Past 一律だが、将来仕様変更で別値になっても
+        // 「megaStone 有り → 通す」という不変条件が維持されることを担保する。
+        var entry = new JsonObject
+        {
+            ["num"] = 999,
+            ["name"] = "Hypothetical New Mega Stone",
+            ["megaStone"] = new JsonObject { ["Pikachu"] = "Pikachu-Mega" },
+            ["isNonstandard"] = "Future",
+        };
+        var built = ShowdownFetcher.BuildItemEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal("Pikachu-Mega", built!["megaStone"]!.AsObject()["Pikachu"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void BuildItemEntry_NoIsNonstandard_WithMegaStone_PreservesEntry()
+    {
+        // D-6 デシジョンテーブル欠落セル: isNonstandard フィールド無し + megaStone 有り の組み合わせ。
+        // 現状の Showdown データでメガストーンは Past 一律のため実例は無いが、
+        // 「megaStone 有り → 必ず通す」の不変条件は isNonstandard の有無によらず維持されることを担保する。
+        var entry = new JsonObject
+        {
+            ["num"] = 999,
+            ["name"] = "Future Mega Stone",
+            ["megaStone"] = new JsonObject { ["Foo"] = "Foo-Mega" },
+        };
+        var built = ShowdownFetcher.BuildItemEntry(entry);
+        Assert.NotNull(built);
+        Assert.Equal("Foo-Mega", built!["megaStone"]!.AsObject()["Foo"]!.GetValue<string>());
     }
 
     [Fact]

@@ -21,8 +21,14 @@ export class OwnPokemonDetail {
     this.#loader = loader;
   }
 
-  update(entry) {
-    const pokemonData = this.#loader.getPokemonByName(entry.species);
+  /**
+   * 詳細パネルを描画する。
+   * @param {object} entry party.json のエントリ
+   * @param {object} [megaFormData] メガシンカ状態の場合に渡すメガフォームのポケモンデータ。
+   *   省略時は entry.species から通常形態を引く（機能 7）。
+   */
+  update(entry, megaFormData) {
+    const pokemonData = megaFormData ?? this.#loader.getPokemonByName(entry.species);
     if (!pokemonData) {
       return;
     }
@@ -34,11 +40,15 @@ export class OwnPokemonDetail {
       natureModifiers
     );
 
+    // メガシンカ時は特性をメガフォーム側の単独特性で上書きする（機能 7）
+    const displayAbility = megaFormData ? megaFormData.abilities[0] : entry.ability;
+    const displayEntry = megaFormData ? { ...entry, ability: displayAbility } : entry;
+
     this.#container.replaceChildren(
       this.#buildHeader(pokemonData),
-      this.#buildAbilityItemNatureRow(entry, natureModifiers),
+      this.#buildAbilityItemNatureRow(displayEntry, natureModifiers),
       this.#buildStatsGrid(pokemonData, actualStats, entry.item),
-      this.#buildMovesTable(entry, pokemonData, actualStats)
+      this.#buildMovesTable(displayEntry, pokemonData, actualStats)
     );
     this.#container.style.display = 'block';
   }

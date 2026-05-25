@@ -79,7 +79,7 @@ pokelens/
 
 ### src/data/ (データ読み込みレイヤー)
 
-**役割**: JSON ファイルの fetch・キャッシュ・アクセス手段を提供する
+**役割**: JSON ファイルの fetch・キャッシュ・アクセス手段を提供する。**コードのみを配置する**: JSON 等のデータファイルは置かない (データは `data/` 配下のマスターデータのみを参照する。詳細は `docs/architecture.md` の「データ参照ルール」参照)
 
 **配置ファイル**:
 - `loader.js`: `pokedex.json` / `moves.json` / `items.json` / `abilities.json` / `types.json` / `move-categories.json` / `natures.json` / `party.json` を fetch し、メモリにキャッシュする
@@ -87,8 +87,9 @@ pokelens/
 **命名規則**: kebab-case（他レイヤーと統一）
 
 **依存関係**:
-- 依存可能: なし（外部ファイルのみ参照）
+- 依存可能: なし（外部ファイル `data/` 配下のマスターデータのみ参照）
 - 依存禁止: `src/ui/`、`src/logic/`
+- **データファイル配置禁止**: `src/data/` 配下に JSON 等のデータファイルを置かない（補正データが必要な場合は `tools/PokelensTools/Patches/` を経由してマスターデータに統合する）
 
 **例**:
 ```
@@ -224,7 +225,7 @@ export default {
 
 ### tools/PokelensTools/ (C# データ準備ツール)
 
-**役割**: Pokémon Showdown / PokéAPI からマスターデータを取得し、`data/` 配下の JSON に変換・出力する
+**役割**: Pokémon Showdown / PokéAPI からマスターデータを取得し、`data/` 配下の JSON に変換・出力する。手動補正データ (`Patches/` 配下) はマスターデータ生成時にパイプラインが適用するもので、フロントエンドからは **直接参照しない** (補正データの真実源を `Patches/`、フロントエンド向けの真実源を `data/` に分離することで整合性を保つ。詳細は `docs/architecture.md` の「データ参照ルール」参照)
 
 **構造**:
 ```
@@ -297,7 +298,7 @@ cache/
 
 ### data/ (データファイル)
 
-**役割**: アプリが参照する JSON ファイルを格納する
+**役割**: フロントエンド (`src/`) が参照する**唯一の真実源**として、マスターデータの JSON ファイルを格納する。`src/` 配下にはデータファイルを置かない (詳細は `docs/architecture.md` の「データ参照ルール」参照)
 
 **配置ファイル**:
 - `pokedex.json`: C# ツールが生成（git 管理対象外）

@@ -14,6 +14,20 @@ async function fetchJson(url, errorMessage) {
   }
 }
 
+// pokedex.json のメガフォームは親エントリの `megaForms[]` 配下にネストされている (機能 7、P0.5)。
+// メガ名で逆引きする必要があるが pokedex.json のトップレベルには存在しないため、ローダー初期化時に
+// 派生 Map を 1 回構築して O(1) ルックアップを実現する。
+function buildMegaLocationByName(pokedex) {
+  const map = new Map();
+  for (const [parentKey, parent] of Object.entries(pokedex)) {
+    const megaForms = parent.megaForms ?? [];
+    for (let i = 0; i < megaForms.length; i++) {
+      map.set(megaForms[i].name, { parentKey, megaIndex: i });
+    }
+  }
+  return map;
+}
+
 /**
  * 全マスターデータ（pokedex / moves / items / abilities / 各種マスタ）とユーザーパーティを
  * data/ から読み込み、名前引き・修正子取得などの参照 API を提供する。
@@ -26,6 +40,7 @@ export class DataLoader {
   #typeNames = null;
   #moveCategories = null;
   #natures = null;
+  #megaLocationByName = new Map();
 
   /**
    * 全データファイルを読み込み、検証して内部に保持する。
@@ -81,14 +96,20 @@ export class DataLoader {
     this.#typeNames = typeNames;
     this.#moveCategories = moveCategories;
     this.#natures = natures;
+    this.#megaLocationByName = buildMegaLocationByName(pokedex);
 
     return { pokedex, moves, items, abilities, typeNames, moveCategories, natures, userParty };
   }
 
   /**
-   * 日本語名でポケモンを引く。
+   * 日本語名でポケモンを引く（通常状態のみ）。
+   * メガフォーム名（例: 「メガフシギバナ」）は **null を返す**。これは PRD 機能 7 の
+   * 「`party.json` の species にメガシンカ後の名前が指定された場合は不明なポケモン扱い」の実現と、
+   * 「マスターデータ上、メガシンカ後は親に紐づくサブデータとして保持」の物理スキーマ表現のため。
+   * メガフォーム名は pokedex.json のトップレベルに存在しないため、トップレベル走査だけで自然にこの仕様を満たす。
+   * メガフォームの種族値・タイプ・特性を取得したい場合は `getMegaFormByName(name)` を使う。
    * @param {string} name ポケモンの日本語名
-   * @returns {object|null} 一致するポケモン。無ければ null
+   * @returns {object|null} 一致する通常ポケモン。メガフォーム名または未登録名なら null
    */
   getPokemonByName(name) {
     if (!this.#pokedex) {
@@ -98,7 +119,60 @@ export class DataLoader {
   }
 
   /**
+   * メガフォーム名から、親エントリにネストされたメガデータを引く。メガシンカ状態の詳細表示で使用。
+   * @param {string} megaName メガフォームの日本語名（例: 「メガフシギバナ」）
+   * @returns {object|null} メガフォームのデータ（`{ key, name, item, types, baseStats, abilities }`）。メガフォーム名でない場合は null
+   */
+  getMegaFormByName(megaName) {
+    const loc = this.#megaLocationByName.get(megaName);
+    if (!loc || !this.#pokedex) {
+      return null;
+    }
+    return this.#pokedex[loc.parentKey]?.megaForms?.[loc.megaIndex] ?? null;
+  }
+
+  /**
+   * 親ポケモン名と持ち物名から、対応するメガフォームのデータを引く。
+   * 自分側パーティの切替ボタン表示判定（PRD 機能 7「メガシンカ発動条件と切替ボタン表示」）に使用する。
+   *
+   * 戻り値の優先順位:
+   *   1. 持ち物がメガストーンと一致するメガフォーム
+   *   2. メガフォームのうち `item === null` (メガストーン不要、現在はメガレックウザのみ) があればそれ
+   *   3. 上記いずれにも該当しなければ null
+   *
+   * 「2」のフォールバックにより、レックウザは持ち物に関わらずメガフォームを返す簡略仕様。
+   * 実ゲーム仕様の「ガリョウテンセイ習得が必要」というチェックは本ツールでは行わない。
+   *
+   * @param {string} parentName 親ポケモンの日本語名（例: 「リザードン」「レックウザ」）
+   * @param {string|null} itemName 持ち物の日本語名（例: 「リザードナイトＸ」）。null も許容
+   * @returns {object|null} 一致するメガフォームのデータ。該当しなければ null
+   */
+  getMegaFormByItem(parentName, itemName) {
+    const parent = this.getPokemonByName(parentName);
+    if (!parent?.megaForms) {
+      return null;
+    }
+    // 1. 持ち物一致を優先
+    const itemMatched = parent.megaForms.find((m) => m.item === itemName);
+    if (itemMatched) {
+      return itemMatched;
+    }
+    // 2. メガストーン不要メガ (item: null) があれば、持ち物に関わらずそれを返す
+    return parent.megaForms.find((m) => m.item === null) ?? null;
+  }
+
+  /**
+   * 名前がメガフォームかどうかを判定する。
+   * @param {string} name ポケモン名
+   * @returns {boolean} メガフォーム名なら true
+   */
+  isMegaForm(name) {
+    return this.#megaLocationByName.has(name);
+  }
+
+  /**
    * 名前の前方一致でポケモンを検索する。
+   * pokedex.json のトップレベルにはメガフォームが存在しないため、追加フィルタなしで自然にメガ除外される（機能 7）。
    * @param {string} query 検索クエリ
    * @returns {Array} 一致したポケモンエントリ（図鑑番号昇順）
    */

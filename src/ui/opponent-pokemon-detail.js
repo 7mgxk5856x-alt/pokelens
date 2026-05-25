@@ -34,8 +34,14 @@ export class OpponentPokemonDetail {
     this.#loader = loader;
   }
 
-  update(species) {
-    const pokemonData = this.#loader.getPokemonByName(species);
+  /**
+   * 詳細パネルを描画する。
+   * @param {string} species 通常形態の日本語名（サジェスト確定時のキー）
+   * @param {object} [megaFormData] メガシンカ状態の場合に渡すメガフォームのポケモンデータ。
+   *   省略時は species から通常形態を引く（機能 7）。
+   */
+  update(species, megaFormData) {
+    const pokemonData = megaFormData ?? this.#loader.getPokemonByName(species);
     if (!pokemonData) {
       // マスターデータに存在しない species を受け取った場合、前回の表示残留を防ぐため非表示にする
       this.hide();

@@ -6,7 +6,9 @@ description: ブランチの差分からプルリクエストの title と descr
 
 引数（任意）: ベースブランチ名（例: `/suggest-pr main`）。省略時はブランチ名から自動判定する。
 
-現在のブランチとベースの差分（コミット履歴 ＋ 変更内容）を解析し、`docs/development-guidelines.md` の規約に沿った PR の **title** と **description** 案を生成して `.claude/tmp/` に保存する。**PR は作成しない（`gh pr create` は実行しない）。**
+現在のブランチとベースとの **最終差分**（ブランチを切った直後と現在の差分）を解析し、`docs/development-guidelines.md` の規約に沿った PR の **title** と **description** 案を生成して `.claude/tmp/` に保存する。**PR は作成しない（`gh pr create` は実行しない）。**
+
+> **ブランチ内のコミット履歴は意図的に参照しない**: 中間コミットでの試行錯誤・後から取り消した変更・命名変更の経緯などはレビュアーには不要な情報なので、PR 本文には含めない。最終差分（base に対して現状の作業ツリーで何が違うか）のみを根拠にする。
 
 ## 実行方法
 
@@ -32,13 +34,14 @@ claude
     - `PN/release` / `fix/*` / `chore/*` / その他 → `main`
     - 現在が `main`（デフォルトブランチ）の場合は「ベースブランチ上では PR を作成できません。feature/fix/chore ブランチに切り替えてください」と案内して**終了する**。
   - 判定したベースがローカルにもリモート追跡（`origin/<base>`）にも存在しない場合は `main` にフォールバックする（`git rev-parse --verify <base>` / `origin/<base>` で確認）。
-3. 差分を取得する（**コミット済みの変更**が対象。未コミットの作業ツリー変更は PR に含まれない）:
+3. 最終差分を取得する（**コミット済みの変更**が対象。未コミットの作業ツリー変更は PR に含まれない）:
   ```bash
-  git log <base>..HEAD --oneline    # このブランチのコミット一覧
-  git diff <base>...HEAD --stat     # 変更概要（3点リーダ = merge-base 以降）
-  git diff <base>...HEAD            # 実際の差分内容
+  git diff <base>...HEAD --name-only   # 変更ファイル一覧（3点リーダ = merge-base 以降）
+  git diff <base>...HEAD --stat        # 変更概要
+  git diff <base>...HEAD               # 実際の差分内容
   ```
-4. コミットが 0 件（ベースと差がない）の場合は「`<base>` との差分（コミット）がありません。先にコミットしてください」と案内して**終了する**。
+  > `git log <base>..HEAD` は**取得しない**。コミット履歴を参照すると中間コミットでの試行錯誤・取り消された変更が PR 本文に紛れ込むため、本コマンドは最終差分のみを根拠にする。
+4. 変更ファイルが 0 件（ベースと差がない）の場合は「`<base>` との差分がありません。先にコミットしてください」と案内して**終了する**。
 5. 差分が著しく大きい場合（目安: 数百ファイル・数千行超）は全量を渡さず、`--stat` と代表的な差分に絞ってサブエージェントへ渡す。
 
 ### ステップ2: pr-writer サブエージェント起動
@@ -47,7 +50,7 @@ Task tool を使用して pr-writer サブエージェントを起動する:
 
 - subagent_type: "pr-writer"
 - description: "Draft pull request title and description"
-- prompt: "ブランチの差分から PR の title と description 案を作成してください。\n\n## ベースブランチ\n[決定したベース]\n\n## コミット一覧（git log <base>..HEAD）\n[結果]\n\n## 変更概要（git diff <base>...HEAD --stat）\n[結果]\n\n## 差分内容（git diff <base>...HEAD。大きい場合は代表箇所）\n```diff\n[結果]\n```\n\n## 制約\n- title は docs/development-guidelines.md の Conventional Commits 規約に準拠（type/scope は同ファイルの表を単一の真実源とする）\n- description は 概要 / 変更内容 / テスト / 関連 の構成。末尾に Claude Code フッターを付ける\n- 差分・コミットに無い内容は書かない\n- git / gh は実行しない、ファイル保存もしない（提案のみ）"
+- prompt: "ブランチとベースとの最終差分から PR の title と description 案を作成してください。\n\n## ベースブランチ\n[決定したベース]\n\n## 変更概要（git diff <base>...HEAD --stat）\n[結果]\n\n## 最終差分（git diff <base>...HEAD。大きい場合は代表箇所）\n```diff\n[結果]\n```\n\n## 制約\n- title は docs/development-guidelines.md の Conventional Commits 規約に準拠（type/scope は同ファイルの表を単一の真実源とする）\n- description は **概要 / 設計・機能の変化 / テスト / 残件 / 関連** の構成。末尾に Claude Code フッターを付ける。詳細な責務・書き方は pr-writer サブエージェント定義の「description の責務」セクションを単一の真実源とする\n- **WHAT/WHERE（何を・どのファイルで変えたか）は diff・コミット履歴を見れば分かるため description の主軸にしない**。description は「設計・機能がどう変わったか（HOW conceptually）」「テストが妥当に追加され全件パスしているか」「残件は何か」を中心に書く\n- **最終差分に存在する全領域に触れる（網羅性）**: フロントエンド・データパイプライン・テスト・ドキュメント・`.claude/commands/` などのコマンド整備・スクリプト・設定 等、変更があった領域を漏らさない（コマンド・スクリプト等の「ユーザー向け機能以外」を省略しない）\n- **残件セクションを必ず含める**: PRD の `[ ]` で残っている受け入れ条件・既知の簡略仕様・後続 PR で扱う論点を列挙。本当に何も無ければ「なし」と明記する\n- **最終差分のみを根拠にする**。ブランチ内の中間コミットでの試行錯誤・取り消された変更・命名変更経緯・コミット分割の経緯などは PR 本文に**含めない**（コミット履歴は意図的に渡していない）\n- 最終差分に存在しない変更を推測で書かない\n- git / gh は実行しない、ファイル保存もしない（提案のみ）"
 
 ### ステップ3: 提案結果の提示
 
@@ -91,7 +94,7 @@ rm -f .claude/tmp/pr-title.txt .claude/tmp/pr-body.md
 ```markdown
 # PR 提案
 
-## ベース: <base> ← <現在のブランチ>（N コミット）
+## ベース: <base> ← <現在のブランチ>（N ファイル変更）
 
 ## PR title
 
@@ -109,6 +112,7 @@ rm -f .claude/tmp/pr-title.txt .claude/tmp/pr-body.md
 ## 注意事項
 
 - このコマンドは案の生成・保存のみで、`gh pr create` は実行しません
-- 対象は**コミット済みの変更**（ベース以降）。未コミットの変更は PR に含まれません（必要なら先にコミット）
+- 対象は **ブランチを切った直後と現在の最終差分**（コミット済みの変更）。未コミットの変更は PR に含まれません（必要なら先にコミット）
+- **ブランチ内のコミット履歴は参照しません**。中間コミットでの試行錯誤・取り消された変更は PR 本文に出ません
 - サブエージェントは独立したコンテキストで動作するため、メインエージェントのコンテキストは消費しません
 - 保存先 `.claude/tmp/` は `.gitignore` 済みの一時領域で、再実行ごとに上書きされます

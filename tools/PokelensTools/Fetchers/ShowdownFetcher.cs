@@ -185,7 +185,11 @@ internal class ShowdownFetcher
     }
 
     /// <summary>Showdown のアイテムエントリを成果物用に整形する。</summary>
-    /// <remarks>num が 0 以下、または非標準（Past / Future / CAP 由来）は対象外として null を返す。</remarks>
+    /// <remarks>
+    /// num が 0 以下、または非標準（Past / Future / CAP 由来）は対象外として null を返す。
+    /// ただし <see cref="ShowdownKey.MegaStone"/> フィールドを持つアイテム（メガストーン）は機能 7 のため
+    /// <c>isNonstandard: "Past"</c> でも例外として通す。functional-design.md 「除外フィルタ」参照。
+    /// </remarks>
     /// <param name="entry">Showdown のアイテムエントリ。</param>
     /// <returns>整形済みエントリ。対象外の場合は null。</returns>
     internal static JsonObject? BuildItemEntry(JsonObject entry)
@@ -195,18 +199,22 @@ internal class ShowdownFetcher
         {
             return null;
         }
-        // 過去世代限定 (Past) / 次世代仮置き (Future) / CAP 由来のアイテムは現代対戦の対象外。
-        // functional-design.md 「除外フィルタ」参照。
-        if (entry[ShowdownKey.IsNonstandard] != null)
+        JsonNode? megaStone = entry[ShowdownKey.MegaStone];
+        if (entry[ShowdownKey.IsNonstandard] != null && megaStone == null)
         {
             return null;
         }
 
-        return new JsonObject
+        var result = new JsonObject
         {
             [ShowdownKey.Num] = num,
             [ShowdownKey.Name] = entry[ShowdownKey.Name]?.GetValue<string>(),
         };
+        if (megaStone != null)
+        {
+            result[ShowdownKey.MegaStone] = megaStone.DeepClone();
+        }
+        return result;
     }
 
     internal async Task FetchAbilitiesAsync()

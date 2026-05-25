@@ -30,6 +30,8 @@ export const SEL = {
 
   ownStatsGrid: '#own-detail .detail-stats-grid',
   ownEnduranceCells: '#own-detail .detail-stats-grid .detail-endurance-cell',
+  ownMegaToggle: '#own-party .pokemon-card .mega-toggle',
+  opponentMegaToggle: '#opponent-party .opponent-card .mega-toggle',
   enduranceTable: '#opponent-detail .endurance-patterns',
   enduranceHeaders: '#opponent-detail .endurance-patterns thead th',
   enduranceRowHeaders: '#opponent-detail .endurance-patterns tbody th',
