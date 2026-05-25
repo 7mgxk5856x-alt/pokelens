@@ -88,7 +88,15 @@ h2 {
   border-color: #dc2626;
   background: #fee2e2;
 }
+.pokemon-card .name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .pokemon-card .name {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 17px;
   font-weight: bold;
   white-space: nowrap;
@@ -115,29 +123,23 @@ h2 {
   color: #b91c1c;
 }
 .mega-toggle {
-  margin-top: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
-  border-radius: 4px;
+  flex-shrink: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  font-family: inherit;
-  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
-#own-side .mega-toggle {
-  background: #2563eb;
-  color: #ffffff;
-  border: 1px solid #1e40af;
+.mega-toggle img {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
-#own-side .mega-toggle:hover {
-  background: #1e40af;
-}
-#opponent-side .mega-toggle {
-  background: #dc2626;
-  color: #ffffff;
-  border: 1px solid #991b1b;
-}
-#opponent-side .mega-toggle:hover {
-  background: #991b1b;
+.mega-toggle:hover img {
+  opacity: 0.75;
 }
 #own-detail,
 #opponent-detail {

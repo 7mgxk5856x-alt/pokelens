@@ -1,5 +1,6 @@
 import { SearchInput } from './search-input.js';
 import { formatBaseStats } from './stat-labels.js';
+import megaToggleIcon from './assets/mega-toggle.png';
 
 const PARTY_SIZE = 6;
 const NORMAL_STATE = -1;
@@ -110,10 +111,25 @@ export class OpponentPartyPanel {
     const data = this.#getDisplayedPokemonData(slot);
     slot.info.replaceChildren();
 
+    // 名前 + メガトグルボタンを横並びにする (name-row)。
+    // 機能 7: 相手側はメガシンカ可能なポケモンであれば持ち物に関わらず常時切替ボタンを表示。
+    // 持ち物未知のため全メガ形態を循環する（メガシンカ循環ルール）。
+    // ボタン表示判定はメガ状態に関わらず親エントリの megaForms[] 長さを基準にする。
+    const nameRow = document.createElement('div');
+    nameRow.className = 'name-row';
     const nameEl = document.createElement('div');
     nameEl.className = 'name';
     nameEl.textContent = data ? data.name : species;
-    slot.info.appendChild(nameEl);
+    nameRow.appendChild(nameEl);
+
+    if (data) {
+      const parent = this.#loader.getPokemonByName(species);
+      const megaForms = parent?.megaForms ?? [];
+      if (megaForms.length > 0) {
+        nameRow.appendChild(this.#createMegaToggleButton(index, megaForms.length));
+      }
+    }
+    slot.info.appendChild(nameRow);
 
     if (data) {
       const typesEl = document.createElement('div');
@@ -125,15 +141,6 @@ export class OpponentPartyPanel {
       baseStatsEl.className = 'base-stats';
       baseStatsEl.textContent = formatBaseStats(data.baseStats);
       slot.info.appendChild(baseStatsEl);
-
-      // 機能 7: 相手側はメガシンカ可能なポケモンであれば持ち物に関わらず常時切替ボタンを表示
-      // 持ち物未知のため全メガ形態を循環する（メガシンカ循環ルール）
-      // ボタン表示判定はメガ状態に関わらず親エントリの megaForms[] 長さを基準にする
-      const parent = this.#loader.getPokemonByName(species);
-      const megaForms = parent?.megaForms ?? [];
-      if (megaForms.length > 0) {
-        slot.info.appendChild(this.#createMegaToggleButton(index, megaForms.length));
-      }
     }
     slot.info.hidden = false;
   }
@@ -142,7 +149,11 @@ export class OpponentPartyPanel {
     const button = document.createElement('button');
     button.className = 'mega-toggle';
     button.type = 'button';
-    button.textContent = this.#slots[index].megaIndex === NORMAL_STATE ? 'メガシンカ' : '通常';
+    button.setAttribute('aria-label', 'メガシンカ切替');
+    const icon = document.createElement('img');
+    icon.src = megaToggleIcon;
+    icon.alt = '';
+    button.appendChild(icon);
     button.tabIndex = -1;
     button.addEventListener('click', (event) => {
       event.stopPropagation();

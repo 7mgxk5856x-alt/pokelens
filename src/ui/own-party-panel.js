@@ -1,4 +1,5 @@
 import { formatBaseStats } from './stat-labels.js';
+import megaToggleIcon from './assets/mega-toggle.png';
 
 const NORMAL_STATE = -1;
 
@@ -54,10 +55,21 @@ export class OwnPartyPanel {
     // 親の pokedex 値にフォールバックして、空白カード化や TypeError を避ける防御層
     const displayed = this.#getDisplayedPokemonData(entry, index) ?? pokemonData;
 
+    // 名前 + メガトグルボタンを横並びにする (name-row)。
+    // 機能 7 / D-10: 自分側は持ち物が当該ポケモンのメガストーンと一致するときだけ切替ボタンを表示する。
+    // 循環は「通常 ↔ 対応メガ」の 2 状態のみ（持ち物未対応の他メガは循環に含めない）。
+    const nameRow = document.createElement('div');
+    nameRow.className = 'name-row';
     const nameEl = document.createElement('div');
     nameEl.className = 'name';
     nameEl.textContent = displayed.name;
-    card.appendChild(nameEl);
+    nameRow.appendChild(nameEl);
+
+    const matchedMega = this.#loader.getMegaFormByItem(entry.species, entry.item);
+    if (matchedMega) {
+      nameRow.appendChild(this.#createMegaToggleButton(entry, index));
+    }
+    card.appendChild(nameRow);
 
     const typesEl = document.createElement('div');
     typesEl.className = 'types';
@@ -68,20 +80,17 @@ export class OwnPartyPanel {
     baseStatsEl.className = 'base-stats';
     baseStatsEl.textContent = formatBaseStats(displayed.baseStats);
     card.appendChild(baseStatsEl);
-
-    // 機能 7 / D-10: 自分側は持ち物が当該ポケモンのメガストーンと一致するときだけ切替ボタンを表示する。
-    // 循環は「通常 ↔ 対応メガ」の 2 状態のみ（持ち物未対応の他メガは循環に含めない）。
-    const matchedMega = this.#loader.getMegaFormByItem(entry.species, entry.item);
-    if (matchedMega) {
-      card.appendChild(this.#createMegaToggleButton(entry, index));
-    }
   }
 
   #createMegaToggleButton(entry, index) {
     const button = document.createElement('button');
     button.className = 'mega-toggle';
     button.type = 'button';
-    button.textContent = this.#megaIndices[index] === NORMAL_STATE ? 'メガシンカ' : '通常';
+    button.setAttribute('aria-label', 'メガシンカ切替');
+    const icon = document.createElement('img');
+    icon.src = megaToggleIcon;
+    icon.alt = '';
+    button.appendChild(icon);
     // Tab フォーカスから外す（相手側 mega-toggle・opponent-clear と同じ操作性ポリシー：
     // 6 つのカード／入力欄を Tab で順に移動する操作性を優先し、補助操作はマウスに統一）
     button.tabIndex = -1;
