@@ -127,9 +127,12 @@ export class OpponentPartyPanel {
       slot.info.appendChild(baseStatsEl);
 
       // 機能 7: 相手側はメガシンカ可能なポケモンであれば持ち物に関わらず常時切替ボタンを表示
-      const megaInfo = this.#loader.getMegaInfo(species);
-      if (megaInfo) {
-        slot.info.appendChild(this.#createMegaToggleButton(index, megaInfo.megaForms.length));
+      // 持ち物未知のため全メガ形態を循環する（メガシンカ循環ルール）
+      // ボタン表示判定はメガ状態に関わらず親エントリの megaForms[] 長さを基準にする
+      const parent = this.#loader.getPokemonByName(species);
+      const megaForms = parent?.megaForms ?? [];
+      if (megaForms.length > 0) {
+        slot.info.appendChild(this.#createMegaToggleButton(index, megaForms.length));
       }
     }
     slot.info.hidden = false;
@@ -163,14 +166,12 @@ export class OpponentPartyPanel {
     if (!slot.species) {
       return null;
     }
+    const parent = this.#loader.getPokemonByName(slot.species);
     if (slot.megaIndex === NORMAL_STATE) {
-      return this.#loader.getPokemonByName(slot.species);
+      return parent;
     }
-    const megaInfo = this.#loader.getMegaInfo(slot.species);
-    if (!megaInfo || slot.megaIndex >= megaInfo.megaForms.length) {
-      return this.#loader.getPokemonByName(slot.species);
-    }
-    return this.#loader.getMegaFormData(megaInfo.megaForms[slot.megaIndex]);
+    // 相手側は全メガ形態を循環する。親の megaForms[] からインデックス参照（マスターデータの不整合時は親にフォールバック）
+    return parent?.megaForms?.[slot.megaIndex] ?? parent;
   }
 
   #selectSlot(index) {

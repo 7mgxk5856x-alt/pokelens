@@ -50,7 +50,7 @@ export class OwnPartyPanel {
       return;
     }
 
-    // メガ状態でメガフォームの pokedex エントリが欠けている場合（mega-evolutions.json の手動メンテミス想定）は
+    // メガフォームのデータ取得が失敗した場合（マスターデータの不整合は通常発生しないが念のため）は
     // 親の pokedex 値にフォールバックして、空白カード化や TypeError を避ける防御層
     const displayed = this.#getDisplayedPokemonData(entry, index) ?? pokemonData;
 
@@ -69,14 +69,15 @@ export class OwnPartyPanel {
     baseStatsEl.textContent = formatBaseStats(displayed.baseStats);
     card.appendChild(baseStatsEl);
 
-    const megaInfo = this.#loader.getMegaInfo(entry.species);
-    // 機能 7: 自分側は持ち物が当該ポケモンのメガストーンと一致するときだけ切替ボタンを表示
-    if (megaInfo && megaInfo.stones.includes(entry.item)) {
-      card.appendChild(this.#createMegaToggleButton(entry, index, megaInfo.megaForms.length));
+    // 機能 7 / D-10: 自分側は持ち物が当該ポケモンのメガストーンと一致するときだけ切替ボタンを表示する。
+    // 循環は「通常 ↔ 対応メガ」の 2 状態のみ（持ち物未対応の他メガは循環に含めない）。
+    const matchedMega = this.#loader.getMegaFormByItem(entry.species, entry.item);
+    if (matchedMega) {
+      card.appendChild(this.#createMegaToggleButton(entry, index));
     }
   }
 
-  #createMegaToggleButton(entry, index, formCount) {
+  #createMegaToggleButton(entry, index) {
     const button = document.createElement('button');
     button.className = 'mega-toggle';
     button.type = 'button';
@@ -86,15 +87,14 @@ export class OwnPartyPanel {
     button.tabIndex = -1;
     button.addEventListener('click', (event) => {
       event.stopPropagation();
-      this.#cycleMegaState(entry, index, formCount);
+      this.#cycleMegaState(entry, index);
     });
     return button;
   }
 
-  #cycleMegaState(entry, index, formCount) {
-    const current = this.#megaIndices[index];
-    // 通常(-1) → 0 → 1 → ... → formCount-1 → 通常(-1) の順で循環
-    this.#megaIndices[index] = current >= formCount - 1 ? NORMAL_STATE : current + 1;
+  #cycleMegaState(entry, index) {
+    // D-10: 自分側は持ち物対応メガの 1 件のみ循環。通常(-1) ↔ メガ(0) の 2 状態。
+    this.#megaIndices[index] = this.#megaIndices[index] === NORMAL_STATE ? 0 : NORMAL_STATE;
     this.#renderCardContent(this.#cards[index], entry, index);
     if (this.#selectedIndex === index) {
       this.#cards[index].classList.add('selected');
@@ -106,15 +106,14 @@ export class OwnPartyPanel {
   }
 
   #getDisplayedPokemonData(entry, index) {
-    const megaIndex = this.#megaIndices[index];
-    if (megaIndex === NORMAL_STATE) {
+    if (this.#megaIndices[index] === NORMAL_STATE) {
       return this.#loader.getPokemonByName(entry.species);
     }
-    const megaInfo = this.#loader.getMegaInfo(entry.species);
-    if (!megaInfo || megaIndex >= megaInfo.megaForms.length) {
-      return this.#loader.getPokemonByName(entry.species);
-    }
-    return this.#loader.getMegaFormData(megaInfo.megaForms[megaIndex]);
+    // D-10: 自分側は持ち物に対応するメガフォームを返す（持ち物未対応なら null）
+    return (
+      this.#loader.getMegaFormByItem(entry.species, entry.item)
+      ?? this.#loader.getPokemonByName(entry.species)
+    );
   }
 
   #selectCard(index, entry, pokemonData) {

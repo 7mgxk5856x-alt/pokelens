@@ -1,23 +1,6 @@
 import { searchByName as searchByNameImpl } from '../logic/name-search.js';
-import megaEvolutions from './mega-evolutions.json';
 
 const REQUIRED_PARTY_FIELDS = ['species', 'nature', 'abilityPoints', 'moves'];
-
-// `mega-evolutions.json` の "_comment" メタフィールドはマッピング対象外
-const META_KEYS = new Set(['_comment']);
-
-function buildMegaFormNameSet(megaEvolutionMap) {
-  const set = new Set();
-  for (const [parentName, info] of Object.entries(megaEvolutionMap)) {
-    if (META_KEYS.has(parentName)) {
-      continue;
-    }
-    for (const formName of info.megaForms ?? []) {
-      set.add(formName);
-    }
-  }
-  return set;
-}
 
 async function fetchJson(url, errorMessage) {
   const res = await fetch(url);
@@ -29,6 +12,20 @@ async function fetchJson(url, errorMessage) {
   } catch {
     throw new Error(errorMessage);
   }
+}
+
+// pokedex.json のメガフォームは親エントリの `megaForms[]` 配下にネストされている (機能 7、P0.5)。
+// メガ名で逆引きする必要があるが pokedex.json のトップレベルには存在しないため、ローダー初期化時に
+// 派生 Map を 1 回構築して O(1) ルックアップを実現する。
+function buildMegaLocationByName(pokedex) {
+  const map = new Map();
+  for (const [parentKey, parent] of Object.entries(pokedex)) {
+    const megaForms = parent.megaForms ?? [];
+    for (let i = 0; i < megaForms.length; i++) {
+      map.set(megaForms[i].name, { parentKey, megaIndex: i });
+    }
+  }
+  return map;
 }
 
 /**
@@ -43,8 +40,7 @@ export class DataLoader {
   #typeNames = null;
   #moveCategories = null;
   #natures = null;
-  #megaEvolutions = megaEvolutions;
-  #megaFormNameSet = buildMegaFormNameSet(megaEvolutions);
+  #megaLocationByName = new Map();
 
   /**
    * 全データファイルを読み込み、検証して内部に保持する。
@@ -100,6 +96,7 @@ export class DataLoader {
     this.#typeNames = typeNames;
     this.#moveCategories = moveCategories;
     this.#natures = natures;
+    this.#megaLocationByName = buildMegaLocationByName(pokedex);
 
     return { pokedex, moves, items, abilities, typeNames, moveCategories, natures, userParty };
   }
@@ -108,8 +105,9 @@ export class DataLoader {
    * 日本語名でポケモンを引く（通常状態のみ）。
    * メガフォーム名（例: 「メガフシギバナ」）は **null を返す**。これは PRD 機能 7 の
    * 「`party.json` の species にメガシンカ後の名前が指定された場合は不明なポケモン扱い」の実現と、
-   * 「マスターデータ上、メガシンカ後は親に紐づくサブデータとして保持」の論理的表現のため。
-   * メガフォームの種族値・タイプ・特性を取得したい場合は `getMegaFormData(name)` を使う。
+   * 「マスターデータ上、メガシンカ後は親に紐づくサブデータとして保持」の物理スキーマ表現のため。
+   * メガフォーム名は pokedex.json のトップレベルに存在しないため、トップレベル走査だけで自然にこの仕様を満たす。
+   * メガフォームの種族値・タイプ・特性を取得したい場合は `getMegaFormByName(name)` を使う。
    * @param {string} name ポケモンの日本語名
    * @returns {object|null} 一致する通常ポケモン。メガフォーム名または未登録名なら null
    */
@@ -117,35 +115,32 @@ export class DataLoader {
     if (!this.#pokedex) {
       return null;
     }
-    if (this.#megaFormNameSet.has(name)) {
-      return null;
-    }
     return Object.values(this.#pokedex).find((e) => e.name === name) ?? null;
   }
 
   /**
-   * メガフォームのポケモンデータを引く（種族値・タイプ・特性）。メガシンカ状態の詳細表示で使用。
+   * メガフォーム名から、親エントリにネストされたメガデータを引く。メガシンカ状態の詳細表示で使用。
    * @param {string} megaName メガフォームの日本語名（例: 「メガフシギバナ」）
-   * @returns {object|null} メガフォームのポケモンデータ。メガフォーム名でない場合は null
+   * @returns {object|null} メガフォームのデータ（`{ key, name, item, types, baseStats, abilities }`）。メガフォーム名でない場合は null
    */
-  getMegaFormData(megaName) {
-    if (!this.#pokedex || !this.#megaFormNameSet.has(megaName)) {
+  getMegaFormByName(megaName) {
+    const loc = this.#megaLocationByName.get(megaName);
+    if (!loc || !this.#pokedex) {
       return null;
     }
-    return Object.values(this.#pokedex).find((e) => e.name === megaName) ?? null;
+    return this.#pokedex[loc.parentKey]?.megaForms?.[loc.megaIndex] ?? null;
   }
 
   /**
-   * 親ポケモン名からメガシンカ情報（メガストーン名・メガフォーム名）を引く。
+   * 親ポケモン名と持ち物名から、対応するメガフォームのデータを引く。
+   * 自分側パーティの切替ボタン表示判定（PRD 260-264）に使用する。
    * @param {string} parentName 親ポケモンの日本語名（例: 「リザードン」）
-   * @returns {{stones: string[], megaForms: string[]}|null} メガシンカ可能なら情報、不可なら null
+   * @param {string} itemName 持ち物の日本語名（例: 「リザードナイトＸ」）
+   * @returns {object|null} 一致するメガフォームのデータ。一致しなければ null
    */
-  getMegaInfo(parentName) {
-    const info = this.#megaEvolutions[parentName];
-    if (!info || META_KEYS.has(parentName)) {
-      return null;
-    }
-    return { stones: info.stones, megaForms: info.megaForms };
+  getMegaFormByItem(parentName, itemName) {
+    const parent = this.getPokemonByName(parentName);
+    return parent?.megaForms?.find((m) => m.item === itemName) ?? null;
   }
 
   /**
@@ -154,11 +149,12 @@ export class DataLoader {
    * @returns {boolean} メガフォーム名なら true
    */
   isMegaForm(name) {
-    return this.#megaFormNameSet.has(name);
+    return this.#megaLocationByName.has(name);
   }
 
   /**
-   * 名前の前方一致でポケモンを検索する。メガフォームはサジェスト候補から除外する。
+   * 名前の前方一致でポケモンを検索する。
+   * pokedex.json のトップレベルにはメガフォームが存在しないため、追加フィルタなしで自然にメガ除外される（機能 7）。
    * @param {string} query 検索クエリ
    * @returns {Array} 一致したポケモンエントリ（図鑑番号昇順）
    */
@@ -166,8 +162,7 @@ export class DataLoader {
     if (!this.#pokedex) {
       return [];
     }
-    const entries = Object.values(this.#pokedex).filter((e) => !this.#megaFormNameSet.has(e.name));
-    return searchByNameImpl(query, entries);
+    return searchByNameImpl(query, Object.values(this.#pokedex));
   }
 
   getMove(name) {

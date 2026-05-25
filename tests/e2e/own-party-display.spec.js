@@ -174,7 +174,9 @@ test.describe('自分パーティ表示', () => {
     await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('あついしぼう');
   });
 
-  test('AET-040: 複数メガ（リザードン）は 通常 → Ｘ → Ｙ → 通常 の順で循環する', async ({ page }) => {
+  test('AET-040: 自分側は持ち物に対応するメガのみ循環する（D-10: リザードン + リザードナイトＸ は 通常 ↔ メガリザードンＸ）', async ({ page }) => {
+    // D-10「自分側のメガシンカ循環は持ち物にマッチするメガのみ」: メガリザードンＹ は循環に登場しない。
+    // 相手側は持ち物未知のため全形態循環するが、自分側は持ち物既知でユーザーストーリー「正確に参照」を優先する。
     await mockParty(page, MEGA_FIXTURE);
     await page.goto('/');
 
@@ -184,9 +186,11 @@ test.describe('自分パーティ表示', () => {
     await expect(card.locator('.name')).toHaveText('リザードン');
     await toggle.click({ force: true });
     await expect(card.locator('.name')).toHaveText('メガリザードンＸ');
-    await toggle.click({ force: true });
-    await expect(card.locator('.name')).toHaveText('メガリザードンＹ');
+    // もう一度押すと通常に戻る（メガリザードンＹ には到達しない）
     await toggle.click({ force: true });
     await expect(card.locator('.name')).toHaveText('リザードン');
+    // さらに押すと再びメガリザードンＸ
+    await toggle.click({ force: true });
+    await expect(card.locator('.name')).toHaveText('メガリザードンＸ');
   });
 });

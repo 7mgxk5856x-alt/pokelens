@@ -127,7 +127,7 @@ test.describe('相手ポケモン情報・素早さ 4 パターン', () => {
     await expect(detail.locator('.detail-header .name')).toHaveText('リザードン');
 
     // スロット 1 で メタモン を確定（Champions データでメガシンカ非対応のポケモン。
-    // ガブリアス は Champions では mega-evolutions.json に含まれるため非メガの代表として使えない）
+    // ガブリアス は Champions ではメガシンカ可能 (メガストーン: ガブリアスナイト) のため非メガの代表として使えない）
     const input1 = slots.nth(1).locator(SEL.oppInput);
     await input1.fill('メタモン');
     await input1.press('Enter');
