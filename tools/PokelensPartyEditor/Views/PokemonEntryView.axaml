@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PokelensPartyEditor.ViewModels"
+             x:Class="PokelensPartyEditor.Views.PokemonEntryView"
+             x:DataType="vm:PokemonEntryViewModel">
+    <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="120,*">
+            <!-- ポケモン名 -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="ポケモン" VerticalAlignment="Center" />
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Species}" Margin="0,2" />
+
+            <!-- 特性 -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="特性" VerticalAlignment="Center" />
+            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Ability}" Margin="0,2" />
+
+            <!-- アイテム -->
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="アイテム" VerticalAlignment="Center" />
+            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Item}" Margin="0,2" />
+
+            <!-- 性格 -->
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="性格" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="3" Grid.Column="1"
+                      ItemsSource="{Binding NatureChoices}"
+                      SelectedValue="{Binding Nature, Mode=TwoWay}"
+                      SelectedValueBinding="{Binding Key}"
+                      DisplayMemberBinding="{Binding DisplayLabel}"
+                      Margin="0,2" />
+
+            <!-- 能力ポイント -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="能力ポイント" VerticalAlignment="Top" Margin="0,8,0,0" />
+            <ItemsControl Grid.Row="4" Grid.Column="1" Margin="0,2">
+                <ItemsControl.Items>
+                    <Grid ColumnDefinitions="40,60,Auto,Auto,Auto,Auto" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="H" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Hp}" />
+                        <Button Grid.Column="2" Content="0" Click="OnHpReset" Margin="2,0" />
+                        <Button Grid.Column="3" Content="−" Click="OnHpDec" Margin="2,0" />
+                        <Button Grid.Column="4" Content="+" Click="OnHpInc" Margin="2,0" />
+                        <Button Grid.Column="5" Content="最大" Click="OnHpMax" Margin="2,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="40,60,Auto,Auto,Auto,Auto" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="A" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Atk}" />
+                        <Button Grid.Column="2" Content="0" Click="OnAtkReset" Margin="2,0" />
+                        <Button Grid.Column="3" Content="−" Click="OnAtkDec" Margin="2,0" />
+                        <Button Grid.Column="4" Content="+" Click="OnAtkInc" Margin="2,0" />
+                        <Button Grid.Column="5" Content="最大" Click="OnAtkMax" Margin="2,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="40,60,Auto,Auto,Auto,Auto" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="B" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Def}" />
+                        <Button Grid.Column="2" Content="0" Click="OnDefReset" Margin="2,0" />
+                        <Button Grid.Column="3" Content="−" Click="OnDefDec" Margin="2,0" />
+                        <Button Grid.Column="4" Content="+" Click="OnDefInc" Margin="2,0" />
+                        <Button Grid.Column="5" Content="最大" Click="OnDefMax" Margin="2,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="40,60,Auto,Auto,Auto,Auto" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="C" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Spa}" />
+                        <Button Grid.Column="2" Content="0" Click="OnSpaReset" Margin="2,0" />
+                        <Button Grid.Column="3" Content="−" Click="OnSpaDec" Margin="2,0" />
+                        <Button Grid.Column="4" Content="+" Click="OnSpaInc" Margin="2,0" />
+                        <Button Grid.Column="5" Content="最大" Click="OnSpaMax" Margin="2,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="40,60,Auto,Auto,Auto,Auto" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="D" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Spd}" />
+                        <Button Grid.Column="2" Content="0" Click="OnSpdReset" Margin="2,0" />
+                        <Button Grid.Column="3" Content="−" Click="OnSpdDec" Margin="2,0" />
+                        <Button Grid.Column="4" Content="+" Click="OnSpdInc" Margin="2,0" />
+                        <Button Grid.Column="5" Content="最大" Click="OnSpdMax" Margin="2,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="40,60,Auto,Auto,Auto,Auto" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="S" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Spe}" />
+                        <Button Grid.Column="2" Content="0" Click="OnSpeReset" Margin="2,0" />
+                        <Button Grid.Column="3" Content="−" Click="OnSpeDec" Margin="2,0" />
+                        <Button Grid.Column="4" Content="+" Click="OnSpeInc" Margin="2,0" />
+                        <Button Grid.Column="5" Content="最大" Click="OnSpeMax" Margin="2,0" />
+                    </Grid>
+                </ItemsControl.Items>
+            </ItemsControl>
+
+            <!-- 技 -->
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="技" VerticalAlignment="Top" Margin="0,8,0,0" />
+            <ItemsControl Grid.Row="5" Grid.Column="1" ItemsSource="{Binding Moves}" Margin="0,2">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:MoveSlotViewModel">
+                        <TextBox Text="{Binding Name}" Margin="0,2" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </Border>
+</UserControl>

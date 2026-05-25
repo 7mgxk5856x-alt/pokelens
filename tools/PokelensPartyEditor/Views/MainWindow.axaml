@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PokelensPartyEditor.ViewModels"
+        xmlns:views="using:PokelensPartyEditor.Views"
+        x:Class="PokelensPartyEditor.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Pokelens Party Editor"
+        Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- 上部: ロード/セーブ + ダーティフラグ表示 -->
+        <Border DockPanel.Dock="Top" Background="#f0f0f0" Padding="12">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="ロード" Command="{Binding LoadCommand}" />
+                <Button Content="セーブ" Command="{Binding SaveCommand}" />
+                <TextBlock VerticalAlignment="Center"
+                           Text="● 変更あり"
+                           Foreground="OrangeRed"
+                           IsVisible="{Binding IsDirty}" />
+            </StackPanel>
+        </Border>
+
+        <!-- 6 匹分のグリッド -->
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="2" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:PokemonEntryViewModel">
+                        <views:PokemonEntryView Margin="8" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
