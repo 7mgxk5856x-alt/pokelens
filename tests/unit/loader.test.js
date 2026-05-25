@@ -532,6 +532,18 @@ describe('DataLoader メガシンカ関連 API（機能 7、P0.5 リファクタ
     expect(loader.getMegaFormByItem('メタモン', 'フシギバナイト')).toBeNull();
   });
 
+  it('getMegaFormByItem: 持ち物が null の場合は null（持ち物未設定ポケモンでのボタン非表示担保）', async () => {
+    // own-party-panel.js は party.json の entry.item をそのまま渡すため、
+    // party.json で持ち物未指定（item: null）のポケモンでは getMegaFormByItem(parent, null) が呼ばれる。
+    // megaForms[].item は必ず文字列のため === null マッチが false になり、結果的に null が返る。
+    // この動作を明示的に担保することで、メガ可能ポケモン + 持ち物未設定でメガトグルが非表示になる仕様（PRD 260-264）を確実に守る。
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.getMegaFormByItem('リザードン', null)).toBeNull();
+    expect(loader.getMegaFormByItem('フシギバナ', null)).toBeNull();
+  });
+
   it('searchByName: メガフォームはサジェスト候補から除外される（トップレベル走査による自然な除外）', async () => {
     setupFetch();
     const loader = new DataLoader();

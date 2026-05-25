@@ -203,7 +203,10 @@ internal static class MergeConverter
     }
 
     /// <summary>アイテムの日本語名を解決する。item-name-patch.json を優先し、無ければ翻訳辞書、それも無ければ Showdown 英語名にフォールバックする。</summary>
-    /// <remarks>メガストーンは items-modifiers.json には登録されないため <see cref="ConvertItems"/> 経由では日本語化されない。本ヘルパーは翻訳辞書・パッチを直接引いて解決する。</remarks>
+    /// <remarks>
+    /// メガストーンは items-modifiers.json には登録されないため <see cref="ConvertItems"/> 経由では日本語化されない。本ヘルパーは翻訳辞書・パッチを直接引いて解決する。
+    /// 英語名フォールバック時は呼び出し側で <see cref="NormalizeFullWidthXY"/> が適用されると意図しない文字列（例: <c>"CharizarditeＸ"</c>）が生成される可能性があるため、Warning ログで早期検知する。
+    /// </remarks>
     private static string ResolveItemJapaneseName(
         string itemKey,
         JsonObject itemEntry,
@@ -224,7 +227,9 @@ internal static class MergeConverter
         {
             return jaName;
         }
-        return itemEntry[ShowdownKey.Name]?.GetValue<string>() ?? itemKey;
+        string englishName = itemEntry[ShowdownKey.Name]?.GetValue<string>() ?? itemKey;
+        Console.WriteLine($"    Warning: no Japanese name for mega stone items/{itemKey}, falling back to English '{englishName}' (item-name-patch.json での補完を検討)");
+        return englishName;
     }
 
     /// <summary>メガ名・メガストーン名の半角 X/Y を全角 Ｘ/Ｙ に正規化する（D-8）。</summary>
