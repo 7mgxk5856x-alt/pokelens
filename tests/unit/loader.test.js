@@ -544,6 +544,17 @@ describe('DataLoader メガシンカ関連 API（機能 7、P0.5 リファクタ
     expect(loader.getMegaFormByItem('フシギバナ', null)).toBeNull();
   });
 
+  it('getMegaFormByItem: 存在しないポケモン名で null（UI フォールバック層の前提）', async () => {
+    // own-party-panel.js は party.json の entry.species が pokedex.json に存在しなくても、
+    // メガトグル表示判定で getMegaFormByItem を呼ぶ場合がある。
+    // この経路で TypeError を出さず安全に null が返ることを担保し、UI 側の防御層
+    // (機能設計書 OwnPartyPanel メガシンカ切替ボタン参照) の前提条件を保証する。
+    setupFetch();
+    const loader = new DataLoader();
+    await loader.load();
+    expect(loader.getMegaFormByItem('存在しないポケモン', 'フシギバナイト')).toBeNull();
+  });
+
   it('searchByName: メガフォームはサジェスト候補から除外される（トップレベル走査による自然な除外）', async () => {
     setupFetch();
     const loader = new DataLoader();

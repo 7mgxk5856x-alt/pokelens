@@ -409,7 +409,8 @@ public class MergeConverterTests
         ["charizardmegax"] = new JsonObject
         {
             ["num"] = 6,
-            ["name"] = "メガリザードンＸ",
+            // D-8 の全角正規化を X 側でも対称的に検証するため、入力 name を半角 X で記載する
+            ["name"] = "メガリザードンX",
             ["types"] = new JsonArray { "Fire", "Dragon" },
             ["baseStats"] = new JsonObject { ["hp"]=78,["atk"]=130,["def"]=111,["spa"]=130,["spd"]=85,["spe"]=100 },
             ["abilities"] = new JsonArray { "かたいツメ" },
@@ -417,7 +418,7 @@ public class MergeConverterTests
         ["charizardmegay"] = new JsonObject
         {
             ["num"] = 6,
-            // 半角 X/Y の例として Y を含むメガ名を意図的に半角で記載し、D-8 の全角正規化を検証
+            // D-8 の全角正規化を Y 側でも検証するため、入力 name を半角 Y で記載する
             ["name"] = "メガリザードンY",
             ["types"] = new JsonArray { "Fire", "Flying" },
             ["baseStats"] = new JsonObject { ["hp"]=78,["atk"]=104,["def"]=78,["spa"]=159,["spd"]=115,["spe"]=100 },
@@ -504,13 +505,17 @@ public class MergeConverterTests
     [Fact]
     public void NestMegaForms_NormalizesHalfWidthXYToFullWidth_OnMegaName()
     {
-        // 入力 fixture では charizardmegay の name を意図的に半角 Y で記述している
+        // 入力 fixture では charizardmegax/y の name を意図的に半角 X/Y で記述している。
+        // X 側・Y 側の両方で正規化が動くことを確認し、D-8 の対称性を担保する。
         var flat = MakeFlatPokedexWithMega();
         var result = MergeConverter.NestMegaForms(flat, new JsonObject(), MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
 
         var charizardMegas = result["charizard"]!["megaForms"]!.AsArray();
+        var megaX = charizardMegas.First(m => m!["key"]!.GetValue<string>() == "charizardmegax")!;
         var megaY = charizardMegas.First(m => m!["key"]!.GetValue<string>() == "charizardmegay")!;
+        Assert.Equal("メガリザードンＸ", megaX["name"]!.GetValue<string>());
         Assert.Equal("メガリザードンＹ", megaY["name"]!.GetValue<string>());
+        Assert.DoesNotContain("X", megaX["name"]!.GetValue<string>());
         Assert.DoesNotContain("Y", megaY["name"]!.GetValue<string>());
     }
 
@@ -661,5 +666,32 @@ public class MergeConverterTests
         var result = MergeConverter.NestMegaForms(flat, showdownPokedex, new JsonObject(), new JsonObject(), new JsonObject());
 
         Assert.True(result.ContainsKey("mrmimegalar"));
+    }
+
+    [Fact]
+    public void NestMegaForms_OrphanMegaWithMegaHyphenForme_AlsoRemoved()
+    {
+        // forme フィールドが "Mega-X" / "Mega-Y" のようなハイフン付き値でも、
+        // StartsWith("Mega") の判別により孤立メガとして除去される（D-1 の不変条件維持）。
+        // 例: 仮想的にメガストーンが items.ts から消えた charizardmegax は forme="Mega-X" を持つため除去される。
+        var flat = new JsonObject
+        {
+            ["charizardmegax"] = new JsonObject
+            {
+                ["num"] = 6,
+                ["name"] = "メガリザードンＸ",
+                ["types"] = new JsonArray { "Fire", "Dragon" },
+                ["baseStats"] = new JsonObject { ["hp"]=78,["atk"]=130,["def"]=111,["spa"]=130,["spd"]=85,["spe"]=100 },
+                ["abilities"] = new JsonArray { "かたいツメ" },
+            },
+        };
+        var showdownPokedex = new JsonObject
+        {
+            ["charizardmegax"] = new JsonObject { ["forme"] = "Mega-X" },
+        };
+
+        var result = MergeConverter.NestMegaForms(flat, showdownPokedex, new JsonObject(), new JsonObject(), new JsonObject());
+
+        Assert.False(result.ContainsKey("charizardmegax"));
     }
 }

@@ -80,4 +80,12 @@ public class ShowdownInternalKeyTests
     {
         Assert.Equal(expected, ShowdownInternalKey.ForPokemon(showdownName));
     }
+
+    [Fact]
+    public void ForPokemon_EmptyString_ReturnsEmpty()
+    {
+        // 境界値: 空文字を渡しても TypeError を起こさず空文字を返すことを担保する。
+        // items.ts の megaStone マップが空文字を含むケース等の防御。
+        Assert.Equal(string.Empty, ShowdownInternalKey.ForPokemon(string.Empty));
+    }
 }
