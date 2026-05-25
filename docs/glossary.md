@@ -299,13 +299,61 @@
 
 ---
 
-### C# データ準備ツール
+### PokelensCore
 
-**定義**: Pokémon Showdown からデータを取得し、`data/pokedex.json` / `data/moves.json` / `data/items.json` / `data/abilities.json` を生成するための C# (.NET) 製 CLI ツール。
+**定義**: `tools/PokelensCore/` に配置する C# クラスライブラリ。サジェスト（`NameSearch`）・マスターデータ読み込み（`MasterDataReader`）・共通型定義（`PartyDocument` 等）を提供する。
+
+**役割**: `PokelensMasterDataBuilder`（パイプライン）と `PokelensPartyEditor`（GUI）の両方から参照される共通基盤。**GUI フレームワーク非依存**（Avalonia 等を参照しない）とすることで、コンソールアプリと GUI アプリの両方で利用可能にしている。
+
+**実装**: `tools/PokelensCore/`
+
+**関連ドキュメント**: [機能設計書](./functional-design.md) / [アーキテクチャ設計書](./architecture.md)
+
+---
+
+### PokelensMasterDataBuilder（旧 PokelensTools）
+
+**定義**: Pokémon Showdown / PokéAPI からデータを取得し、`data/pokedex.json` / `data/moves.json` / `data/items.json` / `data/abilities.json` を生成するための C# (.NET) 製コンソールアプリ。
 
 **実行タイミング**: 対戦前に1回、またはデータ更新が必要な時のみ実行する。ランタイムには不要。
 
-**実装**: `tools/PokelensTools/`
+**実装**: `tools/PokelensMasterDataBuilder/`（実行: `dotnet run --project tools/PokelensMasterDataBuilder`）
+
+**改名の経緯**: P0.5 機能 14 で `data/party.json` 編集 GUI（`PokelensPartyEditor`）を追加するにあたり、「データ準備ツール」と「パーティ編集ツール」の役割を名前で区別するため、旧 `PokelensTools` を本名にリネームした。
+
+---
+
+### PokelensPartyEditor
+
+**定義**: `data/party.json` を GUI 経由で編集するための Avalonia デスクトップアプリ。機能 14 の本体。
+
+**役割**: 手動 JSON 編集の手間を解消し、対戦準備フローでの自分パーティ登録を支援する。MVVM アーキテクチャで構築し、ViewModel 層をユニットテスト可能にする。
+
+**実装**: `tools/PokelensPartyEditor/`（実行: `dotnet run --project tools/PokelensPartyEditor`）
+
+**フロントエンドとの連携**: `data/party.json` ファイル経由のみ。保存後はユーザーが手動でブラウザをリロードすることでフロントエンドに反映される（自動通知は行わない）。
+
+**関連ドキュメント**: [機能設計書](./functional-design.md) / [アーキテクチャ設計書](./architecture.md)
+
+---
+
+### MVVM
+
+**定義**: Model / ViewModel / View の 3 層に責務を分けるアーキテクチャパターン。XAML 系 GUI で標準的に用いられる。
+
+**本プロジェクトでの用途**: `PokelensPartyEditor`（機能 14）の GUI コードに採用。**View**（Avalonia XAML）は表示と入力イベント受け付けのみ、**ViewModel** は表示用プロパティ・コマンド・バリデーション・状態管理を担当、**Model** は `PokelensCore` の型（`PartyDocument` 等）を流用する。
+
+**選定理由**: ViewModel 層を View から独立させることで、xUnit でユニットテスト可能になる。`CommunityToolkit.Mvvm` を導入してボイラープレートを削減する。
+
+---
+
+### ダーティフラグ
+
+**定義**: GUI の編集中の内容がファイルと同期しているか（変更未保存があるか）を表す内部フラグ。
+
+**本プロジェクトでの用途**: `PokelensPartyEditor`（機能 14）の `MainWindowViewModel.IsDirty`。`false` にリセットするのは「起動直後の初期表示完了」「ロード成功直後」「セーブ成功直後」の 3 タイミングのみ。いずれかの入力欄が変化した時点で `true` に切り替わる。ウィンドウクローズ時の確認ダイアログ表示判定に使う。
+
+**関連ドキュメント**: [機能設計書](./functional-design.md)（機能 14 セクション）
 
 ---
 
@@ -323,7 +371,7 @@
 
 **定義**: Pokémon Champions 独自のポケモンデータ（名称変更・新規追加など）を Showdown データに差分適用するための手書き管理 JSON ファイル。
 
-**配置**: `tools/PokelensTools/Patches/champions-patch.json`
+**配置**: `tools/PokelensMasterDataBuilder/Patches/champions-patch.json`
 
 **説明**: C# データ準備ツール実行時にマージされ、最終的な `data/pokedex.json` / `data/moves.json` に反映される。変更時は[開発ガイドライン](./development-guidelines.md)の C# コーディング規約内の管理ルールに従うこと。
 
@@ -335,7 +383,7 @@
 
 **定義**: Pokémon Showdown で `power: null`（威力不定）となる技に最大威力を定義するための手書き管理 JSON ファイル。
 
-**配置**: `tools/PokelensTools/Patches/moves-power-patch.json`
+**配置**: `tools/PokelensMasterDataBuilder/Patches/moves-power-patch.json`
 
 **説明**: `champions-patch.json`（Showdown 語彙・Step3 適用）とは異なり、最終出力語彙（`moves.json` の `power` フィールド）でStep4 に適用される。複数回攻撃技は C# ツールが `basePower × multihit[1]` で自動計算するため本ファイルの対象外。パッチ未定義の威力不定技は UI 上「−」表示となる。
 
@@ -347,7 +395,7 @@
 
 **定義**: PokéAPI のフォルム認識ロジックでは一意化できないポケモンの日本語名を手動で上書き定義する JSON ファイル。
 
-**配置**: `tools/PokelensTools/Patches/pokemon-name-patch.json`
+**配置**: `tools/PokelensMasterDataBuilder/Patches/pokemon-name-patch.json`
 
 **説明**: Showdown キーをキー、上書き後の日本語名を値とする単純な `{ "key": "name" }` 形式。Step4 で MergeConverter が `pokeapi-translations.json` 由来の日本語名を解決した直後に、本ファイルのエントリで上書きする。補正対象は以下の 4 カテゴリ:
 - PokéAPI の翻訳データバグ（パルデアケンタロス3種が同名で返る等）
@@ -365,7 +413,7 @@
 
 **定義**: PokéAPI が翻訳を欠落／誤訳しているアイテムの日本語名を手動で上書き定義する JSON ファイル。
 
-**配置**: `tools/PokelensTools/Patches/item-name-patch.json`
+**配置**: `tools/PokelensMasterDataBuilder/Patches/item-name-patch.json`
 
 **説明**: Showdown キーをキー、上書き後の日本語名を値とする単純な `{ "key": "name" }` 形式。MergeConverter は `items-modifiers.json` の各キーに対し、まず本ファイルを参照して上書き値があれば優先採用、なければ `pokeapi-translations.json` をフォールバックとして使用する。補正対象は以下の 3 カテゴリ:
 - PokéAPI 翻訳の誤り（ケッサクのちゃわんが PokéAPI ja で "ボンサクのちゃわん" を返す等のデータバグ）
@@ -380,7 +428,7 @@
 
 **定義**: 持ち物・特性ごとの補正値（倍率・適用条件）を定義する手書き管理 JSON ファイル。C# データ準備ツールが `data/items.json` / `data/abilities.json` を生成する際の入力として使用する。
 
-**配置**: `tools/PokelensTools/Patches/items-modifiers.json`、`tools/PokelensTools/Patches/abilities-modifiers.json`
+**配置**: `tools/PokelensMasterDataBuilder/Patches/items-modifiers.json`、`tools/PokelensMasterDataBuilder/Patches/abilities-modifiers.json`
 
 **データ構造（例）**:
 
@@ -412,7 +460,7 @@
 
 **定義**: ポケモンに関する情報を集積した日本語 Wiki サイト（https://wiki.pokemonwiki.com/wiki/Pok%C3%A9mon_Champions）。
 
-**本プロジェクトでの用途**: Pokémon Champions における種族値変更・技威力変更などの差分を手動調査するために参照する。調査結果は `tools/PokelensTools/Patches/champions-patch.json` に静的パッチとして記録する。ランタイムへの影響はない（オフライン参照のみ）。
+**本プロジェクトでの用途**: Pokémon Champions における種族値変更・技威力変更などの差分を手動調査するために参照する。調査結果は `tools/PokelensMasterDataBuilder/Patches/champions-patch.json` に静的パッチとして記録する。ランタイムへの影響はない（オフライン参照のみ）。
 
 **関連ドキュメント**: [機能設計書](./functional-design.md)
 
@@ -468,7 +516,7 @@
 
 **定義**: .NET 用のユニットテストフレームワーク。`[Fact]` / `[Theory]` 属性でテストケースを宣言する。
 
-**本プロジェクトでの用途**: `tools/PokelensTools.Tests/` の C# テスト（ユニット＋統合）に使用。実行: `dotnet test tools/PokelensTools.Tests`。
+**本プロジェクトでの用途**: `tools/PokelensMasterDataBuilder.Tests/` の C# テスト（ユニット＋統合）に使用。実行: `dotnet test tools/PokelensMasterDataBuilder.Tests`。
 
 ---
 
@@ -480,20 +528,20 @@
 |--------|------|------------|
 | **AET** | Automated E2E Test（Playwright） | `tests/e2e/*.spec.js`（仕様書: `docs/testing/e2e/automated-test-cases.md`） |
 | **MET** | Manual E2E Test（手動セットアップ） | 仕様書: `docs/testing/e2e/manual-test-cases.md` |
-| **PIT** | Pipeline Integration Tests（C# 統合） | `tools/PokelensTools.Tests/PipelineIntegrationTests.cs` |
+| **PIT** | Pipeline Integration Tests（C# 統合） | `tools/PokelensMasterDataBuilder.Tests/PipelineIntegrationTests.cs` |
 | CAS | calc-actual-stats（JS 単体） | `tests/unit/calc-actual-stats.test.js` |
 | PIC | power-index-calc（JS 単体） | `tests/unit/power-index-calc.test.js` |
 | SPD | speed-calc（JS 単体） | `tests/unit/speed-calc.test.js` |
 | RMOD | resolve-modifier（JS 単体） | `tests/unit/resolve-modifier.test.js` |
 | NS | name-search（JS 単体） | `tests/unit/name-search.test.js` |
 | LD | loader（JS 単体） | `tests/unit/loader.test.js` |
-| MCT | MergeConverterTests（C# 単体） | `tools/PokelensTools.Tests/MergeConverterTests.cs` |
-| PAT | PatchApplicatorTests（C# 単体） | `tools/PokelensTools.Tests/PatchApplicatorTests.cs` |
-| IRT | IncrementalRunnerTests（C# 単体） | `tools/PokelensTools.Tests/IncrementalRunnerTests.cs` |
-| PFT | PokeAPIFetcherTests（C# 単体） | `tools/PokelensTools.Tests/PokeAPIFetcherTests.cs` |
-| PNM | PokeApiNameTests（C# 単体） | `tools/PokelensTools.Tests/PokeApiNameTests.cs` |
-| PSL | PokeApiSlugTests（C# 単体） | `tools/PokelensTools.Tests/PokeApiSlugTests.cs` |
-| SFT | ShowdownFetcherTests（C# 単体） | `tools/PokelensTools.Tests/ShowdownFetcherTests.cs` |
+| MCT | MergeConverterTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/MergeConverterTests.cs` |
+| PAT | PatchApplicatorTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/PatchApplicatorTests.cs` |
+| IRT | IncrementalRunnerTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/IncrementalRunnerTests.cs` |
+| PFT | PokeAPIFetcherTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/PokeAPIFetcherTests.cs` |
+| PNM | PokeApiNameTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/PokeApiNameTests.cs` |
+| PSL | PokeApiSlugTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/PokeApiSlugTests.cs` |
+| SFT | ShowdownFetcherTests（C# 単体） | `tools/PokelensMasterDataBuilder.Tests/ShowdownFetcherTests.cs` |
 
 ---
 
@@ -634,15 +682,19 @@
 - [ロジックレイヤー](#ロジックレイヤー)
 
 ### A-Z
-- [C# データ準備ツール](#c-データ準備ツール)
 - [champions-patch.json](#champions-patchjson)
 - [moves-power-patch.json](#moves-power-patchjson)
 - [pokemon-name-patch.json](#pokemon-name-patchjson)
 - [item-name-patch.json](#item-name-patchjson)
 - [items-modifiers.json / abilities-modifiers.json](#items-modifiersjson--abilities-modifiersjson)
+- [MVVM](#mvvm)
 - [PokéAPI](#pokéapi)
+- [PokelensCore](#pokelenscore)
+- [PokelensMasterDataBuilder（旧 PokelensTools）](#pokelensmasterdatabuilder旧-pokelenstools)
+- [PokelensPartyEditor](#pokelenspartyeditor)
 - [Pokémon Showdown データ](#pokémon-showdown-データ)
 - [Playwright](#playwright)
+- [ダーティフラグ](#ダーティフラグ)
 - [テストケース ID 接頭辞](#テストケース-id-接頭辞)
 - [UIレイヤー](#uiレイヤー)
 - [Vite](#vite)

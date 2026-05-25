@@ -14,17 +14,29 @@ pokelens/
 ├── tests/                          # テストコード（JS）
 │   ├── unit/                       # ユニットテスト（Vitest）
 │   └── e2e/                        # E2E テスト（Playwright）
-├── tools/                          # C# データ準備ツール
-│   ├── PokelensTools/
-│   │   ├── PokelensTools.csproj
-│   │   ├── Program.cs              # エントリーポイント
-│   │   ├── Fetchers/               # HTTP取得（Showdown / PokéAPI）
-│   │   ├── Pipeline/               # 増分判定・パッチ適用・マージ変換
-│   │   ├── Models/                 # データ型（ChecksumSet 等）
-│   │   ├── Common/                 # 共通ヘルパー
-│   │   └── Patches/                # 手動管理データ（JSON）
-│   └── PokelensTools.Tests/        # xUnit テストプロジェクト
-│       └── PokelensTools.Tests.csproj
+├── tools/                          # C# プロジェクト群（3 + テスト 3 構成）
+│   ├── PokelensCore/                       # クラスライブラリ（共通: サジェスト・データ読み込み・型定義）
+│   │   ├── PokelensCore.csproj
+│   │   ├── NameSearch.cs                   # 正規化・前方一致（src/logic/name-search.js の C# 移植）
+│   │   ├── MasterDataReader.cs             # data/*.json の強い型デシリアライズ
+│   │   └── Models/                         # PartyDocument / PokemonEntryModel 等
+│   ├── PokelensCore.Tests/                 # xUnit
+│   ├── PokelensMasterDataBuilder/          # コンソールアプリ（旧 PokelensTools のリネーム）
+│   │   ├── PokelensMasterDataBuilder.csproj
+│   │   ├── Program.cs                      # エントリーポイント
+│   │   ├── Fetchers/                       # HTTP取得（Showdown / PokéAPI）
+│   │   ├── Pipeline/                       # 増分判定・パッチ適用・マージ変換
+│   │   ├── Models/                         # データ型（ChecksumSet 等）
+│   │   ├── Common/                         # 共通ヘルパー
+│   │   └── Patches/                        # 手動管理データ（JSON）
+│   ├── PokelensMasterDataBuilder.Tests/    # xUnit テストプロジェクト
+│   ├── PokelensPartyEditor/                # Avalonia デスクトップアプリ（機能 14・MVVM）
+│   │   ├── PokelensPartyEditor.csproj
+│   │   ├── Program.cs / App.axaml          # Avalonia アプリ起動エントリ
+│   │   ├── Views/                          # MainWindow.axaml / PokemonEntryView.axaml / SuggestPopup.axaml
+│   │   ├── ViewModels/                     # MainWindowViewModel / PokemonEntryViewModel
+│   │   └── Services/                       # PartyFileService / MasterDataService / SuggestService
+│   └── PokelensPartyEditor.Tests/          # xUnit（ViewModel 層を中心）
 ├── cache/                          # C# ツールの中間データ（gitignore対象）
 ├── data/                           # データファイル（JSONのみ）
 ├── docs/                           # プロジェクトドキュメント
@@ -89,7 +101,7 @@ pokelens/
 **依存関係**:
 - 依存可能: なし（外部ファイル `data/` 配下のマスターデータのみ参照）
 - 依存禁止: `src/ui/`、`src/logic/`
-- **データファイル配置禁止**: `src/data/` 配下に JSON 等のデータファイルを置かない（補正データが必要な場合は `tools/PokelensTools/Patches/` を経由してマスターデータに統合する）
+- **データファイル配置禁止**: `src/data/` 配下に JSON 等のデータファイルを置かない（補正データが必要な場合は `tools/PokelensMasterDataBuilder/Patches/` を経由してマスターデータに統合する）
 
 **例**:
 ```
@@ -223,52 +235,105 @@ export default {
 
 ---
 
-### tools/PokelensTools/ (C# データ準備ツール)
+### tools/ (C# プロジェクト群)
 
-**役割**: Pokémon Showdown / PokéAPI からマスターデータを取得し、`data/` 配下の JSON に変換・出力する。手動補正データ (`Patches/` 配下) はマスターデータ生成時にパイプラインが適用するもので、フロントエンドからは **直接参照しない** (補正データの真実源を `Patches/`、フロントエンド向けの真実源を `data/` に分離することで整合性を保つ。詳細は `docs/architecture.md` の「データ参照ルール」参照)
+**全体構成**: 3 プロジェクト + 3 テストプロジェクトの構成。共通機能は `PokelensCore` クラスライブラリに切り出し、`PokelensMasterDataBuilder`（旧 `PokelensTools`）と `PokelensPartyEditor`（機能 14 で新設）が参照する。
+
+**依存方向**: `PokelensMasterDataBuilder` → `PokelensCore` ← `PokelensPartyEditor`。`PokelensCore` は他に依存せず、Avalonia 等 GUI 依存も持ち込まない（GUI 非依存原則）。
+
+---
+
+#### tools/PokelensCore/ (共通クラスライブラリ)
+
+**役割**: サジェスト（`NameSearch`）・マスターデータ読み込み（`MasterDataReader`）・共通型定義（`PartyDocument`, `PokemonEntryModel` 等）を提供する。GUI フレームワーク非依存とすることで、コンソール（`PokelensMasterDataBuilder`）と GUI（`PokelensPartyEditor`）の両方から参照可能にする。
 
 **構造**:
 ```
-tools/
-├── PokelensTools/
-│   ├── PokelensTools.csproj
-│   ├── Program.cs                  # エントリーポイント・増分実行制御
-│   ├── AssemblyInfo.cs             # InternalsVisibleTo（テストへ internal 公開）
-│   ├── Fetchers/
-│   │   ├── ShowdownFetcher.cs      # Showdown HTTP取得
-│   │   ├── ShowdownKey.cs          # Showdown データ JSON のキー定数
-│   │   ├── PokeAPIFetcher.cs       # PokéAPI HTTP取得
-│   │   ├── PokeApiKey.cs           # PokéAPI レスポンス JSON のキー定数
-│   │   ├── PokeApiSlug.cs          # Showdown 名 → PokéAPI slug 変換
-│   │   ├── PokeApiName.cs          # PokéAPI レスポンスからの和名・フォルム抽出
-│   │   └── TranslationKey.cs       # 翻訳辞書 JSON の構造キー定数
-│   ├── Pipeline/
-│   │   ├── IncrementalRunner.cs    # 増分実行判定（チェックサム比較）
-│   │   ├── PatchApplicator.cs      # champions-patch 適用
-│   │   ├── PatchKey.cs             # 手動パッチ JSON の構造キー定数
-│   │   ├── MergeConverter.cs       # JSON変換・マージ・正規化
-│   │   ├── MasterKey.cs            # マスタ出力 JSON の構造キー定数
-│   │   └── MasterTag.cs            # マスタ出力 JSON のタグ値定数
-│   ├── Models/
-│   │   └── ChecksumSet.cs          # チェックサムの型
-│   ├── Common/
-│   │   ├── JsonHelpers.cs          # JSON出力ヘルパー
-│   │   ├── DataPaths.cs            # ファイル・ディレクトリのパス（cache/data/patch 別）
-│   │   └── Endpoints.cs            # 外部HTTPエンドポイント（Showdown / PokéAPI）
-│   └── Patches/                    # 手動管理データ（git管理対象）
-│       ├── champions-patch.json    # Champions差分パッチ
-│       ├── moves-power-patch.json  # 威力不定技の最大威力定義
-│       ├── items-modifiers.json    # 持ち物補正値定義
-│       ├── abilities-modifiers.json # 特性補正値定義
-│       ├── pokemon-name-patch.json # ポケモン日本語名の上書き（フォルム一意化用）
-│       └── item-name-patch.json    # 持ち物日本語名の上書き（PokéAPI欠落補完用）
-└── PokelensTools.Tests/            # xUnit テストプロジェクト
-    └── PokelensTools.Tests.csproj
+PokelensCore/
+├── PokelensCore.csproj
+├── NameSearch.cs              # 正規化（ひらがな↔カタカナ↔ローマ字↔長音）・前方一致
+├── MasterDataReader.cs        # data/*.json → 強い型へのデシリアライズ
+└── Models/
+    ├── PartyDocument.cs       # data/party.json と 1:1 の型
+    ├── PokemonEntryModel.cs   # 1 匹分のモデル
+    ├── AbilityPointsModel.cs  # 能力ポイント 6 値
+    ├── MoveEntryModel.cs      # 1 技分
+    └── MasterDataSnapshot.cs  # pokedex/abilities/items/moves/natures をまとめた型
 ```
 
-**命名規則**: PascalCase（C# 標準）
+---
 
-**依存関係**: `data/` ディレクトリへの書き込みのみ
+#### tools/PokelensMasterDataBuilder/ (データ準備パイプライン・コンソールアプリ)
+
+**役割**: 旧 `PokelensTools` のリネーム。Pokémon Showdown / PokéAPI からマスターデータを取得し、`data/` 配下の JSON に変換・出力する。手動補正データ (`Patches/` 配下) はマスターデータ生成時にパイプラインが適用するもので、フロントエンドからは **直接参照しない** (補正データの真実源を `Patches/`、フロントエンド向けの真実源を `data/` に分離することで整合性を保つ。詳細は `docs/architecture.md` の「データ参照ルール」参照)
+
+**構造**:
+```
+PokelensMasterDataBuilder/
+├── PokelensMasterDataBuilder.csproj
+├── Program.cs                  # エントリーポイント・増分実行制御
+├── AssemblyInfo.cs             # InternalsVisibleTo（テストへ internal 公開）
+├── Fetchers/
+│   ├── ShowdownFetcher.cs      # Showdown HTTP取得
+│   ├── ShowdownKey.cs          # Showdown データ JSON のキー定数
+│   ├── PokeAPIFetcher.cs       # PokéAPI HTTP取得
+│   ├── PokeApiKey.cs           # PokéAPI レスポンス JSON のキー定数
+│   ├── PokeApiSlug.cs          # Showdown 名 → PokéAPI slug 変換
+│   ├── PokeApiName.cs          # PokéAPI レスポンスからの和名・フォルム抽出
+│   └── TranslationKey.cs       # 翻訳辞書 JSON の構造キー定数
+├── Pipeline/
+│   ├── IncrementalRunner.cs    # 増分実行判定（チェックサム比較）
+│   ├── PatchApplicator.cs      # champions-patch 適用
+│   ├── PatchKey.cs             # 手動パッチ JSON の構造キー定数
+│   ├── MergeConverter.cs       # JSON変換・マージ・正規化
+│   ├── MasterKey.cs            # マスタ出力 JSON の構造キー定数
+│   └── MasterTag.cs            # マスタ出力 JSON のタグ値定数
+├── Models/
+│   └── ChecksumSet.cs          # チェックサムの型
+├── Common/
+│   ├── JsonHelpers.cs          # JSON出力ヘルパー
+│   ├── DataPaths.cs            # ファイル・ディレクトリのパス（cache/data/patch 別）
+│   └── Endpoints.cs            # 外部HTTPエンドポイント（Showdown / PokéAPI）
+└── Patches/                    # 手動管理データ（git管理対象）
+    ├── champions-patch.json    # Champions差分パッチ
+    ├── moves-power-patch.json  # 威力不定技の最大威力定義
+    ├── items-modifiers.json    # 持ち物補正値定義
+    ├── abilities-modifiers.json # 特性補正値定義
+    ├── pokemon-name-patch.json # ポケモン日本語名の上書き（フォルム一意化用）
+    └── item-name-patch.json    # 持ち物日本語名の上書き（PokéAPI欠落補完用）
+```
+
+**依存関係**: `PokelensCore` を参照。`data/` ディレクトリへの書き込みのみ（フロントエンドや GUI とは独立）。
+
+---
+
+#### tools/PokelensPartyEditor/ (パーティ編集 GUI・Avalonia デスクトップアプリ)
+
+**役割**: 機能 14 の本体。`data/party.json` を GUI 経由で編集する Avalonia デスクトップアプリ。MVVM 構造（View / ViewModel / Services / Models）で構築し、ViewModel 層をユニットテスト可能にする。
+
+**構造**:
+```
+PokelensPartyEditor/
+├── PokelensPartyEditor.csproj
+├── Program.cs / App.axaml             # Avalonia 起動エントリ・アプリレベル設定
+├── Views/
+│   ├── MainWindow.axaml               # ルート画面（6 匹分のグリッド + ロード/セーブ）
+│   ├── PokemonEntryView.axaml         # 1 匹分の入力欄
+│   └── SuggestPopup.axaml             # テキストボックスに紐づくサジェスト Popup
+├── ViewModels/
+│   ├── MainWindowViewModel.cs         # 全体状態（6 匹・ダーティフラグ・コマンド）
+│   └── PokemonEntryViewModel.cs       # 各エントリの入力値・サジェスト・バリデーション
+└── Services/
+    ├── PartyFileService.cs            # data/party.json の読み書き（PokelensCore.PartyDocument 経由）
+    ├── MasterDataService.cs           # PokelensCore.MasterDataReader を呼び出して保持
+    └── SuggestService.cs              # PokelensCore.NameSearch への委譲
+```
+
+**依存関係**: `PokelensCore` を参照。`Avalonia.UI` / `CommunityToolkit.Mvvm` を参照（GUI 依存はここに集約）。`data/party.json` への読み書きを行う。
+
+---
+
+**命名規則（C# 共通）**: PascalCase（C# 標準）。XAML 名は対応する View / ViewModel と同名 PascalCase。
 
 ---
 
@@ -359,8 +424,11 @@ data/
 | データ読み込み | `src/data/` | kebab-case | `loader.js` |
 | 計算・検索関数 | `src/logic/` | kebab-case | `power-index-calc.js` |
 | UIコンポーネント | `src/ui/` | kebab-case | `own-pokemon-detail.js` |
-| C# クラス | `tools/PokelensTools/` | PascalCase | `MergeConverter.cs` |
-| 手書き管理 JSON（C# ツール用） | `tools/PokelensTools/` | kebab-case | `champions-patch.json` |
+| C# クラス（パイプライン） | `tools/PokelensMasterDataBuilder/` | PascalCase | `MergeConverter.cs` |
+| C# クラス（共通ライブラリ） | `tools/PokelensCore/` | PascalCase | `NameSearch.cs` |
+| C# クラス（GUI） | `tools/PokelensPartyEditor/` | PascalCase | `MainWindowViewModel.cs` |
+| Avalonia XAML（GUI ビュー） | `tools/PokelensPartyEditor/Views/` | PascalCase（対応する code-behind と同名） | `MainWindow.axaml` |
+| 手書き管理 JSON（C# ツール用） | `tools/PokelensMasterDataBuilder/Patches/` | kebab-case | `champions-patch.json` |
 | データファイル | `data/` | kebab-case | `pokedex.json` |
 
 ### テストファイル
@@ -369,8 +437,10 @@ data/
 |-----------|--------|---------|-----|
 | ユニットテスト（JS） | `tests/unit/` | `[対象].test.js` | `power-index-calc.test.js` |
 | E2E テスト（JS） | `tests/e2e/` | `[機能グループ].spec.js` | `own-party-display.spec.js` |
-| ユニットテスト（C#） | `tools/PokelensTools.Tests/` | `[対象]Tests.cs` | `MergeConverterTests.cs` |
-| 統合テスト（C#） | `tools/PokelensTools.Tests/` | `[対象]IntegrationTests.cs` | `PipelineIntegrationTests.cs` |
+| ユニットテスト（C# / パイプライン） | `tools/PokelensMasterDataBuilder.Tests/` | `[対象]Tests.cs` | `MergeConverterTests.cs` |
+| ユニットテスト（C# / 共通ライブラリ） | `tools/PokelensCore.Tests/` | `[対象]Tests.cs` | `NameSearchTests.cs` |
+| ユニットテスト（C# / GUI ViewModel） | `tools/PokelensPartyEditor.Tests/` | `[対象]Tests.cs` | `MainWindowViewModelTests.cs` |
+| 統合テスト（C#） | `tools/PokelensMasterDataBuilder.Tests/` | `[対象]IntegrationTests.cs` | `PipelineIntegrationTests.cs` |
 
 ---
 
@@ -387,7 +457,7 @@ data/
 - `kebab-case`（例: `pokedex.json`, `move-categories.json`, `party.json`）
 
 ### ディレクトリ
-- `kebab-case`（例: `src/`, `tools/`, `PokelensTools/` は C# プロジェクト名として例外）
+- `kebab-case`（例: `src/`, `tools/`、ただし `PokelensCore/` / `PokelensMasterDataBuilder/` / `PokelensPartyEditor/` は C# プロジェクト名として PascalCase 例外）
 
 ---
 

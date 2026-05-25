@@ -265,23 +265,26 @@ element.innerHTML = pokemonName;
 - **テストのために可視性を広げない**。private / internal な処理を「テストしたいから」という理由だけで `public` 化・`export` 化しない。代わりに:
   - **公開 API を通してテストする**（内部の挙動も多くは公開面から観測できる）。
   - 単独でテストする価値があるほど複雑なら、**独立した単位（クラス・関数・モジュール）に切り出す**。それは「テスト用の公開」ではなく正当な API になる。
-- **C#**: 既定は `internal`（このリポジトリの `tools/` はライブラリ公開しない実行アプリのため `public` にする必要はない）。**純粋ロジック（文字列・JSON 変換など副作用のない計算）は、テストのために `internal` 公開する前に責務を持つ協力クラスへ切り出す**ことを優先する（切り出した型を単体テストすれば、可視性はテスト都合ではなく役割で正当化される。例: `PokeAPIFetcher` の slug 変換・名前抽出を `PokeApiSlug` / `PokeApiName` へ抽出）。`[assembly: InternalsVisibleTo("PokelensTools.Tests")]` で内部型を見せるのは、**抽出が適さないケース**――HTTP など副作用を持つオーケストレーションを依存注入（偽 `HttpClient` 等）でふるまいテストする場合や、型ごと内部に閉じたまま検証したい場合――に限る。いずれも `public` 化はしない。
+- **C#**: 既定は `internal`（このリポジトリの `tools/` 配下の実行アプリ・テストプロジェクトはライブラリ公開しない用途のため `public` にする必要はない）。**例外**: `tools/PokelensCore/` はクラスライブラリであり、他プロジェクト（`PokelensMasterDataBuilder` / `PokelensPartyEditor`）から参照される API は `public` にする。それ以外の内部実装は `internal`。**純粋ロジック（文字列・JSON 変換など副作用のない計算）は、テストのために `internal` 公開する前に責務を持つ協力クラスへ切り出す**ことを優先する（切り出した型を単体テストすれば、可視性はテスト都合ではなく役割で正当化される。例: `PokeAPIFetcher` の slug 変換・名前抽出を `PokeApiSlug` / `PokeApiName` へ抽出）。`[assembly: InternalsVisibleTo("〈プロジェクト名〉.Tests")]` で内部型を見せるのは、**抽出が適さないケース**――HTTP など副作用を持つオーケストレーションを依存注入（偽 `HttpClient` 等）でふるまいテストする場合や、型ごと内部に閉じたまま検証したい場合――に限る。いずれも `public` 化はしない。
 - **JavaScript**: `export` した時点でモジュールの公開 API。`src/logic/` の純粋関数のように「テスト対象の単位そのもの」を export するのは正当。内部ヘルパーをテストのためだけに export しない。
 
 ---
 
-### C# コーディング規約（tools/PokelensTools/）
+### C# コーディング規約（tools/ 配下 全プロジェクト共通）
 
-.NET 8 標準スタイルに従う。
+.NET 8 標準スタイルに従う。対象プロジェクト: `PokelensCore` / `PokelensMasterDataBuilder` / `PokelensPartyEditor` および各 `.Tests`。
 
 | 種別 | 規則 | 例 |
 |------|------|-----|
-| クラス・インターフェース | PascalCase | `ShowdownFetcher`, `MergeConverter` |
+| クラス・インターフェース | PascalCase | `ShowdownFetcher`, `MergeConverter`, `MainWindowViewModel` |
 | メソッド | PascalCase | `FetchDataAsync()` |
 | ローカル変数・引数 | camelCase | `pokemonList`, `baseStats` |
-| 非同期メソッド | `Async` サフィックス | `FetchDataAsync()` |
-| private インスタンスフィールド | `_camelCase`（`_` 接頭辞） | `_http` |
+| 非同期メソッド | `Async` サフィックス | `FetchDataAsync()`, `SaveAsync()` |
+| private インスタンスフィールド | `_camelCase`（`_` 接頭辞） | `_http`, `_masterData` |
 | 定数・private static readonly | PascalCase | `ConcurrencyLimit`, `WriteOptions` |
+| ViewModel クラス | `〜ViewModel` サフィックス | `MainWindowViewModel`, `PokemonEntryViewModel` |
+| サービスクラス（GUI） | `〜Service` サフィックス | `PartyFileService`, `MasterDataService` |
+| Avalonia XAML ファイル | View と同名の PascalCase | `MainWindow.axaml`（対応する code-behind は `MainWindow.axaml.cs`） |
 
 > `this.` は曖昧さ回避や自身のインスタンスを渡す場合を除き省略する。private インスタンスフィールドは `_` 接頭辞でローカル変数・引数と区別するため、通常 `this.` は不要。
 
@@ -296,9 +299,31 @@ var name = "ガブリアス";
 var count = GetCount();   // → int count = GetCount();
 ```
 
-**namespace はフォルダ構造に揃える**: `tools/PokelensTools/<Folder>/` 配下のファイルは `namespace PokelensTools.<Folder>;`（例: `Common/` → `PokelensTools.Common`、`Fetchers/` → `PokelensTools.Fetchers`、`Pipeline/` → `PokelensTools.Pipeline`、`Models/` → `PokelensTools.Models`）。**ルート直下のファイル**（`Program.cs` / `AssemblyInfo.cs`）は namespace 宣言不要（`Program.cs` は top-level statements、`AssemblyInfo.cs` は assembly 属性のみで、いずれも namespace に属する型を宣言しない）。テストプロジェクトは `PokelensTools.Tests`（プロジェクト単位）に集約しフォルダ分割しない。.NET 標準慣習に従うことで IDE の新規ファイル生成テンプレートとも整合する。
+**namespace はフォルダ構造に揃える**: `tools/<プロジェクト名>/<Folder>/` 配下のファイルは `namespace <プロジェクト名>.<Folder>;`（例: `tools/PokelensMasterDataBuilder/Common/` → `namespace PokelensMasterDataBuilder.Common;`、`tools/PokelensPartyEditor/ViewModels/` → `namespace PokelensPartyEditor.ViewModels;`、`tools/PokelensCore/Models/` → `namespace PokelensCore.Models;`）。**ルート直下のファイル**（`Program.cs` / `App.axaml.cs` / `AssemblyInfo.cs`）は namespace 宣言不要または プロジェクト名そのまま（`Program.cs` は top-level statements、`AssemblyInfo.cs` は assembly 属性のみで、いずれも namespace に属する型を宣言しない）。テストプロジェクトはそれぞれ `<プロジェクト名>.Tests`（プロジェクト単位）に集約しフォルダ分割しない。.NET 標準慣習に従うことで IDE の新規ファイル生成テンプレートとも整合する。
 
-**ファイルパス引数を library 関数に渡さない**: `Common/DataPaths.cs` がリポジトリレイアウト由来のファイルパスを一元提供する。Library 関数（Fetcher / Pipeline / IncrementalRunner 等）は**path 引数を取らず**、内部で `DataPaths.Cache.X()` / `DataPaths.Master.X()` / `DataPaths.Patch.X()` を直接参照する。テストは `using var _ = DataPaths.OverrideRepoRoot(tempDir);` で scope ごとに RepoRoot を redirect することで temp dir に隔離する（AsyncLocal ベースなので並列テストでも互いに干渉しない）。例外は `IncrementalRunner.ComputeHash(string filePath)` のような**汎用ユーティリティ**（任意のファイルパスをデータとして受け取る・DataPaths への依存がない）で、これは引数を保持する。「library 関数を parameterless に保つ」原則と「テスト隔離」を両立する設計。
+**ファイルパス引数を library 関数に渡さない**: `tools/PokelensMasterDataBuilder/Common/DataPaths.cs` がリポジトリレイアウト由来のファイルパスを一元提供する。Library 関数（Fetcher / Pipeline / IncrementalRunner 等）は**path 引数を取らず**、内部で `DataPaths.Cache.X()` / `DataPaths.Master.X()` / `DataPaths.Patch.X()` を直接参照する。テストは `using var _ = DataPaths.OverrideRepoRoot(tempDir);` で scope ごとに RepoRoot を redirect することで temp dir に隔離する（AsyncLocal ベースなので並列テストでも互いに干渉しない）。例外は `IncrementalRunner.ComputeHash(string filePath)` のような**汎用ユーティリティ**（任意のファイルパスをデータとして受け取る・DataPaths への依存がない）で、これは引数を保持する。「library 関数を parameterless に保つ」原則と「テスト隔離」を両立する設計。
+
+> `PokelensPartyEditor` 側でも同じ「library 関数を parameterless に保つ」原則を踏襲する。`data/party.json` のパスは `PokelensCore.DataPaths`（または `PokelensMasterDataBuilder` から共通化したヘルパー）を経由して参照し、Services（`PartyFileService` 等）にはパス引数を持たせない。
+
+### GUI コーディング規約（tools/PokelensPartyEditor/）
+
+機能 14 の GUI コードに固有の規約。基本は上記 C# 共通規約に従いつつ、以下を追加で守る。
+
+**MVVM の責務分離**:
+- **View**（`.axaml`）: 表示・入力イベント受け付けのみ。ロジックを書かない。code-behind（`.axaml.cs`）は最小限（イベントを ViewModel のコマンドへ橋渡しする程度）にとどめる
+- **ViewModel**: 表示用プロパティ（`ObservableProperty`）・コマンド（`RelayCommand`）・バリデーション・状態管理（ダーティフラグ等）を担当。Avalonia 型（`Window` / `Control` 等）を参照しない（テスト可能性のため）
+- **Services**（`tools/PokelensPartyEditor/Services/`）: ファイル I/O・マスターデータ保持などの副作用を担当。ViewModel からはインターフェース経由で呼び出してテスト時にモック可能にする
+- **Model**: `PokelensCore.Models` の型（`PartyDocument` 等）を流用する。GUI 固有のモデルは原則作らない
+
+**CommunityToolkit.Mvvm の利用**:
+- ViewModel は `ObservableObject` を継承（または `[ObservableObject]` 属性）
+- プロパティは `[ObservableProperty]` 属性で生成
+- コマンドは `[RelayCommand]` 属性で生成
+- 手書きの `INotifyPropertyChanged` 実装は避ける（ボイラープレート削減のため）
+
+**依存性注入は採用しない**: 個人ローカル使用で規模が小さいため、DI コンテナは導入しない。ViewModel・Services は手動 `new` で組み立てる（`Program.cs` または `App.axaml.cs` で）。テスト時はコンストラクタ引数に手書きのフェイク実装を渡す。
+
+**サジェスト挙動の真実源**: ポケモン名・特性・アイテム・技のサジェスト正規化ロジックは `PokelensCore.NameSearch` を**単一の真実源**とする。`PokelensPartyEditor` 側で再実装したり、JS 側 (`src/logic/name-search.js`) と独立に挙動が変わったりしないようにする（同じ挙動を 2 言語で再実装している事実は機能設計書に明記済み）。
 
 **champions-patch.json の管理ルール**:
 - Pokémon Champions 独自データ（Showdown データとの差分）を手書き管理するファイル
@@ -327,7 +352,10 @@ var count = GetCount();   // → int count = GetCount();
 | 実数値計算 | ユニット | `tests/unit/calc-actual-stats.test.js` |
 | DataLoader JSON 読み込み | ユニット | `tests/unit/loader.test.js` |
 | UI 結合・画面表示・サジェスト・火力指数の UI 反映 | E2E（Playwright） | `tests/e2e/*.spec.js` |
-| C# データ準備パイプラインの結合 | 統合（C#） | `tools/PokelensTools.Tests/PipelineIntegrationTests.cs` |
+| C# データ準備パイプラインの結合 | 統合（C#） | `tools/PokelensMasterDataBuilder.Tests/PipelineIntegrationTests.cs` |
+| C# 共通ライブラリ（サジェスト正規化・データ読み込み） | ユニット（C#） | `tools/PokelensCore.Tests/` |
+| C# GUI ViewModel（バリデーション・ダーティフラグ・コマンド可否） | ユニット（C#） | `tools/PokelensPartyEditor.Tests/` |
+| C# GUI View 層（Avalonia 画面の手動確認） | 手動 | [`docs/testing/e2e/manual-test-cases.md`](./testing/e2e/manual-test-cases.md)（機能 14 セクション） |
 | 環境セットアップ・C# データ生成・dev サーバー起動 | 手動 E2E | [`docs/testing/e2e/manual-test-cases.md`](./testing/e2e/manual-test-cases.md) |
 
 ### E2E テスト方針（Playwright）
@@ -460,7 +488,7 @@ main
 | `ui` | `src/ui/` および `tests/e2e/`（UI 結合 E2E テスト） |
 | `logic` | `src/logic/` および対応する `tests/unit/` |
 | `data` | `src/data/` および対応する `tests/unit/loader.test.js` |
-| `tools` | `tools/PokelensTools/` および `tools/PokelensTools.Tests/` |
+| `tools` | `tools/` 配下の全 C# プロジェクト（`PokelensCore` / `PokelensMasterDataBuilder` / `PokelensPartyEditor` および各 `.Tests`） |
 | `docs` | `docs/` 配下（テスト仕様書 `docs/testing/` を含む） |
 | `config` | `vite.config.js` / `vitest.config.js` / `playwright.config.js` / `eslint.config.js` / `.gitignore` / `package.json` 等 |
 
@@ -495,9 +523,11 @@ npm install
 npx playwright install chromium
 
 # 3. C# ツールでマスターデータを生成
-dotnet run --project tools/PokelensTools
+dotnet run --project tools/PokelensMasterDataBuilder
 
-# 4. data/party.json を自分のパーティで編集
+# 4. data/party.json を自分のパーティで編集（GUI または手書き）
+#    GUI で編集する場合:
+dotnet run --project tools/PokelensPartyEditor
 
 # 5. 開発サーバー起動（file:// ではなく必ず Vite 経由で開く）
 npm run dev
@@ -516,8 +546,12 @@ npm run lint          # ESLint
 npm run format        # Prettier
 
 # C# ツール
-dotnet run --project tools/PokelensTools      # マスターデータ生成
-dotnet test tools/PokelensTools.Tests         # C# ユニット・統合テスト実行
+dotnet run --project tools/PokelensMasterDataBuilder   # マスターデータ生成（コンソール）
+dotnet run --project tools/PokelensPartyEditor         # パーティ編集 GUI（Avalonia）
+dotnet test tools/PokelensCore.Tests                   # C# 共通ライブラリ単体テスト
+dotnet test tools/PokelensMasterDataBuilder.Tests      # C# パイプライン単体・統合テスト
+dotnet test tools/PokelensPartyEditor.Tests            # C# GUI ViewModel 単体テスト
+dotnet test tools                                      # 全 C# テスト一括実行（テストプロジェクト 3 つ）
 ```
 
 ---
@@ -632,7 +666,7 @@ PN の全機能ブランチが `PN/release` にマージされたら、`PN/relea
 - [ ] `npm test` が全パス（既存テストを含む）
 - [ ] `npm run lint` が全パス
 - [ ] 新規ロジック関数のカバレッジ 80% 以上（`npm run test:coverage` で確認）
-- [ ] C# ツール側を変更した場合は `dotnet test tools/PokelensTools.Tests` が全パス
+- [ ] C# ツール側を変更した場合は `dotnet test tools/PokelensMasterDataBuilder.Tests` が全パス
 - [ ] UIコンポーネント変更がある場合は Chrome 最新版で手動テスト完了
 
 ---

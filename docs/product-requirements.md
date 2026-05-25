@@ -226,7 +226,7 @@ P0では情報参照に特化し、P0.5でメガシンカ対応、P1で対面評
 
 **受け入れ条件**:
 - [x] 複数回攻撃技: Pokémon Showdownの `moves.json` で `multihit` フィールドが存在する技は `basePower × multihit[1]`（最大ヒット数）を最大総威力として使用する
-- [x] 威力不定技（`power: null`）: `tools/PokelensTools/moves-power-patch.json` に最大威力を手動定義し、C#ツールがShowdownデータのマージ後に上書き適用して `moves.json` へ出力する
+- [x] 威力不定技（`power: null`）: `tools/PokelensMasterDataBuilder/Patches/moves-power-patch.json` に最大威力を手動定義し、C#ツールがShowdownデータのマージ後に上書き適用して `moves.json` へ出力する
 - [x] `moves-power-patch.json` は `champions-patch.json` とは独立した別ファイルとして管理する
 - [x] パッチファイルに定義されていない威力不定技は「−」表示とする
 

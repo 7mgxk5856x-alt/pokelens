@@ -43,5 +43,5 @@ pokelens を実際にブラウザで操作して確認する**手動・E2E（エ
 | ケースID | 種別 | 対応要件 | テスト観点 | 手順 | 期待結果 | 備考 |
 |---|---|---|---|---|---|---|
 | MET-001 | 正常系 | セットアップ | 依存関係のインストール | `npm install` を実行 | エラーなく完了する | Node.js / npm 環境前提 |
-| MET-002 | 正常系 | 機能6 | マスターデータ生成 | `dotnet run --project tools/PokelensTools` を実行 | `data/` に `pokedex.json` / `moves.json` / `items.json` / `abilities.json` が生成される（威力不定技は moves-power-patch が反映） | データ準備パイプライン。内容の正確性は C# 統合テスト（PIT-003/PIT-007）が担保。本ケースはパイプライン完走とファイル生成の確認のみ |
+| MET-002 | 正常系 | 機能6 | マスターデータ生成 | `dotnet run --project tools/PokelensMasterDataBuilder` を実行 | `data/` に `pokedex.json` / `moves.json` / `items.json` / `abilities.json` が生成される（威力不定技は moves-power-patch が反映） | データ準備パイプライン。内容の正確性は C# 統合テスト（PIT-003/PIT-007）が担保。本ケースはパイプライン完走とファイル生成の確認のみ |
 | MET-003 | 正常系 | セットアップ | 開発サーバー起動 | `npm run dev` を実行し、表示された URL（既定 `http://127.0.0.1:5173`）をブラウザで開く | アプリ画面が表示される | `file://` 直接起動は非対応。自動 E2E は `playwright.config.js` の webServer で内包するため、本ケースは手動セットアップ確認用 |
