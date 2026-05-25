@@ -135,6 +135,32 @@ test.describe('相手ポケモン情報・素早さ 4 パターン', () => {
     await expect(slots.nth(1).locator('.mega-toggle')).toHaveCount(0);
   });
 
+  test('AET-045: 相手側メガレックウザはメガストーン不要メガとして循環対象に含まれる（item: null メガ）', async ({
+    page,
+  }) => {
+    // 相手側は元々持ち物未知で全形態を循環するため、megaForms[].item === null メガ（メガレックウザ）も
+    // 通常 → メガレックウザ → 通常 で循環する。AET-041 のリザードン（megaStone 経由メガ）と
+    // 同等の挙動になることを担保する。
+    const slots = page.locator(SEL.opponentCards);
+
+    const input = slots.nth(0).locator(SEL.oppInput);
+    await input.fill('レックウザ');
+    await input.press('Enter');
+
+    const toggle = slots.nth(0).locator('.mega-toggle');
+    await expect(toggle).toHaveCount(1);
+
+    const detail = page.locator(SEL.opponentDetail);
+    await expect(detail.locator('.detail-header .name')).toHaveText('レックウザ');
+
+    await toggle.click({ force: true });
+    await expect(slots.nth(0).locator('.opponent-info .name')).toHaveText('メガレックウザ');
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガレックウザ');
+
+    await toggle.click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('レックウザ');
+  });
+
   test('AET-029: 相手ポケモン切替時の詳細表示切替（元 MET-032）', async ({ page }) => {
     const cards = page.locator(SEL.opponentCards);
 

@@ -606,10 +606,10 @@ public class MergeConverterTests
     }
 
     [Fact]
-    public void NestMegaForms_OrphanMegaWithoutMegaStone_RemovedFromTopLevel()
+    public void NestMegaForms_ItemlessMega_NestedWithNullItem()
     {
-        // メガストーンが存在しないメガ（例: rayquazamega は Dragon Ascent 仕様）は
-        // Showdown 側で forme = "Mega" を持つことを利用してトップレベルから除去する
+        // ItemlessMegas に登録されたメガ (現状レックウザのみ) は、megaStone を持たなくても
+        // 孤立メガ除去の対象外となり、親エントリの megaForms[] に item: null でネストされる (D-4)。
         var flat = MakeFlatPokedexWithMega();
         flat["rayquaza"] = new JsonObject
         {
@@ -630,17 +630,25 @@ public class MergeConverterTests
 
         var showdownPokedex = new JsonObject
         {
-            // forme: "Mega" を持つ rayquazamega は orphan として除去対象
+            // forme: "Mega" を持つが ItemlessMegas に登録されているため除去せずネストする
             ["rayquazamega"] = new JsonObject { ["forme"] = "Mega" },
-            // 通常ポケモン rayquaza は forme なし → 残る
             ["rayquaza"] = new JsonObject(),
         };
 
         var result = MergeConverter.NestMegaForms(flat, showdownPokedex, MakeShowdownItemsWithMegaStones(), MakeItemNamesForMegas(), new JsonObject());
 
+        // 親 rayquaza は残り、megaForms[] に rayquazamega が item: null でネストされる
         Assert.True(result.ContainsKey("rayquaza"));
         Assert.False(result.ContainsKey("rayquazamega"));
-        Assert.Null(result["rayquaza"]!["megaForms"]);
+        var megaForms = result["rayquaza"]!["megaForms"]!.AsArray();
+        Assert.Single(megaForms);
+        var mega = megaForms[0]!.AsObject();
+        Assert.Equal("rayquazamega", mega["key"]!.GetValue<string>());
+        Assert.Equal("メガレックウザ", mega["name"]!.GetValue<string>());
+        Assert.True(mega.ContainsKey("item"));  // フィールドは存在する
+        Assert.Null(mega["item"]);              // 値は JSON null (JsonObject 上は null 表現)
+        Assert.Equal(180, mega["baseStats"]!["atk"]!.GetValue<int>());
+        Assert.Equal("デルタストリーム", mega["abilities"]!.AsArray()[0]!.GetValue<string>());
     }
 
     [Fact]
@@ -666,6 +674,62 @@ public class MergeConverterTests
         var result = MergeConverter.NestMegaForms(flat, showdownPokedex, new JsonObject(), new JsonObject(), new JsonObject());
 
         Assert.True(result.ContainsKey("mrmimegalar"));
+    }
+
+    [Fact]
+    public void NestMegaForms_ItemlessMega_AppendedToExistingMegaForms()
+    {
+        // 親エントリが既に megaStone 経由で megaForms[] を持っている場合、
+        // ItemlessMegas のメガはその配列の末尾に追加される（D-4 の親既存 megaForms[] 共存挙動）。
+        // 現状の ItemlessMegas には rayquazamega しか無いが、仮にレックウザに別経路の megaStone が
+        // 追加されたとしても安全に動くことを示す回帰テスト。
+        // ItemlessMegas は parent=rayquaza にハードコードされているため、parent と mega 両方を fixture に追加する。
+        var flat = MakeFlatPokedexWithMega();
+        flat["rayquaza"] = new JsonObject
+        {
+            ["num"] = 384,
+            ["name"] = "レックウザ",
+            ["types"] = new JsonArray { "Dragon", "Flying" },
+            ["baseStats"] = new JsonObject { ["hp"]=105,["atk"]=150,["def"]=90,["spa"]=150,["spd"]=90,["spe"]=95 },
+            ["abilities"] = new JsonArray { "エアロック" },
+            // 親が既に megaForms[] を持つ前提を fixture で再現
+            ["megaForms"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["key"] = "rayquazamegaalt",
+                    ["name"] = "別ルートのメガ",
+                    ["item"] = "ダミーストーン",
+                    ["types"] = new JsonArray { "Dragon", "Flying" },
+                    ["baseStats"] = new JsonObject { ["hp"]=105,["atk"]=160,["def"]=95,["spa"]=160,["spd"]=95,["spe"]=105 },
+                    ["abilities"] = new JsonArray { "ダミー特性" },
+                },
+            },
+        };
+        flat["rayquazamega"] = new JsonObject
+        {
+            ["num"] = 384,
+            ["name"] = "メガレックウザ",
+            ["types"] = new JsonArray { "Dragon", "Flying" },
+            ["baseStats"] = new JsonObject { ["hp"]=105,["atk"]=180,["def"]=100,["spa"]=180,["spd"]=100,["spe"]=115 },
+            ["abilities"] = new JsonArray { "デルタストリーム" },
+        };
+
+        var showdownPokedex = new JsonObject
+        {
+            ["rayquazamega"] = new JsonObject { ["forme"] = "Mega" },
+            ["rayquaza"] = new JsonObject(),
+        };
+
+        var result = MergeConverter.NestMegaForms(flat, showdownPokedex, new JsonObject(), new JsonObject(), new JsonObject());
+
+        var megaForms = result["rayquaza"]!["megaForms"]!.AsArray();
+        // 既存の 1 件 + ItemlessMegas 経由の 1 件 = 2 件
+        Assert.Equal(2, megaForms.Count);
+        Assert.Equal("rayquazamegaalt", megaForms[0]!["key"]!.GetValue<string>());
+        Assert.Equal("rayquazamega", megaForms[1]!["key"]!.GetValue<string>());
+        Assert.True(megaForms[1]!.AsObject().ContainsKey("item"));
+        Assert.Null(megaForms[1]!["item"]);
     }
 
     [Fact]

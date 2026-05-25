@@ -475,10 +475,11 @@ public class PipelineIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void FullPipeline_OrphanMegaWithoutMegaStone_RemovedFromTopLevel()
+    public void FullPipeline_ItemlessMega_NestedWithNullItem()
     {
-        // PIT-013: メガストーンを持たない孤立メガ（メガレックウザ等 Dragon Ascent 仕様）が
-        // showdown 側の forme="Mega" 判別で最終 pokedex.json トップレベルから除去されることを統合検証（D-1）。
+        // PIT-013: メガストーン不要メガ（メガレックウザ、Dragon Ascent 仕様）が
+        // MergeConverter.Convert() 経由で親の megaForms[] に item: null でネストされ、
+        // トップレベルからは削除されることを統合検証する (D-4)。
         WriteFile(Path.Combine(_cacheDir, "showdown-pokedex.json"), """
             {
               "rayquaza": {
@@ -510,12 +511,19 @@ public class PipelineIntegrationTests : IDisposable
         MergeConverter.Convert();
 
         var pokedex = JsonNode.Parse(File.ReadAllText(Path.Combine(_tmpDir, "data", "pokedex.json")))!.AsObject();
-        // 通常 rayquaza は残り、孤立メガ rayquazamega は除去される
+        // 通常 rayquaza は残り、megaForms[] にメガレックウザが item: null でネストされている
         Assert.True(pokedex.ContainsKey("rayquaza"));
         Assert.False(pokedex.ContainsKey("rayquazamega"));
-        // 親は megaForms フィールドを持たない（JsonObject の missing key 動作。
-        // JSON 出力ではフィールド省略 → JS では undefined）
-        Assert.Null(pokedex["rayquaza"]!["megaForms"]);
+        var megaForms = pokedex["rayquaza"]!["megaForms"]!.AsArray();
+        Assert.Single(megaForms);
+        var mega = megaForms[0]!.AsObject();
+        Assert.Equal("rayquazamega", mega["key"]!.GetValue<string>());
+        Assert.Equal("メガレックウザ", mega["name"]!.GetValue<string>());
+        // item フィールドは存在し、値は JSON null
+        Assert.True(mega.ContainsKey("item"));
+        Assert.Null(mega["item"]);
+        Assert.Equal(180, mega["baseStats"]!["atk"]!.GetValue<int>());
+        Assert.Equal("デルタストリーム", mega["abilities"]!.AsArray()[0]!.GetValue<string>());
     }
 
     [Fact]

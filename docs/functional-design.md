@@ -302,6 +302,7 @@ C# ツールは起動のたびに Step1 を実行し、その後 `cache/checksum
   ※ pokedex.json 生成時に以下を適用する:
     - pokemon-name-patch.json: 翻訳された日本語名を Showdown キー単位で上書き
     - メガシンカネスト処理 (機能 7): items.ts の `megaStone` フィールドを真実源として、(親, メガ, メガストーン) の 3 つ組を抽出し、メガ独立エントリ (例: `venusaurmega`) を親エントリ (例: `venusaur`) の `megaForms[]` にネストする。メガのトップレベルキーは削除する。Showdown 英語名 (例: `"Absol-Mega"`) は内部キー (例: `"absolmega"`) に変換する (ハイフン除去 + 小文字化)。メガ名・メガストーン名の半角 X/Y は全角 Ｘ/Ｙ に正規化する
+    - メガストーン不要メガの特例ネスト (機能 7): items.ts に `megaStone` を持たない例外的メガフォーム (現状はメガレックウザのみ) を `MergeConverter` 内の `ItemlessMegas` ハードコードマップ経由で親エントリの `megaForms[]` にネストし、`item: null` を設定する。トップレベルキー削除と孤立メガ除去の対象から除外。将来「持ち物不要メガ」が 2 件以上に増えた場合は `tools/PokelensTools/Patches/mega-itemless-patch.json` への昇格を検討する
   ※ moves.json 生成時に以下を適用する:
     - 複数回攻撃技: basePower × multihit[1] を power として出力
     - moves-power-patch.json: power が null の技に最大威力を上書き適用
@@ -554,9 +555,11 @@ C# ツールが生成する `pokedex.json` の構造:
 - `name` はPokéAPIから取得した日本語名（カタカナ）。サジェスト検索のキーとして使用する
 - `types` はShowdownの英語タイプ名のまま保持する。`moves.json` の `type` フィールドも英語で統一しているため、STAB判定（`pokemonTypes.includes(move.type)`）を変換なしで行える。表示時はフロントエンドが `DataLoader.getTypeName()` で日本語に変換する
 - `abilities` はShowdownの `abilities` オブジェクト（`"0"` / `"1"` / `"H"` キー）を `"0"` → `"1"` → `"H"` の順に並べ、定義されているスロットのみを `pokeapi-translations.json` で日本語名に変換した配列
-- `megaForms` (機能 7): メガシンカ可能なポケモンのみ持つオプショナルフィールド。配列の各要素は親エントリと同じ `name` / `types` / `baseStats` / `abilities` を持ち、追加で `key` (メガ独立識別子、例: `venusaurmega`) と `item` (対応するメガストーンの日本語名、X/Y は全角 `Ｘ`/`Ｙ`) を持つ。メガ独立エントリは pokedex のトップレベルには **存在しない** (親に物理ネスト)
+- `megaForms` (機能 7): メガシンカ可能なポケモンのみ持つオプショナルフィールド。配列の各要素は親エントリと同じ `name` / `types` / `baseStats` / `abilities` を持ち、追加で `key` (メガ独立識別子、例: `venusaurmega`) と `item` (対応するメガストーンの日本語名、X/Y は全角 `Ｘ`/`Ｙ`。**メガストーン不要メガは `null`**、現状はメガレックウザのみ) を持つ。メガ独立エントリは pokedex のトップレベルには **存在しない** (親に物理ネスト)
 
 > **メガシンカ対応（機能 7、P0.5）**: メガシンカ後のポケモンは独立した pokedex エントリとして扱わず、親エントリの `megaForms[]` 配列にサブデータとして物理ネストする。トップレベルにメガキー (例: `venusaurmega`) は存在しないため、`searchByName` は自然にメガを除外できる。メガフォームのデータを引きたい場合は `DataLoader.getMegaFormByName(メガ名)` または `DataLoader.getMegaFormByItem(親名, アイテム名)` を使う (詳細は DataLoader セクション参照)。
+>
+> **メガストーン不要メガ (機能 7)**: メガレックウザは実ゲーム仕様上「ガリョウテンセイ習得」が発動条件で持ち物不要のため、`megaForms[0].item` を `null` で保持する。本ツールでは技習得チェックを行わない簡略仕様とし、自分側は持ち物に関わらずトグル常時表示する (詳細は `getMegaFormByItem` セクションおよびメガシンカ循環ルール参照)。
 
 ---
 
@@ -849,7 +852,7 @@ DataLoader
   getPokemonByName(name)  → PokedexEntry | null   ※日本語名で pokedex.json を検索。メガフォーム名（例「メガフシギバナ」）は null（機能 7）
   isMegaForm(name)        → boolean             ※名前がメガフォームかを判定（機能 7。派生 Map `megaLocationByName` で O(1) ルックアップ）
   getMegaFormByName(megaName) → MegaFormData | null ※メガフォーム日本語名から、親エントリにネストされたメガデータを引く（機能 7。派生 Map 経由で O(1) ルックアップ。通常名・未登録名は null）
-  getMegaFormByItem(parentName, itemName) → MegaFormData | null ※親ポケモン名と持ち物名から、対応するメガフォームのデータを引く（機能 7。自分側パーティの切替ボタン表示判定に使用）
+  getMegaFormByItem(parentName, itemName) → MegaFormData | null ※親ポケモン名と持ち物名から、対応するメガフォームのデータを引く（機能 7。自分側パーティの切替ボタン表示判定に使用）。戻り値の優先順位: (1) 持ち物が一致するメガフォーム / (2) `item === null` のメガフォーム (メガストーン不要、現状レックウザのみ。持ち物に関わらずフォールバック) / (3) 上記いずれにも該当しなければ null
   searchByName(query)     → PokedexEntry[]        ※DataLoader が保持する全 PokedexEntry を entries として NameSearch.searchByName(query, entries) に委譲する。pokedex.json トップレベルにメガキーが存在しないため自然にメガ除外（機能 7）
   getMove(name)           → Move | null
   getItemModifier(name)   → Modifier | null
@@ -862,7 +865,7 @@ DataLoader
 **型定義**:
 
 - `PokedexEntry`: `pokedex.json` の各エントリに対応。`{ num: number, name: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[], megaForms?: MegaFormData[] }`。`megaForms` はメガシンカ可能ポケモンのみ持つオプショナルフィールド
-- `MegaFormData`: メガフォームデータ（機能 7）。`{ key: string, name: string, item: string, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[] }`。`PokedexEntry` と同じフィールドに加え、メガ独立識別子 `key` と対応メガストーン名 `item` を持つ
+- `MegaFormData`: メガフォームデータ（機能 7）。`{ key: string, name: string, item: string | null, types: string[], baseStats: { hp, atk, def, spa, spd, spe }, abilities: string[] }`。`PokedexEntry` と同じフィールドに加え、メガ独立識別子 `key` と対応メガストーン名 `item` (メガストーン不要メガは `null`、現状レックウザのみ) を持つ
 - `Move`: `moves.json` の各エントリに対応。`{ type: string, category: string, power: number | null, accuracy: number | null, tags?: string[] }`
 - `Modifier`: `getItemModifier()` / `getAbilityModifier()` の戻り値型。`{ condition: string | null, atk?: number, spa?: number, spe?: number, stab?: number, moveType?: string, convertedType?: string }` — `items.json` / `abilities.json` の各エントリは `{ modifier: { ... } }` のネスト構造だが、これらのメソッドは `.modifier` を取り出して返す（ラッパーオブジェクトは呼び出し側に渡さない）。`convertedType` は `condition: "convertNormalTo"` / `"convertAllTo"` のときの変換後タイプ名
 
@@ -873,6 +876,7 @@ DataLoader
   - `getPokemonByName(メガ名)` は `null` を返す（`party.json` の `species` にメガ名指定は不明扱い）。pokedex.json トップレベルにメガキーが存在しないため自然に成立
   - `searchByName` はトップレベル走査のみ。メガフォームは自然に除外される
   - メガフォームのデータ取得は派生 Map 経由の専用 API `getMegaFormByName(メガ名)` / `getMegaFormByItem(親名, アイテム名)` で行う
+  - `getMegaFormByItem` は持ち物一致を優先しつつ、一致が無い場合に `item === null` のメガフォーム (メガストーン不要メガ) があればそれを返すフォールバック責務を持つ。これにより自分側 UI は持ち物が何であってもメガレックウザを表示できる (技習得チェックは行わない簡略仕様)
 
 ---
 
@@ -883,7 +887,7 @@ DataLoader
 | サイド | 持ち物の状態 | 循環内容 |
 |---|---|---|
 | 相手側 | 未知 | 全メガ形態を循環。例: リザードン → メガリザードンＸ → メガリザードンＹ → リザードン → ... |
-| 自分側 | 既知 (`party.json` で指定) | 持ち物に対応するメガ形態のみ循環。例: リザードン + リザードナイトＸ → 通常 ↔ メガリザードンＸ |
+| 自分側 | 既知 (`party.json` で指定) | 持ち物に対応するメガ形態のみ循環。例: リザードン + リザードナイトＸ → 通常 ↔ メガリザードンＸ。例外として `item: null` のメガフォーム (メガストーン不要、現状レックウザのみ) は持ち物に関わらず循環対象になる |
 
 **根拠**: 自分側でリザードン + リザードナイトＸ 持ちのときに「メガリザードンＹ」を表示するのは、実際の対戦で到達不可能な状態であり「正確に参照」のユーザーストーリーから外れる。相手側は持ち物未知のため全形態の可能性が残り、循環に含める必然性がある。
 
@@ -903,8 +907,8 @@ DataLoader
 - **メガシンカ状態**（カードごとに独立して保持・機能 7）: `#megaIndices[i]` で各スロットの状態を `-1`（通常）または `0..n-1`（n 番目のメガフォーム）として保持。メモリのみで管理しページリロードで全カードが `-1` にリセットされる
 
 **メガシンカ切替ボタン（機能 7）**:
-- 表示条件: `DataLoader.getMegaFormByItem(entry.species, entry.item)` が非 null の場合のみ表示する（持ち物が当該ポケモンに対応するメガストーン一致時のみ）
-- 切替ロジック: 自分側は持ち物に対応するメガ形態のみ循環するため、`#megaIndices[i]` は `-1 → 0 → -1` の 2 状態のみ循環する（メガシンカ循環ルール参照）。例: リザードン + リザードナイトＸ なら `通常 ↔ メガリザードンＸ` のみ循環し、メガリザードンＹ は登場しない
+- 表示条件: `DataLoader.getMegaFormByItem(entry.species, entry.item)` が非 null の場合に表示する。同 API は持ち物一致を優先しつつ、メガフォーム側に `item === null` (メガストーン不要メガ、現状レックウザのみ) があれば持ち物に関わらずフォールバックして返すため、レックウザは持ち物が何であっても表示される
+- 切替ロジック: `#megaIndices[i]` は `-1 → 0 → -1` の 2 状態のみ循環する（メガシンカ循環ルール参照）。例: リザードン + リザードナイトＸ なら `通常 ↔ メガリザードンＸ` のみ循環し、メガリザードンＹ は登場しない。レックウザは持ち物に関わらず `通常 ↔ メガレックウザ` のみ循環する
 - 切替後のカード表示: 通常状態は `getPokemonByName(entry.species)`、メガ状態は `getMegaFormByItem(entry.species, entry.item)` でデータを取得し、カード内容（名前・タイプ・種族値）を再描画
 - 詳細パネル連動: 切替したカードが選択中の場合、`onSelect(entry, displayedPokemonData)` を呼び OwnPokemonDetail を再描画させる
 - フォーカス: 操作上の対称性（×ボタン・相手側 mega-toggle と同じポリシー）から `tabIndex = -1` で Tab フォーカスから外す

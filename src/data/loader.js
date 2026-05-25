@@ -133,14 +133,32 @@ export class DataLoader {
 
   /**
    * 親ポケモン名と持ち物名から、対応するメガフォームのデータを引く。
-   * 自分側パーティの切替ボタン表示判定（PRD 260-264）に使用する。
-   * @param {string} parentName 親ポケモンの日本語名（例: 「リザードン」）
-   * @param {string} itemName 持ち物の日本語名（例: 「リザードナイトＸ」）
-   * @returns {object|null} 一致するメガフォームのデータ。一致しなければ null
+   * 自分側パーティの切替ボタン表示判定（PRD 機能 7「メガシンカ発動条件と切替ボタン表示」）に使用する。
+   *
+   * 戻り値の優先順位:
+   *   1. 持ち物がメガストーンと一致するメガフォーム
+   *   2. メガフォームのうち `item === null` (メガストーン不要、現在はメガレックウザのみ) があればそれ
+   *   3. 上記いずれにも該当しなければ null
+   *
+   * 「2」のフォールバックにより、レックウザは持ち物に関わらずメガフォームを返す簡略仕様。
+   * 実ゲーム仕様の「ガリョウテンセイ習得が必要」というチェックは本ツールでは行わない。
+   *
+   * @param {string} parentName 親ポケモンの日本語名（例: 「リザードン」「レックウザ」）
+   * @param {string|null} itemName 持ち物の日本語名（例: 「リザードナイトＸ」）。null も許容
+   * @returns {object|null} 一致するメガフォームのデータ。該当しなければ null
    */
   getMegaFormByItem(parentName, itemName) {
     const parent = this.getPokemonByName(parentName);
-    return parent?.megaForms?.find((m) => m.item === itemName) ?? null;
+    if (!parent?.megaForms) {
+      return null;
+    }
+    // 1. 持ち物一致を優先
+    const itemMatched = parent.megaForms.find((m) => m.item === itemName);
+    if (itemMatched) {
+      return itemMatched;
+    }
+    // 2. メガストーン不要メガ (item: null) があれば、持ち物に関わらずそれを返す
+    return parent.megaForms.find((m) => m.item === null) ?? null;
   }
 
   /**

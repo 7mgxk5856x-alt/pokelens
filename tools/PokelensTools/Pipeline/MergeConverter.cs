@@ -14,6 +14,15 @@ internal static class MergeConverter
         ["slicing"] = MasterTag.IsSlice,
     };
 
+    // メガストーン不要メガ（持ち物無しでメガシンカ可能なメガフォーム）の (megaKey → parentKey) マップ。
+    // Q-7 ルール「データは data/ または tools/Patches/」の限定的例外として、Showdown データの構造的欠落
+    // （megaStone を持たないメガ）を MergeConverter 内で補正するためにハードコードする。
+    // 将来「持ち物不要メガ」が 2 件以上に増えた場合は tools/PokelensTools/Patches/mega-itemless-patch.json への昇格を検討する。
+    private static readonly Dictionary<string, string> ItemlessMegas = new(StringComparer.Ordinal)
+    {
+        ["rayquazamega"] = "rayquaza",   // メガレックウザ: Dragon Ascent 仕様で持ち物不要
+    };
+
     /// <summary>Showdown の flag キーを成果物のタグ名（例: "isSlice"）に変換する。</summary>
     /// <remarks>例外的な対応を持つ flag は対応表を優先し、無ければ "is" + 先頭大文字化の汎用ルールを適用する。</remarks>
     /// <param name="flag">Showdown の flag キー。</param>
@@ -84,8 +93,10 @@ internal static class MergeConverter
     /// 各メガを親に物理ネストする。メガ独立エントリ・対応アイテムが Showdown 側に揃っていない場合はネストをスキップする
     /// （メガ側エントリはトップレベルに残らないが、見つからなかった親はメガ追加なしで残る）。
     /// メガ名・メガストーン名の半角 X/Y は全角 Ｘ/Ｙ に正規化する（D-8）。
-    /// 対応する <c>megaStone</c> アイテムを持たないメガ独立エントリ（例: メガレックウザは Dragon Ascent 仕様でストーン不要）は
-    /// Showdown 側の <c>forme</c> フィールドで判別してトップレベルから除去する（新スキーマ不変条件「トップレベルにメガキー無し」を維持）。
+    /// <c>megaStone</c> を持たないが <see cref="ItemlessMegas"/> に登録されたメガ（現状はメガレックウザのみ）は、
+    /// 親エントリの <c>megaForms[]</c> に <c>item: null</c> でネストし、トップレベルから削除する（D-4）。
+    /// <see cref="ItemlessMegas"/> にも該当しない残余の孤立メガは Showdown 側の <c>forme</c> フィールドで
+    /// 判別してトップレベルから除去する（新スキーマ不変条件「トップレベルにメガキー無し」を維持）。
     /// </remarks>
     /// <param name="flatPokedex"><see cref="ConvertPokedex"/> の戻り値（メガフォームはまだトップレベル）。</param>
     /// <param name="showdownPokedex">Showdown 由来の元データ。<c>forme</c> フィールドで <c>megaStone</c> 無しの孤立メガを判別するために使う。</param>
@@ -182,8 +193,43 @@ internal static class MergeConverter
             result.Remove(megaKey);
         }
 
-        // メガストーンを持たない孤立メガ（例: rayquazamega は Dragon Ascent 仕様）を Showdown の forme フィールドで判別して除去する。
+        // メガストーン不要メガ (現状レックウザのみ) を item: null でネストする (D-4)。
+        // ItemlessMegas は Showdown の megaStone 経由ではネストされない特例メガを補正する。
+        // 親に既に megaForms[] が存在する場合は末尾に追加、無ければ新規作成する。
+        foreach (var (megaKey, parentKey) in ItemlessMegas)
+        {
+            if (result[parentKey] is not JsonObject parentEntry || result[megaKey] is not JsonObject megaEntry)
+            {
+                continue;
+            }
+
+            string normalizedMegaName = NormalizeFullWidthXY(
+                megaEntry[MasterKey.Pokedex.Name]?.GetValue<string>() ?? string.Empty);
+
+            var nested = new JsonObject
+            {
+                [MasterKey.MegaForm.Key] = megaKey,
+                [MasterKey.Pokedex.Name] = normalizedMegaName,
+                [MasterKey.MegaForm.Item] = null,
+                [MasterKey.Pokedex.Types] = megaEntry[MasterKey.Pokedex.Types]?.DeepClone(),
+                [MasterKey.Pokedex.BaseStats] = megaEntry[MasterKey.Pokedex.BaseStats]?.DeepClone(),
+                [MasterKey.Pokedex.Abilities] = megaEntry[MasterKey.Pokedex.Abilities]?.DeepClone(),
+            };
+
+            if (parentEntry[MasterKey.Pokedex.MegaForms] is JsonArray existingMegaForms)
+            {
+                existingMegaForms.Add(nested);
+            }
+            else
+            {
+                parentEntry[MasterKey.Pokedex.MegaForms] = new JsonArray { nested };
+            }
+            result.Remove(megaKey);
+        }
+
+        // メガストーンを持たず ItemlessMegas にも該当しない孤立メガを Showdown の forme フィールドで判別して除去する。
         // 「トップレベルにメガキーは存在しない」という新スキーマ不変条件を維持するため。
+        // ItemlessMegas で処理されたメガは既に result から削除済みのため、本ループは到達しない。
         var orphanMegaKeys = new List<string>();
         foreach (var (key, _) in result)
         {

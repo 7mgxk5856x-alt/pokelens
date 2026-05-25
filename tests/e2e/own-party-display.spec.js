@@ -5,6 +5,7 @@ import {
   UNKNOWN_SPECIES_FIXTURE,
   NATURE_MIX,
   MEGA_FIXTURE,
+  RAYQUAZA_FIXTURE,
 } from './helpers/party-fixtures.js';
 import { SEL } from './helpers/selectors.js';
 
@@ -172,6 +173,51 @@ test.describe('自分パーティ表示', () => {
     // 詳細パネルの名前・特性がメガフォームのものに更新される（メガフシギバナ・特性「あついしぼう」）
     await expect(detail.locator('.detail-header .name')).toHaveText('メガフシギバナ');
     await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('あついしぼう');
+  });
+
+  test('AET-043: メガストーン不要メガ（メガレックウザ）は持ち物に関わらず自分側でも切替ボタンが表示される', async ({
+    page,
+  }) => {
+    // メガストーン不要メガ (megaForms[].item === null) は持ち物の有無・種類に関わらず
+    // 「メガシンカ発動条件と切替ボタン表示」が満たされる（PRD 機能 7）。
+    // 簡略仕様のため、本ツールでは技習得（ガリョウテンセイ）チェックは行わない。
+    await mockParty(page, RAYQUAZA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+
+    // 0: レックウザ + いのちのたま → メガ切替ボタン表示
+    await expect(cards.nth(0).locator('.mega-toggle')).toHaveCount(1);
+    // 1: レックウザ + 持ち物なし → メガ切替ボタン表示（item: null フォールバック）
+    await expect(cards.nth(1).locator('.mega-toggle')).toHaveCount(1);
+
+    // 通常 → メガレックウザ → 通常 を循環
+    await expect(cards.nth(0).locator('.name')).toHaveText('レックウザ');
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('メガレックウザ');
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    await expect(cards.nth(0).locator('.name')).toHaveText('レックウザ');
+  });
+
+  test('AET-044: メガレックウザ切替時に自分ポケモン詳細パネルが連動更新される（item: null メガの詳細表示）', async ({
+    page,
+  }) => {
+    await mockParty(page, RAYQUAZA_FIXTURE);
+    await page.goto('/');
+
+    const cards = page.locator(SEL.ownCards);
+    const detail = page.locator(SEL.ownDetail);
+
+    await cards.nth(0).click({ force: true });
+    await expect(detail.locator('.detail-header .name')).toHaveText('レックウザ');
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText('エアロック');
+
+    await cards.nth(0).locator('.mega-toggle').click({ force: true });
+    // メガレックウザの種族値・特性に連動更新（デルタストリーム）
+    await expect(detail.locator('.detail-header .name')).toHaveText('メガレックウザ');
+    await expect(detail.locator('.detail-row', { hasText: '特性:' })).toContainText(
+      'デルタストリーム',
+    );
   });
 
   test('AET-040: 自分側は持ち物に対応するメガのみ循環する（D-10: リザードン + リザードナイトＸ は 通常 ↔ メガリザードンＸ）', async ({ page }) => {

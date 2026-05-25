@@ -33,7 +33,10 @@ internal static class MasterKey
         /// <summary>メガフォームの内部キー（旧トップレベルキー、例: "venusaurmega", "charizardmegax"）。</summary>
         internal const string Key = "key";
 
-        /// <summary>対応するメガストーンの日本語名（X/Y は全角 Ｘ/Ｙ。例: "フシギバナイト", "リザードナイトＸ"）。</summary>
+        /// <summary>
+        /// 対応するメガストーンの日本語名（X/Y は全角 Ｘ/Ｙ。例: "フシギバナイト", "リザードナイトＸ"）。
+        /// メガストーン不要メガ（現状はメガレックウザのみ）は JSON null で格納する（D-1）。
+        /// </summary>
         internal const string Item = "item";
     }
 

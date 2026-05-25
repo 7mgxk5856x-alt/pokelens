@@ -286,6 +286,43 @@ export const STANDARD_PARTY = {
   ],
 };
 
+/**
+ * メガレックウザ（メガストーン不要メガ）の動作確認用 fixture（機能 7・AET-043/044 用）。
+ * 0: レックウザ + いのちのたま → メガストーン不要のためメガ切替ボタン常時表示
+ *    （持ち物 != メガストーンだが megaForms[0].item === null フォールバックでメガレックウザを返す）
+ * 1: レックウザ + 持ち物なし（item: null） → 同上、メガ切替ボタン表示
+ */
+export const RAYQUAZA_FIXTURE = {
+  party: [
+    {
+      species: 'レックウザ',
+      ability: 'エアロック',
+      item: 'いのちのたま',
+      nature: 'いじっぱり',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [
+        { name: 'げきりん' },
+        { name: 'しんそく' },
+        { name: 'まもる' },
+        { name: 'みがわり' },
+      ],
+    },
+    {
+      species: 'レックウザ',
+      ability: 'エアロック',
+      item: null,
+      nature: 'まじめ',
+      abilityPoints: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
+      moves: [
+        { name: 'げきりん' },
+        { name: 'しんそく' },
+        { name: 'まもる' },
+        { name: 'みがわり' },
+      ],
+    },
+  ],
+};
+
 /** 不明な species を 1 匹含むパーティ（AET-004 用）。 */
 export const UNKNOWN_SPECIES_FIXTURE = {
   party: [
